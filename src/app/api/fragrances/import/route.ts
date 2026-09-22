@@ -22,6 +22,19 @@ export async function POST(request: NextRequest) {
       sourceUrl,
       externalId,
       precoVista,
+      precoOriginal,
+      precoCusto,
+      quantidade,
+      descricao,
+      badge,
+      disponivel,
+      tipoDisponibilidade,
+      previsaoEntrega,
+      destaque,
+      novidade,
+      descricaoFragrancia,
+      longevidade,
+      projecao,
       categoriaId,
     } = body;
 
@@ -51,8 +64,17 @@ export async function POST(request: NextRequest) {
       data: {
         nome: name.trim(),
         marca: brand?.trim() || 'Marca Importada',
-        descricao: `Fragrância importada ${name.trim()}${brand ? ` por ${brand.trim()}` : ''}.`,
+        descricao: descricao || `Fragrância importada ${name.trim()}${brand ? ` por ${brand.trim()}` : ''}.`,
         precoVista: precoFinal,
+        precoOriginal: typeof precoOriginal === 'number' ? precoOriginal : null,
+        precoCusto: typeof precoCusto === 'number' ? precoCusto : null,
+        quantidade: typeof quantidade === 'number' ? quantidade : 1,
+        badge: badge || null,
+        disponivel: typeof disponivel === 'boolean' ? disponivel : true,
+        tipoDisponibilidade: tipoDisponibilidade || 'ENCOMENDA',
+        previsaoEntrega: previsaoEntrega || 'Sob Encomenda (Consulte prazo)',
+        destaque: Boolean(destaque),
+        novidade: Boolean(novidade),
         volume: volume || null,
         concentracao: concentration || null,
         anoLancamento: year ? parseInt(String(year), 10) : null,
@@ -62,6 +84,9 @@ export async function POST(request: NextRequest) {
         notasCoracao: Array.isArray(middleNotes) && middleNotes.length > 0 ? middleNotes : undefined,
         notasFundo: Array.isArray(baseNotes) && baseNotes.length > 0 ? baseNotes : undefined,
         acordesPrincipais: Array.isArray(accords) && accords.length > 0 ? accords : undefined,
+        descricaoFragrancia: descricaoFragrancia || null,
+        longevidade: longevidade || null,
+        projecao: projecao || null,
         
         // Rastreabilidade e Confiabilidade
         dataSource: source || 'openbeautyfacts',
@@ -72,8 +97,6 @@ export async function POST(request: NextRequest) {
         lastSyncedAt: new Date(),
 
         categoriaId: targetCategoriaId,
-        tipoDisponibilidade: 'ENCOMENDA',
-        previsaoEntrega: 'Sob Encomenda (Consulte prazo)',
       },
     });
 
