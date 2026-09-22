@@ -88,6 +88,16 @@ export default function CatalogClient({
   const [priceRange, setPriceRange] = useState('todos');
   const [visibleCount, setVisibleCount] = useState(12);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (activeCategory !== 'todos') count++;
+    if (selectedBrand !== 'todas') count++;
+    if (priceRange !== 'todos') count++;
+    if (onlyPromos) count++;
+    return count;
+  }, [activeCategory, selectedBrand, priceRange, onlyPromos]);
 
   // Curated Featured Products for Hero Showcase
   const heroFeaturedProducts = useMemo(() => {
@@ -157,11 +167,12 @@ export default function CatalogClient({
       setCatalogZoomScale(1);
       return;
     }
+    setIsMobileFiltersOpen(false);
     setSelectedProduct(null); 
     setIsCartOpen(false); 
     setIsFavoritesOpen(false); 
   };
-  const dialogRef = useDialog(Boolean(selectedProduct || isCartOpen || isFavoritesOpen), closeDialog);
+  const dialogRef = useDialog(Boolean(selectedProduct || isCartOpen || isFavoritesOpen || isMobileFiltersOpen), closeDialog);
   const chooseProduct = (product: Produto) => { setActiveImageIndex(0); setSelectedProduct(product); };
   const hasFilters = Boolean(searchTerm.trim() || activeCategory !== 'todos' || selectedBrand !== 'todas' || availabilityFilter !== 'TODOS' || onlyPromos || priceRange !== 'todos');
 
@@ -637,8 +648,9 @@ export default function CatalogClient({
           </div>
 
           {/* SEARCH BAR (MOBILE) */}
-          <div className="mt-3 md:hidden relative">
+          <div className="mt-3 md:hidden relative mobile-search-container">
             <FragranceSearch
+              placeholder="Buscar perfume, marca ou notas..."
               onSelectLocalProduct={(id) => {
                 const p = initialProdutos.find(prod => prod.id === id);
                 if (p) chooseProduct(p);
@@ -652,12 +664,12 @@ export default function CatalogClient({
 
           {/* CATEGORIES NAVIGATION WITH FLUID TOUCH, DRAG & CHEVRON CONTROLS (SEM CORTES) */}
           <div className="relative mt-2.5 pt-2 border-t border-[#dcd5c7] flex items-center min-w-0 w-full overflow-hidden">
-            {/* Scroll Left Button (Mobile & Desktop) */}
+            {/* Scroll Left Button (Desktop only to prevent mobile overlay) */}
             {canScrollLeft && (
               <button
                 type="button"
                 onClick={() => scrollCategoryNav('left')}
-                className="flex absolute left-0 z-20 w-7 h-7 rounded-full bg-white shadow-md border-1.5 border-[#dcd5c7] items-center justify-center text-[#09090b] hover:bg-[#f7f4ef] hover:border-[#09090b] active:scale-90 transition-all cursor-pointer"
+                className="hidden md:flex absolute left-0 z-20 w-7 h-7 rounded-full bg-white shadow-md border-1.5 border-[#dcd5c7] items-center justify-center text-[#09090b] hover:bg-[#f7f4ef] hover:border-[#09090b] active:scale-90 transition-all cursor-pointer"
                 title="Rolar para a esquerda"
               >
                 <ChevronLeft size={15} />
@@ -666,7 +678,7 @@ export default function CatalogClient({
 
             {/* Left fade gradient */}
             {canScrollLeft && (
-              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-9 bg-gradient-to-r from-white via-white/80 to-transparent z-10" />
+              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white via-white/80 to-transparent z-10" />
             )}
 
             <nav 
@@ -693,30 +705,31 @@ export default function CatalogClient({
                   <button
                     data-active={activeCategory === 'todos'}
                     onClick={() => selectCategory('todos')}
-                    className={`px-3.5 py-1.5 rounded-full transition-all border ${
+                    className={`px-3.5 py-1.5 rounded-full transition-all border shrink-0 ${
                       activeCategory === 'todos' 
                         ? 'bg-[#09090b] border-[#09090b] text-white font-bold shadow-xs' 
                         : 'border-[#dcd5c7] bg-white text-[#09090b] font-semibold hover:border-[#09090b] hover:bg-[#faf8f5] shadow-2xs'
                     }`}
                   >
-                    Todos os produtos
+                    Todos os produtos ({initialProdutos.length})
                   </button>
                 </li>
                 {sortedCategorias.map(cat => {
                   const isSelected = activeCategory.toLowerCase() === cat.nome.toLowerCase();
+                  const count = getCategoryCount(cat.nome);
                   return (
                     <li key={cat.id}>
                       <button
                         data-active={isSelected}
                         onClick={() => selectCategory(cat.nome)}
-                        className={`px-3.5 py-1.5 rounded-full transition-all border ${
+                        className={`px-3.5 py-1.5 rounded-full transition-all border shrink-0 ${
                           isSelected
                             ? 'bg-[#09090b] border-[#09090b] text-white font-bold shadow-xs'
                             : 'border-[#dcd5c7] bg-white text-[#09090b] font-semibold hover:border-[#09090b] hover:bg-[#faf8f5] shadow-2xs'
                         }`}
                         title={cat.nome}
                       >
-                        {getCategoryShortName(cat.nome)}
+                        {getCategoryShortName(cat.nome)} <span className="opacity-70 text-[11px] font-normal">({count})</span>
                       </button>
                     </li>
                   );
@@ -725,7 +738,7 @@ export default function CatalogClient({
                   <button
                     data-active={activeCategory === 'promocoes'}
                     onClick={() => selectCategory('promocoes')}
-                    className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 border ${
+                    className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 border shrink-0 ${
                       activeCategory === 'promocoes'
                         ? 'bg-[#7a5828] border-[#7a5828] text-white font-bold shadow-xs'
                         : 'border-[#cbbca8] bg-[#f8f2e9] text-[#6b4719] font-bold hover:bg-[#f0e3ce] shadow-2xs'
@@ -739,15 +752,15 @@ export default function CatalogClient({
 
             {/* Right fade gradient */}
             {canScrollRight && (
-              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-9 bg-gradient-to-l from-white via-white/80 to-transparent z-10" />
+              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white via-white/80 to-transparent z-10" />
             )}
 
-            {/* Scroll Right Button (Mobile & Desktop) */}
+            {/* Scroll Right Button (Desktop only to prevent mobile overlay) */}
             {canScrollRight && (
               <button
                 type="button"
                 onClick={() => scrollCategoryNav('right')}
-                className="flex absolute right-0 z-20 w-7 h-7 rounded-full bg-white shadow-md border-1.5 border-[#dcd5c7] items-center justify-center text-[#09090b] hover:bg-[#f7f4ef] hover:border-[#09090b] active:scale-90 transition-all cursor-pointer"
+                className="hidden md:flex absolute right-0 z-20 w-7 h-7 rounded-full bg-white shadow-md border-1.5 border-[#dcd5c7] items-center justify-center text-[#09090b] hover:bg-[#f7f4ef] hover:border-[#09090b] active:scale-90 transition-all cursor-pointer"
                 title="Rolar para a direita"
               >
                 <ChevronRight size={15} />
@@ -759,205 +772,328 @@ export default function CatalogClient({
       </header>
 
       <main id="conteudo">
-      {!hasFilters && <>
-      <section className="catalog-hero">
-        <div className="hero-inner shell">
-          <div className="hero-copy">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-widest text-[#7a5828] mb-2.5">
-              <Sparkles size={13} /> Alta Perfumaria & Cuidados
-            </span>
-            <h1>Encontre sua<br />próxima fragrância.</h1>
-            <p>Perfumes importados e cuidados para o seu ritual. Escolha entre pronta entrega imediata e encomendas de grife com atendimento pelo WhatsApp.</p>
-            <div className="hero-actions">
-              <button 
-                type="button"
-                onClick={() => openCustomOrderModal()}
-                className="button-primary flex items-center gap-2 cursor-pointer"
-              >
-                Solicitar perfume sob encomenda <ArrowRight size={16} />
-              </button>
-              <a 
-                href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent('Olá! Gostaria de tirar uma dúvida sobre os perfumes da Elegance.')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="button-text flex items-center gap-1.5 text-xs text-[#27272a] hover:text-[#09090b] font-semibold transition-colors"
-              >
-                <MessageCircle size={15} className="text-[#15803d]" /> Dúvidas no WhatsApp
-              </a>
-            </div>
-          </div>
+      {!hasFilters && (
+        <>
+          {/* HERO MOBILE COMPACTO (< 768px) - FOCO EM CONVERSÃO E PRODUTOS NA 1ª DOBRA */}
+          <section className="block md:hidden px-3 sm:px-4 pt-2.5 pb-1">
+            <div className="bg-gradient-to-br from-[#fcfbf9] via-[#f8f4ed] to-[#ede3d5] rounded-2xl border-2 border-[#dcd5c7] p-3.5 sm:p-4 shadow-2xs">
+              <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-[#7a5828] mb-1">
+                <Sparkles size={12} /> Alta Perfumaria & Cuidados
+              </div>
+              <h1 className="font-serif text-lg font-bold text-[#09090b] leading-tight">
+                Encontre sua próxima fragrância.
+              </h1>
+              <p className="text-xs text-[#27272a] font-medium mt-1 leading-relaxed">
+                Importados 100% originais a pronta entrega ou sob encomenda direta pelo WhatsApp.
+              </p>
 
-          {/* VITRINE INTERATIVA DE PERFUMES EM DESTAQUE (ESTILO SEPHORA / FRAGRANTICA) */}
-          {currentFeatured && (
-            <div className="hero-featured-wrapper">
-              <div className="w-full min-w-0 bg-white rounded-2xl border-2 border-[#dcd5c7] shadow-md hover:shadow-lg transition-all p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative overflow-hidden sm:h-[365px]">
-                {/* Top bar with badge and navigation */}
-                <div className="flex items-center justify-between gap-2 border-b border-[#dcd5c7] pb-2.5 min-w-0">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Sparkles size={14} className="text-[#7a5828] shrink-0" />
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#09090b] truncate">
-                      Destaque em Alta
-                    </span>
-                  </div>
+              {/* 3 Selos de Confiança Mobile */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-2 mt-1">
+                <span className="inline-flex items-center gap-1 bg-white border border-[#dcd5c7] text-[#09090b] text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap shadow-2xs">
+                  💎 100% Originais
+                </span>
+                <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-300 text-emerald-900 text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap shadow-2xs">
+                  📦 Pronta Entrega
+                </span>
+                <span className="inline-flex items-center gap-1 bg-[#fcf7ee] border border-[#e8d7be] text-[#7a5828] text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap shadow-2xs">
+                  ✨ Encomendas 50/50
+                </span>
+              </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] text-[#27272a] font-bold mr-1">
-                      {featuredIndex + 1} de {heroFeaturedProducts.length}
-                    </span>
-                    <button
-                      onClick={() => setFeaturedIndex((prev) => (prev - 1 + heroFeaturedProducts.length) % heroFeaturedProducts.length)}
-                      className="w-6 h-6 rounded-full border border-[#dcd5c7] flex items-center justify-center text-[#09090b] hover:border-[#09090b] hover:bg-[#faf8f5] transition-colors cursor-pointer"
-                      title="Anterior"
-                    >
-                      <ChevronLeft size={13} />
-                    </button>
-                    <button
-                      onClick={() => setFeaturedIndex((prev) => (prev + 1) % heroFeaturedProducts.length)}
-                      className="w-6 h-6 rounded-full border border-[#dcd5c7] flex items-center justify-center text-[#09090b] hover:border-[#09090b] hover:bg-[#faf8f5] transition-colors cursor-pointer"
-                      title="Próximo"
-                    >
-                      <ChevronRight size={13} />
-                    </button>
-                  </div>
+              {/* Atalho Rápido para Encomenda */}
+              <div className="mt-2 bg-white/90 border border-[#dcd5c7] rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-2xs">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-[#09090b] truncate">Não achou seu perfume?</p>
+                  <p className="text-[10px] text-[#27272a] truncate">Encomendamos qualquer grife com 50% de sinal.</p>
                 </div>
-
-                {/* Product preview row with locked height to prevent layout shifts */}
-                <div 
-                  onClick={() => chooseProduct(currentFeatured)}
-                  className="flex gap-4 cursor-pointer group min-w-0 h-[136px] sm:h-[142px]"
-                >
-                  {/* Photo */}
-                  <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-xl bg-white border border-[#dcd5c7] p-2 flex items-center justify-center shrink-0 relative overflow-hidden self-center shadow-2xs">
-                    <ProductImage
-                      src={currentFeatured.fotos[0]?.url}
-                      alt={currentFeatured.nome}
-                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                    />
-                    {isProdutoProntaEntrega(currentFeatured) ? (
-                      <span className="absolute bottom-1.5 left-1.5 right-1.5 text-center text-[9px] font-extrabold uppercase tracking-wider bg-emerald-800 text-white py-0.5 rounded shadow-xs">
-                        Pronta Entrega
-                      </span>
-                    ) : (
-                      <span className="absolute bottom-1.5 left-1.5 right-1.5 text-center text-[9px] font-extrabold uppercase tracking-wider bg-[#7a5828] text-white py-0.5 rounded shadow-xs">
-                        Sob Encomenda
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Info with locked slot heights */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5 h-full">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5 min-w-0">
-                        <span className="text-[10px] uppercase font-extrabold tracking-wider text-[#7a5828] truncate">
-                          {currentFeatured.marca}
-                        </span>
-                        {currentFeatured.volume && (
-                          <>
-                            <span className="text-[#dcd5c7] shrink-0 font-bold">•</span>
-                            <span className="text-[10px] text-[#27272a] font-bold shrink-0">
-                              {currentFeatured.volume}
-                            </span>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Title locked to 2-line height so 1-line and 2-line titles take identical height */}
-                      <div className="h-[2.85rem] flex items-start overflow-hidden">
-                        <h3 className="font-serif text-base sm:text-lg font-bold text-[#09090b] group-hover:text-[#7a5828] transition-colors line-clamp-2 leading-snug break-words">
-                          {currentFeatured.nome}
-                        </h3>
-                      </div>
-
-                      {/* Family locked to 18px */}
-                      <div className="h-[18px] mt-0.5 overflow-hidden">
-                        {currentFeatured.familiaOlfativa ? (
-                          <p className="text-[11px] text-[#27272a] font-medium line-clamp-1 truncate">
-                            Família: <span className="text-[#09090b] font-bold">{currentFeatured.familiaOlfativa}</span>
-                          </p>
-                        ) : (
-                          <span className="block h-[18px]" />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Notes Pills locked to 1 row (no flex-wrap) */}
-                    <div className="flex items-center gap-1 mt-1 min-w-0 overflow-hidden h-[24px]">
-                      {featuredAcordes.length > 0 ? (
-                        featuredAcordes.slice(0, 3).map((acorde, i) => (
-                          <span
-                            key={i}
-                            className="text-[10px] bg-[#f5ede2] text-[#543b18] border border-[#e2d8c5] px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0 shadow-2xs"
-                          >
-                            {acorde}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="block h-[24px]" />
-                      )}
-                    </div>
-
-                    {/* Price locked to 24px */}
-                    <div className="mt-1 flex items-baseline gap-2 shrink-0 h-[24px]">
-                      <span className="text-xl font-extrabold text-[#09090b] leading-none">
-                        {currentFeatured.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </span>
-                      <span className="text-xs text-[#27272a] font-medium">à vista</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Mini Thumbnails Selector */}
-                <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-[#dcd5c7] w-full min-w-0">
-                  {heroFeaturedProducts.map((p, idx) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setFeaturedIndex(idx)}
-                      className={`p-1.5 rounded-lg border text-left transition-all flex items-center gap-1.5 min-w-0 overflow-hidden cursor-pointer ${
-                        idx === featuredIndex
-                          ? 'border-2 border-[#09090b] bg-[#fbf9f5] shadow-xs'
-                          : 'border-[#dcd5c7] hover:border-[#09090b] opacity-80 hover:opacity-100 bg-white'
-                      }`}
-                    >
-                      <div className="w-6 h-6 rounded bg-white shrink-0 overflow-hidden border border-[#dcd5c7]">
-                        <ProductImage src={p.fotos[0]?.url} alt="" className="w-full h-full object-contain" />
-                      </div>
-                      <span className="text-[10px] font-bold text-[#09090b] truncate min-w-0 hidden sm:inline">
-                        {p.marca.split(' ')[0]}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* CTA Button */}
                 <button
-                  onClick={() => chooseProduct(currentFeatured)}
-                  className="w-full bg-[#09090b] hover:bg-black text-white py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
+                  type="button"
+                  onClick={() => openCustomOrderModal()}
+                  className="shrink-0 bg-[#09090b] text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-[#27272a] transition-colors cursor-pointer"
                 >
-                  <Sparkles size={14} className="text-[#e8cda8]" />
-                  Ver Pirâmide Olfativa & Detalhes
+                  <Sparkles size={11} className="text-[#c5a880]" /> Pedir
                 </button>
               </div>
             </div>
-          )}
-        </div>
-      </section>
-      </>}
+          </section>
+
+          {/* HERO DESKTOP COMPLETO (>= 768px) */}
+          <section className="catalog-hero hidden md:block">
+            <div className="hero-inner shell">
+              <div className="hero-copy">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-widest text-[#7a5828] mb-2.5">
+                  <Sparkles size={13} /> Alta Perfumaria & Cuidados
+                </span>
+                <h1>Encontre sua<br />próxima fragrância.</h1>
+                <p>Perfumes importados e cuidados para o seu ritual. Escolha entre pronta entrega imediata e encomendas de grife com atendimento pelo WhatsApp.</p>
+                <div className="hero-actions">
+                  <button 
+                    type="button"
+                    onClick={() => openCustomOrderModal()}
+                    className="button-primary flex items-center gap-2 cursor-pointer"
+                  >
+                    Solicitar perfume sob encomenda <ArrowRight size={16} />
+                  </button>
+                  <a 
+                    href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent('Olá! Gostaria de tirar uma dúvida sobre os perfumes da Elegance.')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="button-text flex items-center gap-1.5 text-xs text-[#27272a] hover:text-[#09090b] font-semibold transition-colors"
+                  >
+                    <MessageCircle size={15} className="text-[#15803d]" /> Dúvidas no WhatsApp
+                  </a>
+                </div>
+              </div>
+
+              {/* VITRINE INTERATIVA DE PERFUMES EM DESTAQUE (ESTILO SEPHORA / FRAGRANTICA) */}
+              {currentFeatured && (
+                <div className="hero-featured-wrapper">
+                  <div className="w-full min-w-0 bg-white rounded-2xl border-2 border-[#dcd5c7] shadow-md hover:shadow-lg transition-all p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative overflow-hidden sm:h-[365px]">
+                    {/* Top bar with badge and navigation */}
+                    <div className="flex items-center justify-between gap-2 border-b border-[#dcd5c7] pb-2.5 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Sparkles size={14} className="text-[#7a5828] shrink-0" />
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#09090b] truncate">
+                          Destaque em Alta
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] text-[#27272a] font-bold mr-1">
+                          {featuredIndex + 1} de {heroFeaturedProducts.length}
+                        </span>
+                        <button
+                          onClick={() => setFeaturedIndex((prev) => (prev - 1 + heroFeaturedProducts.length) % heroFeaturedProducts.length)}
+                          className="w-6 h-6 rounded-full border border-[#dcd5c7] flex items-center justify-center text-[#09090b] hover:border-[#09090b] hover:bg-[#faf8f5] transition-colors cursor-pointer"
+                          title="Anterior"
+                        >
+                          <ChevronLeft size={13} />
+                        </button>
+                        <button
+                          onClick={() => setFeaturedIndex((prev) => (prev + 1) % heroFeaturedProducts.length)}
+                          className="w-6 h-6 rounded-full border border-[#dcd5c7] flex items-center justify-center text-[#09090b] hover:border-[#09090b] hover:bg-[#faf8f5] transition-colors cursor-pointer"
+                          title="Próximo"
+                        >
+                          <ChevronRight size={13} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Product preview row with locked height to prevent layout shifts */}
+                    <div 
+                      onClick={() => chooseProduct(currentFeatured)}
+                      className="flex gap-4 cursor-pointer group min-w-0 h-[136px] sm:h-[142px]"
+                    >
+                      {/* Photo */}
+                      <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-xl bg-white border border-[#dcd5c7] p-2 flex items-center justify-center shrink-0 relative overflow-hidden self-center shadow-2xs">
+                        <ProductImage
+                          src={currentFeatured.fotos[0]?.url}
+                          alt={currentFeatured.nome}
+                          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                        />
+                        {isProdutoProntaEntrega(currentFeatured) ? (
+                          <span className="absolute bottom-1.5 left-1.5 right-1.5 text-center text-[9px] font-extrabold uppercase tracking-wider bg-emerald-800 text-white py-0.5 rounded shadow-xs">
+                            Pronta Entrega
+                          </span>
+                        ) : (
+                          <span className="absolute bottom-1.5 left-1.5 right-1.5 text-center text-[9px] font-extrabold uppercase tracking-wider bg-[#7a5828] text-white py-0.5 rounded shadow-xs">
+                            Sob Encomenda
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Info with locked slot heights */}
+                      <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5 h-full">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5 min-w-0">
+                            <span className="text-[10px] uppercase font-extrabold tracking-wider text-[#7a5828] truncate">
+                              {currentFeatured.marca}
+                            </span>
+                            {currentFeatured.volume && (
+                              <>
+                                <span className="text-[#dcd5c7] shrink-0 font-bold">•</span>
+                                <span className="text-[10px] text-[#27272a] font-bold shrink-0">
+                                  {currentFeatured.volume}
+                                </span>
+                              </>
+                            )}
+                          </div>
+
+                          <div className="h-[2.85rem] flex items-start overflow-hidden">
+                            <h3 className="font-serif text-base sm:text-lg font-bold text-[#09090b] group-hover:text-[#7a5828] transition-colors line-clamp-2 leading-snug break-words">
+                              {currentFeatured.nome}
+                            </h3>
+                          </div>
+
+                          <div className="h-[18px] mt-0.5 overflow-hidden">
+                            {currentFeatured.familiaOlfativa ? (
+                              <p className="text-[11px] text-[#27272a] font-medium line-clamp-1 truncate">
+                                Família: <span className="text-[#09090b] font-bold">{currentFeatured.familiaOlfativa}</span>
+                              </p>
+                            ) : (
+                              <span className="block h-[18px]" />
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 mt-1 min-w-0 overflow-hidden h-[24px]">
+                          {featuredAcordes.length > 0 ? (
+                            featuredAcordes.slice(0, 3).map((acorde, i) => (
+                              <span
+                                key={i}
+                                className="text-[10px] bg-[#f5ede2] text-[#543b18] border border-[#e2d8c5] px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0 shadow-2xs"
+                              >
+                                {acorde}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="block h-[24px]" />
+                          )}
+                        </div>
+
+                        <div className="mt-1 flex items-baseline gap-2 shrink-0 h-[24px]">
+                          <span className="text-xl font-extrabold text-[#09090b] leading-none">
+                            {currentFeatured.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                          <span className="text-xs text-[#27272a] font-medium">à vista</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mini Thumbnails Selector */}
+                    <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-[#dcd5c7] w-full min-w-0">
+                      {heroFeaturedProducts.map((p, idx) => (
+                        <button
+                          key={p.id}
+                          onClick={() => setFeaturedIndex(idx)}
+                          className={`p-1.5 rounded-lg border text-left transition-all flex items-center gap-1.5 min-w-0 overflow-hidden cursor-pointer ${
+                            idx === featuredIndex
+                              ? 'border-2 border-[#09090b] bg-[#fbf9f5] shadow-xs'
+                              : 'border-[#dcd5c7] hover:border-[#09090b] opacity-80 hover:opacity-100 bg-white'
+                          }`}
+                        >
+                          <div className="w-6 h-6 rounded bg-white shrink-0 overflow-hidden border border-[#dcd5c7]">
+                            <ProductImage src={p.fotos[0]?.url} alt="" className="w-full h-full object-contain" />
+                          </div>
+                          <span className="text-[10px] font-bold text-[#09090b] truncate min-w-0 hidden sm:inline">
+                            {p.marca.split(' ')[0]}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* CTA Button */}
+                    <button
+                      onClick={() => chooseProduct(currentFeatured)}
+                      className="w-full bg-[#09090b] hover:bg-black text-white py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
+                    >
+                      <Sparkles size={14} className="text-[#e8cda8]" />
+                      Ver Pirâmide Olfativa & Detalhes
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        </>
+      )}
+
       <section id="produtos" className="shell catalog-section">
-        <div className="catalog-title"><div><p className="breadcrumb">Catálogo{activeCategory !== 'todos' ? ' / '+activeCategory : ''}</p><CatalogHeading>{searchTerm.trim() ? 'Resultados da busca' : activeCategory === 'todos' ? 'Explore o catálogo' : activeCategory === 'promocoes' ? 'Ofertas para descobrir' : activeCategory}</CatalogHeading></div><span role="status">{filteredProdutos.length} {filteredProdutos.length === 1 ? 'produto' : 'produtos'}</span></div>
+        <div className="catalog-title">
+          <div>
+            <p className="breadcrumb">Catálogo{activeCategory !== 'todos' ? ' / ' + activeCategory : ''}</p>
+            <CatalogHeading>
+              {searchTerm.trim() ? 'Resultados da busca' : activeCategory === 'todos' ? 'Explore o catálogo' : activeCategory === 'promocoes' ? 'Ofertas para descobrir' : activeCategory}
+            </CatalogHeading>
+          </div>
+          <span role="status">{filteredProdutos.length} {filteredProdutos.length === 1 ? 'produto' : 'produtos'}</span>
+        </div>
+
         <div className="catalog-toolbar">
           <div className="availability-tabs" aria-label="Disponibilidade">
-            {(['TODOS','PRONTA_ENTREGA','ENCOMENDA'] as const).map(value=><button key={value} aria-pressed={availabilityFilter===value} onClick={()=>{setAvailabilityFilter(value);setVisibleCount(12);}}>{value==='TODOS'?'Todos':value==='PRONTA_ENTREGA'?'Pronta entrega':'Sob encomenda'}</button>)}
+            {(['TODOS', 'PRONTA_ENTREGA', 'ENCOMENDA'] as const).map(value => (
+              <button
+                key={value}
+                aria-pressed={availabilityFilter === value}
+                onClick={() => {
+                  setAvailabilityFilter(value);
+                  setVisibleCount(12);
+                }}
+              >
+                {value === 'TODOS' ? `Todos (${initialProdutos.length})` : value === 'PRONTA_ENTREGA' ? `Pronta (${prontaEntregaCount})` : `Encomenda (${encomendaCount})`}
+              </button>
+            ))}
           </div>
-          <button className="filter-toggle" aria-expanded={filtersOpen} aria-controls="catalog-filters" onClick={()=>setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={17}/> Filtros</button>
-          <label className="sort-control">Ordenar por <select value={sortBy} onChange={e=>setSortBy(e.target.value as typeof sortBy)}><option value="mais-vendidos">Mais vendidos</option><option value="novidades">Novidades</option><option value="menor-preco">Menor preço</option><option value="maior-preco">Maior preço</option></select></label>
+
+          <button 
+            className="filter-toggle" 
+            aria-expanded={isMobileFiltersOpen} 
+            onClick={() => setIsMobileFiltersOpen(true)}
+          >
+            <SlidersHorizontal size={15} /> 
+            <span>Filtros</span>
+            {activeFiltersCount > 0 && (
+              <span className="w-5 h-5 rounded-full bg-[#09090b] text-white text-[10px] font-bold flex items-center justify-center">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
+
+          <label className="sort-control">
+            Ordenar por{' '}
+            <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}>
+              <option value="mais-vendidos">Mais vendidos</option>
+              <option value="novidades">Novidades</option>
+              <option value="menor-preco">Menor preço</option>
+              <option value="maior-preco">Maior preço</option>
+            </select>
+          </label>
         </div>
-        <div id="catalog-filters" className={'catalog-filters '+(filtersOpen?'is-open':'')}>
-          <label>Categoria<select value={activeCategory} onChange={e=>{setActiveCategory(e.target.value);setVisibleCount(12);}}><option value="todos">Todas as categorias</option>{sortedCategorias.map(c=><option key={c.id} value={c.nome}>{c.nome}</option>)}<option value="promocoes">Ofertas</option></select></label>
-          <label>Marca<select value={selectedBrand} onChange={e=>{setSelectedBrand(e.target.value);setVisibleCount(12);}}><option value="todas">Todas as marcas</option>{brandsList.map(b=><option key={b}>{b}</option>)}</select></label>
-          <label>Faixa de preço<select value={priceRange} onChange={e=>{setPriceRange(e.target.value);setVisibleCount(12);}}><option value="todos">Todos os preços</option><option value="ate-100">Até R$ 100</option><option value="100-200">R$ 100 a R$ 200</option><option value="acima-200">Acima de R$ 200</option></select></label>
-          <label className="promo-check"><input type="checkbox" checked={onlyPromos} onChange={e=>setOnlyPromos(e.target.checked)} /> Somente ofertas</label>
+
+        <div id="catalog-filters" className={'catalog-filters hidden md:flex ' + (filtersOpen ? 'is-open' : '')}>
+          <label>
+            Categoria
+            <select value={activeCategory} onChange={e => { setActiveCategory(e.target.value); setVisibleCount(12); }}>
+              <option value="todos">Todas as categorias</option>
+              {sortedCategorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+              <option value="promocoes">Ofertas</option>
+            </select>
+          </label>
+          <label>
+            Marca
+            <select value={selectedBrand} onChange={e => { setSelectedBrand(e.target.value); setVisibleCount(12); }}>
+              <option value="todas">Todas as marcas</option>
+              {brandsList.map(b => <option key={b}>{b}</option>)}
+            </select>
+          </label>
+          <label>
+            Faixa de preço
+            <select value={priceRange} onChange={e => { setPriceRange(e.target.value); setVisibleCount(12); }}>
+              <option value="todos">Todos os preços</option>
+              <option value="ate-100">Até R$ 100</option>
+              <option value="100-200">R$ 100 a R$ 200</option>
+              <option value="acima-200">Acima de R$ 200</option>
+            </select>
+          </label>
+          <label className="promo-check">
+            <input type="checkbox" checked={onlyPromos} onChange={e => setOnlyPromos(e.target.checked)} /> Somente ofertas
+          </label>
         </div>
-        {hasFilters && <div className="active-filters"><span>{searchTerm.trim() ? 'Busca: “'+searchTerm.trim()+'”' : 'Filtros aplicados'}{selectedBrand!=='todas'?' · '+selectedBrand:''}{priceRange!=='todos'?' · Faixa de preço selecionada':''}</span><button onClick={clearFilters}>Limpar filtros <X size={14}/></button></div>}
+
+        {hasFilters && (
+          <div className="active-filters">
+            <span>
+              {searchTerm.trim() ? 'Busca: “' + searchTerm.trim() + '”' : 'Filtros aplicados'}
+              {activeCategory !== 'todos' ? ' · ' + activeCategory : ''}
+              {selectedBrand !== 'todas' ? ' · ' + selectedBrand : ''}
+              {priceRange !== 'todos' ? ' · Faixa de preço selecionada' : ''}
+              {onlyPromos ? ' · Somente ofertas' : ''}
+            </span>
+            <button onClick={clearFilters} className="cursor-pointer">
+              Limpar filtros <X size={14} />
+            </button>
+          </div>
+        )}
         {/* GRID DE PRODUTOS */}
         {filteredProdutos.length > 0 ? (
           <div className="product-grid">
@@ -1052,7 +1188,7 @@ export default function CatalogClient({
               <div className="product-detail p-5 sm:p-8 grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-10 items-start">
                 
                 {/* FOTO E GALERIA */}
-                <div className="order-2 md:order-1 md:col-span-7 flex flex-col gap-4">
+                <div className="order-1 md:order-1 md:col-span-7 flex flex-col gap-4">
                   <div className="space-y-2.5">
                     <div 
                       onClick={() => {
@@ -1164,7 +1300,7 @@ export default function CatalogClient({
                 </div>
 
                 {/* DETALHES */}
-                <div className="order-1 md:order-2 md:col-span-5 flex flex-col">
+                <div className="order-2 md:order-2 md:col-span-5 flex flex-col">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap mb-1.5 pr-12">
                       <span className="text-xs uppercase font-extrabold tracking-wider text-[#7a5828]">
@@ -1406,6 +1542,32 @@ export default function CatalogClient({
                 </div>
               )}
 
+              {/* STICKY BOTTOM ACTION BAR FOR MOBILE (< 768px) */}
+              <div className="md:hidden sticky bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t-2 border-[#dcd5c7] p-3 px-4 flex items-center gap-2 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] safe-bottom">
+                <button
+                  onClick={() => buyDirectOnWhatsApp(selectedProduct)}
+                  className={`flex-1 py-3 px-4 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-98 transition-all shadow-xs cursor-pointer ${
+                    isProdutoProntaEntrega(selectedProduct)
+                      ? 'bg-[#15803d] hover:bg-[#166534]'
+                      : 'bg-[#7a5828] hover:bg-[#63451e]'
+                  }`}
+                >
+                  <MessageCircle size={16} />
+                  <span>{isProdutoProntaEntrega(selectedProduct) ? 'Reservar no WhatsApp' : 'Encomendar no WhatsApp'}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    addToCart(selectedProduct);
+                    setSelectedProduct(null);
+                  }}
+                  aria-label="Adicionar à sacola"
+                  title="Adicionar à sacola"
+                  className="w-12 h-11 bg-white hover:bg-[#faf8f5] text-[#09090b] border-2 border-[#09090b] rounded-xl font-bold flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                >
+                  <ShoppingBag size={18} />
+                </button>
+              </div>
+
             </motion.div>
           </div>
         )}
@@ -1504,6 +1666,274 @@ export default function CatalogClient({
                 </span>
               </div>
             </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 7.5. MOBILE FILTERS BOTTOM SHEET */}
+      <AnimatePresence>
+        {isMobileFiltersOpen && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center md:hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileFiltersOpen(false)}
+              className="fixed inset-0 bg-black/50 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Filtros do catálogo"
+              className="relative w-full max-h-[85vh] bg-white rounded-t-3xl shadow-2xl z-10 flex flex-col border-t-2 border-[#dcd5c7] overflow-hidden"
+            >
+              {/* Drawer Header */}
+              <div className="p-4 px-5 border-b border-[#dcd5c7] flex items-center justify-between bg-white shrink-0">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal size={18} className="text-[#09090b]" />
+                  <h3 className="font-serif text-lg font-bold text-[#09090b]">Filtros</h3>
+                  {activeFiltersCount > 0 && (
+                    <span className="bg-[#7a5828] text-white text-[11px] font-bold px-2 py-0.5 rounded-full">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {activeFiltersCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="text-xs text-[#7a5828] font-bold hover:underline cursor-pointer"
+                    >
+                      Limpar tudo
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    className="p-1.5 rounded-full hover:bg-[#faf8f5] text-[#09090b] transition-colors cursor-pointer"
+                    aria-label="Fechar filtros"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Drawer Body */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                {/* Disponibilidade */}
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
+                    Disponibilidade
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAvailabilityFilter('TODOS')}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
+                        availabilityFilter === 'TODOS'
+                          ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
+                          : 'bg-[#faf8f5] border-[#dcd5c7] text-[#09090b]'
+                      }`}
+                    >
+                      Todos ({initialProdutos.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAvailabilityFilter('PRONTA_ENTREGA')}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
+                        availabilityFilter === 'PRONTA_ENTREGA'
+                          ? 'bg-emerald-800 border-emerald-800 text-white shadow-xs'
+                          : 'bg-[#faf8f5] border-[#dcd5c7] text-emerald-900'
+                      }`}
+                    >
+                      Pronta ({prontaEntregaCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAvailabilityFilter('ENCOMENDA')}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
+                        availabilityFilter === 'ENCOMENDA'
+                          ? 'bg-[#7a5828] border-[#7a5828] text-white shadow-xs'
+                          : 'bg-[#faf8f5] border-[#dcd5c7] text-[#7a5828]'
+                      }`}
+                    >
+                      Encomenda ({encomendaCount})
+                    </button>
+                  </div>
+                </div>
+
+                {/* Categorias */}
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
+                    Categorias
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setActiveCategory('todos')}
+                      className={`py-1.5 px-3 rounded-full text-xs font-bold border transition-all ${
+                        activeCategory === 'todos'
+                          ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
+                          : 'bg-white border-[#dcd5c7] text-[#09090b]'
+                      }`}
+                    >
+                      Todas ({initialProdutos.length})
+                    </button>
+                    {sortedCategorias.map(cat => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setActiveCategory(cat.nome)}
+                        className={`py-1.5 px-3 rounded-full text-xs font-bold border transition-all ${
+                          activeCategory.toLowerCase() === cat.nome.toLowerCase()
+                            ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
+                            : 'bg-white border-[#dcd5c7] text-[#09090b]'
+                        }`}
+                      >
+                        {getCategoryShortName(cat.nome)} ({getCategoryCount(cat.nome)})
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setActiveCategory('promocoes')}
+                      className={`py-1.5 px-3 rounded-full text-xs font-bold border flex items-center gap-1.5 transition-all ${
+                        activeCategory === 'promocoes'
+                          ? 'bg-[#7a5828] border-[#7a5828] text-white shadow-xs'
+                          : 'bg-[#fcf7ee] border-[#e8d7be] text-[#7a5828]'
+                      }`}
+                    >
+                      <Sparkles size={11} /> Ofertas
+                    </button>
+                  </div>
+                </div>
+
+                {/* Marcas */}
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
+                    Marcas
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedBrand('todas')}
+                      className={`py-1.5 px-3 rounded-full text-xs font-bold border transition-all ${
+                        selectedBrand === 'todas'
+                          ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
+                          : 'bg-white border-[#dcd5c7] text-[#09090b]'
+                      }`}
+                    >
+                      Todas as marcas
+                    </button>
+                    {brandsList.map(b => (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => setSelectedBrand(b)}
+                        className={`py-1.5 px-3 rounded-full text-xs font-bold border transition-all ${
+                          selectedBrand.toLowerCase() === b.toLowerCase()
+                            ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
+                            : 'bg-white border-[#dcd5c7] text-[#09090b]'
+                        }`}
+                      >
+                        {b}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Faixa de Preço */}
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
+                    Faixa de Preço
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: 'todos', label: 'Todos os preços' },
+                      { value: 'ate-100', label: 'Até R$ 100' },
+                      { value: '100-200', label: 'R$ 100 a R$ 200' },
+                      { value: 'acima-200', label: 'Acima de R$ 200' }
+                    ].map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setPriceRange(opt.value)}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
+                          priceRange === opt.value
+                            ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
+                            : 'bg-white border-[#dcd5c7] text-[#09090b]'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Ordenação */}
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
+                    Ordenar Produtos
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: 'mais-vendidos', label: 'Mais vendidos' },
+                      { value: 'novidades', label: 'Novidades' },
+                      { value: 'menor-preco', label: 'Menor preço' },
+                      { value: 'maior-preco', label: 'Maior preço' }
+                    ].map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSortBy(opt.value as typeof sortBy)}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
+                          sortBy === opt.value
+                            ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
+                            : 'bg-white border-[#dcd5c7] text-[#09090b]'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Somente Ofertas */}
+                <div className="pt-2 border-t border-[#dcd5c7]">
+                  <label className="flex items-center gap-3 cursor-pointer py-1">
+                    <input
+                      type="checkbox"
+                      checked={onlyPromos}
+                      onChange={e => setOnlyPromos(e.target.checked)}
+                      className="w-5 h-5 accent-[#7a5828] rounded cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-[#09090b]">
+                      Exibir somente produtos em oferta ou com desconto
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Fixed Footer */}
+              <div className="p-4 px-5 border-t border-[#dcd5c7] bg-[#fbf9f5] safe-bottom shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileFiltersOpen(false);
+                    scrollToCatalog();
+                  }}
+                  className="w-full bg-[#09090b] hover:bg-black text-white py-3.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-98 transition-all"
+                >
+                  <span>Ver {filteredProdutos.length} {filteredProdutos.length === 1 ? 'produto' : 'produtos'}</span>
+                  <ArrowRight size={16} />
+                </button>
+              </div>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>
@@ -1720,81 +2150,74 @@ export default function CatalogClient({
       </div>
 
       {/* 11. DOCK DE NAVEGAÇÃO MOBILE (FIXO NA PARTE INFERIOR) */}
-      <div className="mobile-dock md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t-2 border-[#dcd5c7] px-2 py-2 flex items-center justify-around shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
-        <button 
-          onClick={() => {
-            clearFilters();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-colors cursor-pointer ${
-            availabilityFilter === 'TODOS' && activeCategory === 'todos' ? 'text-[#09090b] font-bold' : 'text-[#3f3f46]'
-          }`}
-        >
-          <Home size={19} />
-          <span className="text-[10px] font-semibold">Início</span>
-        </button>
+      {!selectedProduct && !isPhotoZoomOpen && !isCartOpen && !isFavoritesOpen && !isMobileFiltersOpen && (
+        <div className="mobile-dock md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t-2 border-[#dcd5c7] px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_16px_rgba(0,0,0,0.06)] safe-bottom">
+          <button 
+            type="button"
+            onClick={() => {
+              clearFilters();
+              scrollToCatalog();
+            }}
+            className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors cursor-pointer ${
+              availabilityFilter === 'TODOS' && activeCategory === 'todos' ? 'text-[#09090b] font-bold' : 'text-[#3f3f46]'
+            }`}
+          >
+            <Home size={18} />
+            <span className="text-[10px] font-semibold">Catálogo</span>
+          </button>
 
-        <button 
-          onClick={() => {
-            setAvailabilityFilter('PRONTA_ENTREGA');
-            const el = document.getElementById('produtos');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }}
-          className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-colors cursor-pointer ${
-            availabilityFilter === 'PRONTA_ENTREGA' ? 'text-emerald-800 font-bold' : 'text-[#3f3f46]'
-          }`}
-        >
-          <div className="relative">
-            <CheckCircle2 size={19} className={availabilityFilter === 'PRONTA_ENTREGA' ? 'text-emerald-800' : ''} />
-            <span className="absolute -top-1 -right-2 bg-emerald-700 text-white text-[8px] font-bold px-1 rounded-full">
-              {prontaEntregaCount}
-            </span>
-          </div>
-          <span className="text-[10px] font-semibold">Pronta Ent.</span>
-        </button>
+          <button 
+            type="button"
+            onClick={() => {
+              const el = document.querySelector<HTMLInputElement>('.mobile-search-container input');
+              if (el) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                setTimeout(() => el.focus(), 300);
+              } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+            className="flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors text-[#3f3f46] hover:text-[#09090b] cursor-pointer"
+          >
+            <Search size={18} />
+            <span className="text-[10px] font-semibold">Buscar</span>
+          </button>
 
-        <button 
-          onClick={() => {
-            setAvailabilityFilter('ENCOMENDA');
-            const el = document.getElementById('produtos');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }}
-          className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-colors cursor-pointer ${
-            availabilityFilter === 'ENCOMENDA' ? 'text-[#7a5828] font-bold' : 'text-[#3f3f46]'
-          }`}
-        >
-          <div className="relative">
-            <CalendarCheck size={19} className={availabilityFilter === 'ENCOMENDA' ? 'text-[#7a5828]' : ''} />
-            <span className="absolute -top-1 -right-2 bg-[#7a5828] text-white text-[8px] font-bold px-1 rounded-full">
-              {encomendaCount}
-            </span>
-          </div>
-          <span className="text-[10px] font-semibold">Encomenda</span>
-        </button>
+          <button 
+            type="button"
+            onClick={() => openCustomOrderModal()}
+            className="flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors text-[#7a5828] font-bold cursor-pointer"
+          >
+            <Sparkles size={18} className="text-[#7a5828]" />
+            <span className="text-[10px] font-semibold">Encomendar</span>
+          </button>
 
-        <button 
-          onClick={() => setIsCartOpen(true)}
-          className="flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-colors text-[#3f3f46] hover:text-[#09090b] cursor-pointer"
-        >
-          <div className="relative">
-            <ShoppingBag size={19} />
-            {cartTotalItems > 0 && (
-              <span className="absolute -top-1.5 -right-2 bg-[#09090b] text-white text-[8px] font-bold px-1 rounded-full">
-                {cartTotalItems}
-              </span>
-            )}
-          </div>
-          <span className="text-[10px] font-semibold">Sacola</span>
-        </button>
+          <button 
+            type="button"
+            onClick={() => setIsCartOpen(true)}
+            className="flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors text-[#3f3f46] hover:text-[#09090b] cursor-pointer"
+          >
+            <div className="relative">
+              <ShoppingBag size={18} />
+              {cartTotalItems > 0 && (
+                <span className="absolute -top-1.5 -right-2 bg-[#09090b] text-white text-[8px] font-bold px-1 rounded-full">
+                  {cartTotalItems}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-semibold">Sacola</span>
+          </button>
 
-        <button 
-          onClick={() => generalWhatsAppContact()}
-          className="flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-colors text-emerald-700 font-semibold cursor-pointer"
-        >
-          <MessageCircle size={19} className="text-[#15803d]" />
-          <span className="text-[10px] font-bold text-emerald-800">WhatsApp</span>
-        </button>
-      </div>
+          <button 
+            type="button"
+            onClick={() => generalWhatsAppContact()}
+            className="flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors text-emerald-700 font-semibold cursor-pointer"
+          >
+            <MessageCircle size={18} className="text-[#15803d]" />
+            <span className="text-[10px] font-bold text-emerald-800">WhatsApp</span>
+          </button>
+        </div>
+      )}
 
       {/* 12. TOAST NOTIFICATION */}
       <div role="status" aria-live="polite" className={`catalog-toast fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${
@@ -1851,17 +2274,86 @@ function ProductCard({
     : 0;
 
   return (
-    <article className="product-card">
+    <article className="product-card group">
       <div className="product-visual">
-        {hasDiscount ? <span className="product-badge">−{discountPercent}%</span> : produto.badge ? <span className="product-badge">{produto.badge}</span> : null}
-        <button className="favorite-button" aria-label={(isFavorited?'Remover dos favoritos: ':'Favoritar: ')+produto.nome} aria-pressed={isFavorited} onClick={e=>onToggleFavorite(produto.id,e)}><Heart size={19} fill={isFavorited?'currentColor':'none'}/></button>
-        <button className="product-photo" onClick={()=>onSelectProduct(produto)} aria-label={'Ver detalhes de '+produto.nome}><ProductImage src={produto.fotos[0]?.url} alt={produto.nome} loading="lazy"/><span>Ver detalhes <ArrowUpRight size={14}/></span></button>
+        {/* Badges no topo esquerdo */}
+        {hasDiscount ? (
+          <span className="product-badge bg-[#dc2626] text-white">−{discountPercent}%</span>
+        ) : produto.badge ? (
+          <span className="product-badge">{produto.badge}</span>
+        ) : (
+          <span className={`product-badge text-[9px] font-bold ${
+            isProntaEntrega ? 'bg-emerald-800 text-white' : 'bg-[#7a5828] text-white'
+          }`}>
+            {isProntaEntrega ? 'Pronta Entrega' : 'Sob Encomenda'}
+          </span>
+        )}
+
+        <button 
+          className="favorite-button" 
+          aria-label={(isFavorited ? 'Remover dos favoritos: ' : 'Favoritar: ') + produto.nome} 
+          aria-pressed={isFavorited} 
+          onClick={e => onToggleFavorite(produto.id, e)}
+        >
+          <Heart size={18} fill={isFavorited ? '#dc2626' : 'none'} className={isFavorited ? 'text-[#dc2626]' : ''} />
+        </button>
+
+        <button 
+          className="product-photo" 
+          onClick={() => onSelectProduct(produto)} 
+          aria-label={'Ver detalhes de ' + produto.nome}
+        >
+          <ProductImage src={produto.fotos[0]?.url} alt={produto.nome} loading="lazy" />
+          <span>Ver detalhes <ArrowUpRight size={14} /></span>
+        </button>
       </div>
-      <div className="product-info"><div className="product-meta"><span>{produto.marca}</span><span>{produto.volume}</span></div>
-        <h3><button onClick={()=>onSelectProduct(produto)}>{produto.nome}</button></h3>
-        <p className={'product-availability '+(isProntaEntrega?'in-stock':'')}>{isProntaEntrega?<Check size={13}/>:<Clock size={13}/>} {isProntaEntrega?'Pronta entrega':'Sob encomenda'}</p>
-        <div className="product-pricing"><span className="original-price">{hasDiscount ? produto.precoOriginal!.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : ' '}</span><strong>{produto.precoVista.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong><small>{produto.precoParcelado || 'Consulte as condições de pagamento'}</small></div>
-        <div className="product-actions"><button className="button-primary" onClick={e=>onBuyWhatsApp(produto,e)}><MessageCircle size={16}/>{isProntaEntrega?'Reservar':'Encomendar'}</button><button className="button-secondary" aria-label={'Adicionar à sacola: '+produto.nome} onClick={e=>onAddToCart(produto,e)}><ShoppingBag size={18}/></button></div>
+
+      <div className="product-info">
+        <div className="product-meta">
+          <span className="truncate">{produto.marca}</span>
+          <span>{produto.volume}</span>
+        </div>
+
+        <h3 className="h-[36px] sm:h-[40px] flex items-start overflow-hidden">
+          <button 
+            onClick={() => onSelectProduct(produto)}
+            className="text-left font-serif font-bold text-[#09090b] hover:text-[#7a5828] transition-colors line-clamp-2 leading-snug"
+          >
+            {produto.nome}
+          </button>
+        </h3>
+
+        <p className={'product-availability ' + (isProntaEntrega ? 'in-stock text-emerald-800' : 'text-[#7a5828]')}>
+          {isProntaEntrega ? <Check size={13} className="text-emerald-700" /> : <Clock size={13} className="text-[#7a5828]" />} 
+          {isProntaEntrega ? 'Pronta entrega' : 'Sob encomenda'}
+        </p>
+
+        <div className="product-pricing">
+          <span className="original-price">
+            {hasDiscount ? produto.precoOriginal!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '\u00A0'}
+          </span>
+          <strong>{produto.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+          <small>{produto.precoParcelado || 'Consulte condições de pagamento'}</small>
+        </div>
+
+        <div className="product-actions">
+          <button 
+            className="button-primary flex items-center justify-center gap-1.5 cursor-pointer" 
+            onClick={e => onBuyWhatsApp(produto, e)}
+            title={isProntaEntrega ? 'Reservar no WhatsApp' : 'Encomendar no WhatsApp'}
+          >
+            <MessageCircle size={15} />
+            <span>{isProntaEntrega ? 'Reservar' : 'Encomendar'}</span>
+          </button>
+          <button 
+            className="button-secondary flex items-center justify-center cursor-pointer" 
+            aria-label={'Adicionar à sacola: ' + produto.nome} 
+            onClick={e => onAddToCart(produto, e)}
+            title="Adicionar à sacola"
+          >
+            <ShoppingBag size={17} />
+          </button>
+        </div>
       </div>
     </article>
   );
