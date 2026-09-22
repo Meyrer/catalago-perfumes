@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   const key = request.headers.get('x-restore-key');
-  if (!key || key !== process.env.ADMIN_SESSION_SECRET) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!key || key !== (process.env.RESTORE_KEY || process.env.ADMIN_SESSION_SECRET)) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   const body = await request.json();
   if (Array.isArray(body.users)) {
     for (const user of body.users) {
