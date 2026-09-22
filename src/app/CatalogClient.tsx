@@ -60,6 +60,63 @@ export function isProdutoProntaEntrega(p?: { tipoDisponibilidade: string; quanti
   return p.tipoDisponibilidade === 'PRONTA_ENTREGA' && (p.quantidade ?? 1) > 0;
 }
 
+export function isVolumeBadge(badge?: string | null, volume?: string | null): boolean {
+  if (!badge) return true;
+  const b = badge.trim().toLowerCase();
+  const v = (volume || '').trim().toLowerCase();
+  return /^\d+\s*ml$/i.test(b) || (v !== '' && b === v);
+}
+
+function renderGuiaRendimento(selectedProduct: Produto) {
+  const isMini = Boolean(selectedProduct.categoria?.nome?.toLowerCase().includes('mini') || (selectedProduct.volume && selectedProduct.volume.includes('25ml')));
+  const isPerf = Boolean(selectedProduct.categoria?.nome?.toLowerCase().includes('perfume') || (selectedProduct.volume && (selectedProduct.volume.includes('80ml') || selectedProduct.volume.includes('90ml') || selectedProduct.volume.includes('100ml'))));
+  const isSplash = Boolean(selectedProduct.categoria?.nome?.toLowerCase().includes('splash') || selectedProduct.nome?.toLowerCase().includes('splash'));
+  
+  return (
+    <div className="rounded-2xl border border-[#dcd5c7] bg-[#fbf9f5] p-3.5 sm:p-4 space-y-2.5">
+      <div className="flex items-center justify-between pb-2 border-b border-[#dcd5c7]">
+        <div className="flex items-center gap-1.5">
+          <Sparkles size={14} className="text-[#7a5828]" />
+          <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-[#09090b]">
+            Guia Prático &amp; Rendimento
+          </h4>
+        </div>
+        <span className="text-[10px] font-bold text-[#543b18] bg-[#f5ede2] border border-[#dcd5c7] px-2 py-0.5 rounded">
+          {selectedProduct.volume || 'Alta Performance'}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        {/* Item 1: Concentração e Fixação */}
+        <div className="bg-white rounded-xl p-2.5 border border-[#dcd5c7] flex flex-col justify-between shadow-2xs">
+          <span className="text-[10px] text-[#27272a] uppercase font-bold tracking-wide">
+            {isMini || isPerf ? 'Concentração' : 'Sensação'}
+          </span>
+          <p className="text-xs font-bold text-[#09090b] mt-0.5">
+            {isMini ? 'Eau de Parfum (EDP)' : isPerf ? (selectedProduct.concentracao || 'Eau de Parfum') : isSplash ? 'Bruma Refrescante' : 'Hidratação 24h'}
+          </p>
+          <span className="text-[10px] text-[#7a5828] font-bold mt-1">
+            {isMini || isPerf ? 'Fixação prolongada (6h a 8h)' : isSplash ? 'Toque leve & perfumado' : 'Manteiga de Karité & Coco'}
+          </span>
+        </div>
+
+        {/* Item 2: Rendimento */}
+        <div className="bg-white rounded-xl p-2.5 border border-[#dcd5c7] flex flex-col justify-between shadow-2xs">
+          <span className="text-[10px] text-[#27272a] uppercase font-bold tracking-wide">
+            Rendimento
+          </span>
+          <p className="text-xs font-bold text-[#09090b] mt-0.5">
+            {isMini ? '~350 a 400 borrifadas' : isPerf ? '~1.200 a 1.500 borrifadas' : isSplash ? '~3.000 borrifadas' : '~60 a 90 aplicações'}
+          </p>
+          <span className="text-[10px] text-emerald-800 font-bold mt-1">
+            {isMini ? 'Dura até 3 meses de uso diário' : isPerf ? 'Dura mais de 1 ano' : isSplash ? 'Uso generoso pós-banho' : 'Absorção rápida e maciez'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CatalogClient({
   initialProdutos,
   categorias,
@@ -1180,7 +1237,7 @@ export default function CatalogClient({
             >
               <button 
                 aria-label="Fechar detalhes" onClick={() => setSelectedProduct(null)}
-                className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-white shadow-xs border border-[#dcd5c7] text-[#09090b] flex items-center justify-center hover:bg-[#faf8f5] hover:border-[#09090b] transition-colors cursor-pointer"
+                className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-20 w-9 h-9 rounded-full bg-white shadow-xs border border-[#dcd5c7] text-[#09090b] flex items-center justify-center hover:bg-[#faf8f5] hover:border-[#09090b] transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -1205,7 +1262,7 @@ export default function CatalogClient({
                       />
                       
                       {/* Badge de Modalidade */}
-                      <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none">
+                      <div className="absolute top-3 left-3 flex flex-row flex-wrap gap-1.5 max-w-[75%] pointer-events-none">
                         {isProdutoProntaEntrega(selectedProduct) ? (
                           <span className="bg-emerald-800 text-white text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md flex items-center gap-1 shadow-xs">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -1217,7 +1274,7 @@ export default function CatalogClient({
                             Sob Encomenda
                           </span>
                         )}
-                        {selectedProduct.badge && (
+                        {selectedProduct.badge && !isVolumeBadge(selectedProduct.badge, selectedProduct.volume) && (
                           <span className="bg-[#09090b] text-white text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md shadow-xs">
                             {selectedProduct.badge}
                           </span>
@@ -1247,56 +1304,10 @@ export default function CatalogClient({
                     )}
                   </div>
 
-                  {/* GUIA DE USO & RENDIMENTO */}
-                  {(() => {
-                    const isMini = Boolean(selectedProduct.categoria?.nome?.toLowerCase().includes('mini') || (selectedProduct.volume && selectedProduct.volume.includes('25ml')));
-                    const isPerf = Boolean(selectedProduct.categoria?.nome?.toLowerCase().includes('perfume') || (selectedProduct.volume && (selectedProduct.volume.includes('80ml') || selectedProduct.volume.includes('90ml') || selectedProduct.volume.includes('100ml'))));
-                    const isSplash = Boolean(selectedProduct.categoria?.nome?.toLowerCase().includes('splash') || selectedProduct.nome?.toLowerCase().includes('splash'));
-                    
-                    return (
-                      <div className="rounded-2xl border border-[#dcd5c7] bg-[#fbf9f5] p-3.5 sm:p-4 space-y-2.5">
-                        <div className="flex items-center justify-between pb-2 border-b border-[#dcd5c7]">
-                          <div className="flex items-center gap-1.5">
-                            <Sparkles size={14} className="text-[#7a5828]" />
-                            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-[#09090b]">
-                              Guia Prático & Rendimento
-                            </h4>
-                          </div>
-                          <span className="text-[10px] font-bold text-[#543b18] bg-[#f5ede2] border border-[#dcd5c7] px-2 py-0.5 rounded">
-                            {selectedProduct.volume || 'Alta Performance'}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          {/* Item 1: Concentração e Fixação */}
-                          <div className="bg-white rounded-xl p-2.5 border border-[#dcd5c7] flex flex-col justify-between shadow-2xs">
-                            <span className="text-[10px] text-[#27272a] uppercase font-bold tracking-wide">
-                              {isMini || isPerf ? 'Concentração' : 'Sensação'}
-                            </span>
-                            <p className="text-xs font-bold text-[#09090b] mt-0.5">
-                              {isMini ? 'Eau de Parfum (EDP)' : isPerf ? (selectedProduct.concentracao || 'Eau de Parfum') : isSplash ? 'Bruma Refrescante' : 'Hidratação 24h'}
-                            </p>
-                            <span className="text-[10px] text-[#7a5828] font-bold mt-1">
-                              {isMini || isPerf ? 'Fixação prolongada (6h a 8h)' : isSplash ? 'Toque leve & perfumado' : 'Manteiga de Karité & Coco'}
-                            </span>
-                          </div>
-
-                          {/* Item 2: Rendimento */}
-                          <div className="bg-white rounded-xl p-2.5 border border-[#dcd5c7] flex flex-col justify-between shadow-2xs">
-                            <span className="text-[10px] text-[#27272a] uppercase font-bold tracking-wide">
-                              Rendimento
-                            </span>
-                            <p className="text-xs font-bold text-[#09090b] mt-0.5">
-                              {isMini ? '~350 a 400 borrifadas' : isPerf ? '~1.200 a 1.500 borrifadas' : isSplash ? '~3.000 borrifadas' : '~60 a 90 aplicações'}
-                            </p>
-                            <span className="text-[10px] text-emerald-800 font-bold mt-1">
-                              {isMini ? 'Dura até 3 meses de uso diário' : isPerf ? 'Dura mais de 1 ano' : isSplash ? 'Uso generoso pós-banho' : 'Absorção rápida e maciez'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  {/* GUIA DE USO & RENDIMENTO (Desktop: na coluna da foto) */}
+                  <div className="hidden md:block">
+                    {renderGuiaRendimento(selectedProduct)}
+                  </div>
                 </div>
 
                 {/* DETALHES */}
@@ -1389,6 +1400,11 @@ export default function CatalogClient({
                       >
                         <ShoppingBag size={16} /> Adicionar à Sacola
                       </button>
+                    </div>
+
+                    {/* GUIA DE USO & RENDIMENTO (Mobile: após ações de compra e antes da descrição) */}
+                    <div className="block md:hidden my-4">
+                      {renderGuiaRendimento(selectedProduct)}
                     </div>
                   </div>
 
@@ -2279,7 +2295,7 @@ function ProductCard({
         {/* Badges no topo esquerdo */}
         {hasDiscount ? (
           <span className="product-badge bg-[#dc2626] text-white">−{discountPercent}%</span>
-        ) : produto.badge ? (
+        ) : produto.badge && !isVolumeBadge(produto.badge, produto.volume) ? (
           <span className="product-badge">{produto.badge}</span>
         ) : (
           <span className={`product-badge text-[9px] font-bold ${

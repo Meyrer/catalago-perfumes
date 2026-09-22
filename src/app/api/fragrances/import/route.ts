@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         precoOriginal: typeof precoOriginal === 'number' ? precoOriginal : null,
         precoCusto: typeof precoCusto === 'number' ? precoCusto : null,
         quantidade: typeof quantidade === 'number' ? quantidade : 1,
-        badge: badge || null,
+        badge: (badge && !/^\d+\s*ml$/i.test(badge.trim()) && badge.trim().toLowerCase() !== (volume || '').trim().toLowerCase()) ? badge.trim() : null,
         disponivel: typeof disponivel === 'boolean' ? disponivel : true,
         tipoDisponibilidade: tipoDisponibilidade || 'ENCOMENDA',
         previsaoEntrega: previsaoEntrega || 'Sob Encomenda (Consulte prazo)',
