@@ -1,0 +1,257 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Produto {
+  id                  Int       @id @default(autoincrement())
+  nome                String
+  marca               String
+  descricao           String
+  precoVista          Float
+  precoOriginal       Float?
+  precoCusto          Float?    // Custo de aquisição (apenas admin)
+  quantidade          Int       @default(1) // Quantidade em estoque físico
+  quantidadeReservada Int       @default(0) // Quantidade reservada para pedidos/encomendas
+  estoqueMinimo       Int       @default(2) // Alerta de estoque baixo
+  precoParcelado      String?
+  volume              String?
+  modoUso             String?
+  caracteristicas     String?
+  garantia            String?
+  badge               String?
+  disponivel          Boolean   @default(true)
+  tipoDisponibilidade String    @default("PRONTA_ENTREGA") // PRONTA_ENTREGA ou ENCOMENDA
+  previsaoEntrega     String?   // Ex: "Envio Imediato" ou "Chegada prevista: 10 a 15 dias"
+  destaque            Boolean   @default(false)
+  novidade            Boolean   @default(false)
+  subcategoria        String?
+  sku                 String?
+  codigoBarras        String?
+  
+  // Fornecedor Preferencial
+  fornecedorId        Int?
+  fornecedor          Fornecedor? @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
+
+  // Dados Olfativos (Perfumes/Fragrâncias)
+  familiaOlfativa     String?
+  notasSaida          Json?     // Array de strings
+  notasCoracao        Json?     // Array de strings
+  notasFundo          Json?     // Array de strings
+  acordesPrincipais   Json?     // Array de strings
+  concentracao        String?
+  genero              String?
+  anoLancamento       Int?
+  descricaoFragrancia String?   @db.Text
+  longevidade         String?
+  projecao            String?
+  externalId          String?   // ID ou URL original da API de Perfumes
+
+  // Rastreabilidade & Confiabilidade das Informações
+  dataSource          String?   @default("local") // "local" | "openbeautyfacts" | "manual"
+  sourceUrl           String?
+  verificationStatus  String    @default("unverified") // "unverified" | "reviewed" | "verified"
+  importedAt          DateTime?
+  lastSyncedAt        DateTime?
+
+  categoriaId         Int
+  categoria           Categoria @relation(fields: [categoriaId], references: [id])
+  fotos               Foto[]
+  movimentacoes       EstoqueMovimentacao[]
+  comprasItens        CompraItem[]
+  vendasItens         VendaItem[]
+  encomendas          Encomenda[]
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model Categoria {
+  id        Int       @id @default(autoincrement())
+  nome      String    @unique
+  imagemUrl String?
+  produtos  Produto[]
+}
+
+model Foto {
+  id        Int     @id @default(autoincrement())
+  url       String
+  produtoId Int
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+}
+
+model Banner {
+  id        Int      @id @default(autoincrement())
+  imagemUrl String
+  link      String?
+  titulo    String?
+  subtitulo String?
+  createdAt DateTime @default(now())
+}
+
+model AdminUser {
+  id                 Int      @id @default(autoincrement())
+  username           String   @unique
+  name               String
+  passwordHash       String
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+// -------------------------------------------------------------
+// ERP MÓDULOS: FORNECEDORES, ESTOQUE, COMPRAS, VENDAS, CLIENTES
+// -------------------------------------------------------------
+
+model Fornecedor {
+  id          Int       @id @default(autoincrement())
+  nome        String
+  contato     String?   // WhatsApp, telefone ou e-mail
+  cidadePais  String?   // Ex: Miami EUA, Ciudad del Este PY, São Paulo BR
+  observacoes String?
+  produtos    Produto[]
+  compras     Compra[]
+  encomendas  Encomenda[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model EstoqueMovimentacao {
+  id                  Int      @id @default(autoincrement())
+  produtoId           Int
+  produto             Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  tipo                String   // ENTRADA, SAIDA, AJUSTE, VENDA, DEVOLUCAO, PERDA, RESERVA
+  quantidade          Int      // Quantidade movimentada (positiva ou negativa)
+  quantidadeAnterior  Int
+  quantidadeNova      Int
+  motivo              String?
+  usuarioResponsavel  String?  // Ex: Meyrer ou Felipe
+  vendaId             Int?
+  compraId            Int?
+  createdAt           DateTime @default(now())
+}
+
+model Compra {
+  id             Int          @id @default(autoincrement())
+  numero         String       @unique // Ex: COMP-2026-001
+  fornecedorId   Int?
+  fornecedor     Fornecedor?  @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
+  data           DateTime     @default(now())
+  status         String       @default("RECEBIDO") // PENDENTE, EM_TRANSITO, RECEBIDO, CANCELADO
+  moeda          String       @default("BRL") // BRL, USD, EUR
+  cotacao        Float        @default(1.0)
+  frete          Float        @default(0.0)
+  taxas          Float        @default(0.0)
+  outrosCustos   Float        @default(0.0)
+  custoTotalBRL  Float        @default(0.0)
+  observacoes    String?
+  itens          CompraItem[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model CompraItem {
+  id                  Int      @id @default(autoincrement())
+  compraId            Int
+  compra              Compra   @relation(fields: [compraId], references: [id], onDelete: Cascade)
+  produtoId           Int
+  produto             Produto  @relation(fields: [produtoId], references: [id])
+  quantidade          Int
+  valorUnitarioMoeda  Float
+  custoUnitarioBRL    Float
+  custoTotalBRL       Float
+}
+
+model Cliente {
+  id             Int         @id @default(autoincrement())
+  nome           String
+  whatsapp       String?
+  instagram      String?
+  email          String?
+  cidade         String?
+  dataNascimento String?
+  observacoes    String?
+  vendas         Venda[]
+  encomendas     Encomenda[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model Venda {
+  id                   Int         @id @default(autoincrement())
+  numero               String      @unique // Ex: VND-1001
+  clienteId            Int?
+  cliente              Cliente?    @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  nomeClienteAvulso    String?
+  contatoClienteAvulso String?
+  data                 DateTime    @default(now())
+  status               String      @default("PAGO") // AGUARDANDO_PAGAMENTO, PAGO, PREPARANDO, ENVIADO, ENTREGUE, CANCELADO
+  formaPagamento       String      @default("PIX") // PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, LINK_PAGAMENTO
+  subtotal             Float
+  desconto             Float       @default(0.0)
+  frete                Float       @default(0.0)
+  valorTotal           Float
+  custoTotal           Float       @default(0.0)
+  lucroTotal           Float       @default(0.0)
+  observacoes          String?
+  usuarioResponsavel   String?     // Meyrer ou Felipe
+  itens                VendaItem[]
+  encomendaId          Int?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+}
+
+model VendaItem {
+  id            Int      @id @default(autoincrement())
+  vendaId       Int
+  venda         Venda    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  produtoId     Int
+  produto       Produto  @relation(fields: [produtoId], references: [id])
+  quantidade    Int
+  precoUnitario Float
+  custoUnitario Float
+  lucroUnitario Float
+  subtotal      Float
+}
+
+model Encomenda {
+  id                 Int         @id @default(autoincrement())
+  numero             String      @unique // Ex: ENC-501
+  clienteId          Int?
+  cliente            Cliente?    @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  nomeCliente        String
+  whatsappCliente    String?
+  produtoId          Int?
+  produto            Produto?    @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+  descricaoItem      String
+  marca              String?
+  volume             String?
+  quantidade         Int         @default(1)
+  precoEstimado      Float?
+  custoEstimado      Float?
+  valorAdiantamento  Float       @default(0.0)
+  status             String      @default("SOLICITACAO_RECEBIDA")
+  fornecedorId       Int?
+  fornecedor         Fornecedor? @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
+  previsaoChegada    String?
+  observacoes        String?
+  vendaId            Int?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+}
+
+model DespesaFinanceira {
+  id             Int      @id @default(autoincrement())
+  descricao      String
+  categoria      String   // EMBALAGENS, FRETE, MARKETING, IMPOSTOS, ESTRUTURA, OUTROS
+  valor          Float
+  data           DateTime @default(now())
+  tipo           String   @default("DESPESA") // DESPESA, RECEITA_EXTRA
+  pago           Boolean  @default(true)
+  formaPagamento String?
+  observacoes    String?
+  createdAt      DateTime @default(now())
+}

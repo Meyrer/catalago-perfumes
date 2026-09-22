@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: catalogo_web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:suasenhaforte@db:5432/catalogo_db?schema=public
+    volumes:
+      - ./public/uploads:/app/public/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:15-alpine
+    container_name: catalogo_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: suasenhaforte
+      POSTGRES_DB: catalogo_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - catalogo_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d catalogo_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  catalogo_postgres_data:
