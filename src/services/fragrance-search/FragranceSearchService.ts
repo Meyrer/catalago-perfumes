@@ -81,7 +81,23 @@ export class FragranceSearchService {
     const deduplicated = deduplicateSearchResults(collected);
     const finalResults = deduplicated.slice(0, maxResults);
 
-    // 5. Armazenamento em Cache (TTL de 7 dias)
+    // 5. Enriquecimento de imagens caso algum item de fonte externa tenha ficado sem foto
+    for (const r of finalResults) {
+      if (!r.imageUrl) {
+        const siblingWithImage = collected.find(c => 
+          c.imageUrl && (
+            (c.name && r.name && normalizeText(c.name) === normalizeText(r.name)) ||
+            (c.name && r.name && normalizeText(c.name).includes(normalizeText(r.name))) ||
+            (c.name && r.name && normalizeText(r.name).includes(normalizeText(c.name)))
+          )
+        );
+        if (siblingWithImage?.imageUrl) {
+          r.imageUrl = siblingWithImage.imageUrl;
+        }
+      }
+    }
+
+    // 6. Armazenamento em Cache (TTL de 7 dias)
     if (finalResults.length > 0) {
       await globalCache.set(cacheKey, finalResults, 7 * 24 * 60 * 60);
     }
@@ -94,7 +110,12 @@ export class FragranceSearchService {
       total: finalResults.length,
     };
   }
+
+  async clearCache(): Promise<void> {
+    await globalCache.clear();
+  }
 }
 
 // Singleton do serviço
 export const fragranceSearchService = new FragranceSearchService();
+

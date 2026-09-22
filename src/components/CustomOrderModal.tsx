@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Sparkles, MessageCircle, ShieldCheck, Check, Search, Loader2 } from "lucide-react";
+import { X, Sparkles, MessageCircle, ShieldCheck, Check, Search, Loader2, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { FragranceSearchResult } from "@/services/fragrance-search/types";
 
 interface CustomOrderModalProps {
@@ -39,6 +39,11 @@ export default function CustomOrderModal({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [autoFilledSuccess, setAutoFilledSuccess] = useState(false);
+
+  // Selected & Zoom Preview State
+  const [selectedItem, setSelectedItem] = useState<FragranceSearchResult | null>(null);
+  const [previewItem, setPreviewItem] = useState<FragranceSearchResult | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -134,6 +139,7 @@ export default function CustomOrderModal({
     }
 
     setShowSuggestions(false);
+    setSelectedItem(item);
     setAutoFilledSuccess(true);
     setTimeout(() => setAutoFilledSuccess(false), 3000);
   };
@@ -156,16 +162,23 @@ export default function CustomOrderModal({
     }
   };
 
-  // Escape to close modal
+  // Escape to close modal / preview
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen && !showSuggestions) {
-        onClose();
+      if (e.key === "Escape") {
+        if (previewItem) {
+          setPreviewItem(null);
+          setZoomLevel(1);
+        } else if (showSuggestions) {
+          setShowSuggestions(false);
+        } else if (isOpen) {
+          onClose();
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose, showSuggestions]);
+  }, [isOpen, onClose, showSuggestions, previewItem]);
 
   // Lock body scroll
   useEffect(() => {
@@ -326,7 +339,7 @@ export default function CustomOrderModal({
               {showSuggestions && suggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 z-50 mt-1.5 bg-white border-2 border-[#18181b] rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto divide-y divide-[#dcd5c7] animate-in fade-in slide-in-from-top-1">
                   <div className="px-3.5 py-1.5 bg-[#fbf9f5] border-b border-[#dcd5c7] flex items-center justify-between text-[11px] font-bold text-[#7a5828]">
-                    <span>Fragrâncias encontradas (clique para preencher):</span>
+                    <span>Fragrâncias encontradas (clique na foto para ampliar):</span>
                     <span className="text-[10px] text-[#71717a] font-normal">Pressione Enter ou clique</span>
                   </div>
                   {suggestions.map((item, idx) => (
@@ -340,9 +353,33 @@ export default function CustomOrderModal({
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-10 rounded-lg bg-[#f4ebe1] border border-[#dcd6cc] flex items-center justify-center shrink-0 overflow-hidden">
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (item.imageUrl) {
+                              setPreviewItem(item);
+                              setZoomLevel(1);
+                            }
+                          }}
+                          title={item.imageUrl ? "Clique para ampliar a foto do perfume" : "Sem foto"}
+                          className={`relative group/thumb w-10 h-11 rounded-lg bg-[#f4ebe1] border border-[#dcd6cc] flex items-center justify-center shrink-0 overflow-hidden ${
+                            item.imageUrl ? "cursor-zoom-in hover:border-[#09090b] hover:shadow-md transition-all" : ""
+                          }`}
+                        >
                           {item.imageUrl ? (
-                            <img src={item.imageUrl} alt="" className="w-full h-full object-contain p-0.5" />
+                            <>
+                              <img 
+                                src={item.imageUrl} 
+                                alt={item.name} 
+                                className="w-full h-full object-contain p-0.5 group-hover/thumb:scale-105 transition-transform"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-black/35 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                <ZoomIn size={14} className="drop-shadow" />
+                              </div>
+                            </>
                           ) : (
                             <Sparkles size={14} className="text-[#a37941]" />
                           )}
@@ -376,6 +413,76 @@ export default function CustomOrderModal({
                       </span>
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* Mini-card de Fragrância Selecionada com opção de ampliar foto */}
+              {selectedItem && (
+                <div className="mt-2.5 p-3 bg-[#fdfbf7] border-2 border-[#dcd6cc] rounded-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1 shadow-2xs">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewItem(selectedItem);
+                        setZoomLevel(1);
+                      }}
+                      title="Clique para ampliar a foto do perfume"
+                      className="relative group/selthumb w-12 h-14 rounded-xl bg-white border-2 border-[#dcd6cc] p-1 flex items-center justify-center shrink-0 overflow-hidden cursor-zoom-in hover:border-[#09090b] hover:shadow-sm transition-all"
+                    >
+                      {selectedItem.imageUrl ? (
+                        <>
+                          <img
+                            src={selectedItem.imageUrl}
+                            alt={selectedItem.name}
+                            className="w-full h-full object-contain group-hover/selthumb:scale-105 transition-transform"
+                          />
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/selthumb:opacity-100 transition-opacity flex items-center justify-center text-white">
+                            <ZoomIn size={15} />
+                          </div>
+                        </>
+                      ) : (
+                        <Sparkles size={16} className="text-[#a37941]" />
+                      )}
+                    </button>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] uppercase font-extrabold text-[#7a5828] bg-[#f5ede2] px-1.5 py-0.5 rounded">
+                          {selectedItem.brand || "Perfume Selecionado"}
+                        </span>
+                        {selectedItem.concentration && (
+                          <span className="text-[10px] font-semibold text-[#18181b] bg-[#f4f4f5] px-1.5 py-0.5 rounded">
+                            {selectedItem.concentration}
+                          </span>
+                        )}
+                      </div>
+                      <p className="font-serif font-bold text-xs sm:text-sm text-[#09090b] truncate mt-0.5">
+                        {selectedItem.name}
+                      </p>
+                      {selectedItem.imageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewItem(selectedItem);
+                            setZoomLevel(1);
+                          }}
+                          className="text-[11px] font-bold text-[#7a5828] hover:text-[#09090b] flex items-center gap-1 mt-0.5 cursor-pointer"
+                        >
+                          <ZoomIn size={12} /> Clique para ampliar a foto
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedItem(null);
+                    }}
+                    className="text-xs font-bold text-[#52525b] hover:text-[#09090b] bg-white hover:bg-[#f4f4f5] border border-[#dcd6cc] px-2.5 py-1.5 rounded-lg transition-colors shrink-0 cursor-pointer shadow-2xs"
+                  >
+                    Trocar
+                  </button>
                 </div>
               )}
             </div>
@@ -505,6 +612,147 @@ export default function CustomOrderModal({
           </button>
         </div>
       </div>
+
+      {/* Lightbox / Zoom Modal do Perfume */}
+      {previewItem && (
+        <div 
+          className="fixed inset-0 z-70 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
+          onClick={() => {
+            setPreviewItem(null);
+            setZoomLevel(1);
+          }}
+        >
+          {/* Top Bar Controls */}
+          <div 
+            className="w-full max-w-xl flex items-center justify-between pb-3 z-30"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-white/80 text-xs font-semibold flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/15">
+                <Sparkles size={13} className="text-[#c5a880]" />
+                Visualização Ampliada
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setZoomLevel((prev) => (prev > 1 ? 1 : 2))}
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+                title={zoomLevel > 1 ? "Reduzir zoom" : "Ampliar zoom"}
+              >
+                {zoomLevel > 1 ? <ZoomOut size={14} /> : <ZoomIn size={14} />}
+                <span>{zoomLevel > 1 ? "Zoom 1x" : "Zoom 2x"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewItem(null);
+                  setZoomLevel(1);
+                }}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white text-white hover:text-black border border-white/20 flex items-center justify-center transition-all cursor-pointer"
+                aria-label="Fechar ampliação"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Large Image Box */}
+          <div 
+            className="relative w-full max-w-xl max-h-[62vh] min-h-[320px] bg-[#121214]/90 border border-white/15 rounded-3xl p-6 sm:p-8 flex items-center justify-center overflow-hidden shadow-2xl cursor-pointer select-none"
+            onClick={(e) => {
+              e.stopPropagation();
+              setZoomLevel((prev) => (prev > 1 ? 1 : 2));
+            }}
+            title="Clique na foto para alternar entre 1x e 2x de zoom"
+          >
+            {previewItem.imageUrl ? (
+              <img
+                src={previewItem.imageUrl}
+                alt={previewItem.name}
+                style={{
+                  transform: `scale(${zoomLevel})`,
+                  transition: "transform 0.25s cubic-bezier(0.2, 0, 0, 1)",
+                }}
+                className={`max-h-[50vh] max-w-full object-contain drop-shadow-2xl ${
+                  zoomLevel > 1 ? "cursor-zoom-out" : "cursor-zoom-in"
+                }`}
+              />
+            ) : (
+              <div className="text-center text-white/70 py-12">
+                <Sparkles size={40} className="mx-auto mb-2 text-[#c5a880]" />
+                <p className="text-xs">Foto não disponível</p>
+              </div>
+            )}
+
+            {/* Hint overlay */}
+            <div className="absolute bottom-3 right-4 pointer-events-none bg-black/60 border border-white/15 text-[10px] text-white/80 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1">
+              <ZoomIn size={11} /> Toque para alternar zoom (1x / 2x)
+            </div>
+          </div>
+
+          {/* Bottom Fragrance Info & Action */}
+          <div 
+            className="w-full max-w-xl bg-[#1c1c1f] border border-white/15 rounded-2xl p-4 mt-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl z-30"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-left w-full sm:w-auto min-w-0">
+              {previewItem.brand && (
+                <span className="text-[10px] uppercase font-extrabold tracking-wider text-[#c5a880] block">
+                  {previewItem.brand}
+                </span>
+              )}
+              <h4 className="font-serif text-sm sm:text-base font-bold text-white truncate">
+                {previewItem.name}
+              </h4>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {previewItem.concentration && (
+                  <span className="text-[10px] font-semibold bg-white/10 text-white/90 px-2 py-0.5 rounded">
+                    {previewItem.concentration}
+                  </span>
+                )}
+                {previewItem.volume && (
+                  <span className="text-[10px] text-white/70 font-medium">
+                    {previewItem.volume}
+                  </span>
+                )}
+                {previewItem.family && (
+                  <span className="text-[10px] text-[#c5a880]/90">
+                    • {previewItem.family}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewItem(null);
+                  setZoomLevel(1);
+                }}
+                className="px-3.5 py-2 rounded-xl border border-white/20 text-white/80 hover:bg-white/10 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleSelectSuggestion(previewItem);
+                  setPreviewItem(null);
+                  setZoomLevel(1);
+                }}
+                className="px-4 py-2 rounded-xl bg-[#c5a880] hover:bg-[#b09062] text-[#09090b] text-xs font-extrabold flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
+              >
+                <Check size={14} />
+                Confirmar este Perfume
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

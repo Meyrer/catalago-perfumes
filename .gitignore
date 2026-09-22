@@ -39,3 +39,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent directories
+.agents/
+.claude/
+.cursor/
+.devin/
+
+# scratch and migration scripts
+*.mjs
+apply_audit_to_db.js
+*.jsonl
+all_products_dump.json
+audit_compiled.json
+star-results.json
+*_report.md
+relatorio_auditoria_completa.md

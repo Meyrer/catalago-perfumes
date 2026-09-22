@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { FragranceSearchResult } from '@/services/fragrance-search/types';
-import { X, Sparkles, Plus, ExternalLink, Check, AlertCircle, Loader2, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { X, Sparkles, Plus, ExternalLink, Check, AlertCircle, Loader2, ShieldCheck, ShieldAlert, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface Props {
   fragrance: FragranceSearchResult | null;
@@ -14,6 +14,8 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
+  const [zoomScale, setZoomScale] = useState(1);
 
   if (!fragrance) return null;
 
@@ -88,13 +90,29 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
         <div className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
           {/* Main Info */}
           <div className="flex gap-4 items-start">
-            <div className="w-24 h-28 sm:w-28 sm:h-32 rounded-2xl bg-[#faf8f5] border border-[#f0ece4] p-2 flex items-center justify-center shrink-0 relative overflow-hidden">
+            <div 
+              onClick={() => {
+                if (fragrance.imageUrl) {
+                  setIsZoomOpen(true);
+                  setZoomScale(1);
+                }
+              }}
+              title={fragrance.imageUrl ? "Clique para ampliar a foto" : undefined}
+              className={`w-24 h-28 sm:w-28 sm:h-32 rounded-2xl bg-[#faf8f5] border border-[#f0ece4] p-2 flex items-center justify-center shrink-0 relative overflow-hidden group ${
+                fragrance.imageUrl ? "cursor-zoom-in hover:border-[#09090b] shadow-2xs transition-all" : ""
+              }`}
+            >
               {fragrance.imageUrl ? (
-                <img
-                  src={fragrance.imageUrl}
-                  alt={fragrance.name}
-                  className="w-full h-full object-contain"
-                />
+                <>
+                  <img
+                    src={fragrance.imageUrl}
+                    alt={fragrance.name}
+                    className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+                  />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                    <ZoomIn size={18} />
+                  </div>
+                </>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-[#a1a1aa] text-center p-2">
                   <Sparkles size={24} className="mb-1 text-[#d4d4d8]" />
@@ -259,6 +277,91 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
           </button>
         </div>
       </div>
+
+      {/* Lightbox / Zoom da Foto */}
+      {isZoomOpen && fragrance.imageUrl && (
+        <div 
+          className="fixed inset-0 z-60 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
+          onClick={() => {
+            setIsZoomOpen(false);
+            setZoomScale(1);
+          }}
+        >
+          {/* Top Bar */}
+          <div 
+            className="w-full max-w-xl flex items-center justify-between pb-3 z-30"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-white/80 text-xs font-semibold flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-full border border-white/15">
+              <Sparkles size={13} className="text-[#c5a880]" />
+              {fragrance.brand || 'Fragrância'}
+            </span>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setZoomScale((prev) => (prev > 1 ? 1 : 2))}
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+              >
+                {zoomScale > 1 ? <ZoomOut size={14} /> : <ZoomIn size={14} />}
+                <span>{zoomScale > 1 ? "Zoom 1x" : "Zoom 2x"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsZoomOpen(false);
+                  setZoomScale(1);
+                }}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white text-white hover:text-black border border-white/20 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Image */}
+          <div 
+            className="relative w-full max-w-xl max-h-[62vh] min-h-[320px] bg-[#121214]/90 border border-white/15 rounded-3xl p-6 sm:p-8 flex items-center justify-center overflow-hidden shadow-2xl cursor-pointer select-none"
+            onClick={(e) => {
+              e.stopPropagation();
+              setZoomScale((prev) => (prev > 1 ? 1 : 2));
+            }}
+          >
+            <img
+              src={fragrance.imageUrl}
+              alt={fragrance.name}
+              style={{
+                transform: `scale(${zoomScale})`,
+                transition: "transform 0.25s cubic-bezier(0.2, 0, 0, 1)",
+              }}
+              className={`max-h-[50vh] max-w-full object-contain drop-shadow-2xl ${
+                zoomScale > 1 ? "cursor-zoom-out" : "cursor-zoom-in"
+              }`}
+            />
+          </div>
+
+          {/* Info */}
+          <div 
+            className="w-full max-w-xl bg-[#1c1c1f] border border-white/15 rounded-2xl p-4 mt-3 flex items-center justify-between gap-3 shadow-2xl z-30"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <span className="text-[10px] uppercase font-extrabold text-[#c5a880] block">
+                {fragrance.brand}
+              </span>
+              <h4 className="font-serif text-sm sm:text-base font-bold text-white truncate">
+                {fragrance.name}
+              </h4>
+            </div>
+            {fragrance.concentration && (
+              <span className="text-[11px] font-semibold bg-white/10 text-white px-2.5 py-1 rounded-lg">
+                {fragrance.concentration}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

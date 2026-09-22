@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Search, ShoppingBag, Heart, X, Check, ArrowRight, Sparkles, MessageCircle, Truck, SlidersHorizontal, ChevronRight, ChevronLeft, Plus, Minus,
-  ArrowUpRight, CheckCircle2, Clock, CalendarCheck, Home, ShieldCheck
+  ArrowUpRight, CheckCircle2, Clock, CalendarCheck, Home, ShieldCheck, ZoomIn, ZoomOut
 } from 'lucide-react';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { useDialog } from './useDialog';
@@ -148,8 +148,19 @@ export default function CatalogClient({
   // Product Modal / Quick View
   const [selectedProduct, setSelectedProduct] = useState<Produto | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isPhotoZoomOpen, setIsPhotoZoomOpen] = useState(false);
+  const [catalogZoomScale, setCatalogZoomScale] = useState(1);
 
-  const closeDialog = () => { setSelectedProduct(null); setIsCartOpen(false); setIsFavoritesOpen(false); };
+  const closeDialog = () => { 
+    if (isPhotoZoomOpen) {
+      setIsPhotoZoomOpen(false);
+      setCatalogZoomScale(1);
+      return;
+    }
+    setSelectedProduct(null); 
+    setIsCartOpen(false); 
+    setIsFavoritesOpen(false); 
+  };
   const dialogRef = useDialog(Boolean(selectedProduct || isCartOpen || isFavoritesOpen), closeDialog);
   const chooseProduct = (product: Produto) => { setActiveImageIndex(0); setSelectedProduct(product); };
   const hasFilters = Boolean(searchTerm.trim() || activeCategory !== 'todos' || selectedBrand !== 'todas' || availabilityFilter !== 'TODOS' || onlyPromos || priceRange !== 'todos');
@@ -1043,15 +1054,22 @@ export default function CatalogClient({
                 {/* FOTO E GALERIA */}
                 <div className="md:col-span-6 flex flex-col justify-between gap-3.5">
                   <div className="space-y-2.5">
-                    <div className="aspect-square rounded-2xl bg-[#fcfbf9] overflow-hidden relative border-2 border-[#dcd5c7]">
+                    <div 
+                      onClick={() => {
+                        setIsPhotoZoomOpen(true);
+                        setCatalogZoomScale(1);
+                      }}
+                      title="Clique para ampliar a foto do produto"
+                      className="aspect-square rounded-2xl bg-[#fcfbf9] overflow-hidden relative border-2 border-[#dcd5c7] cursor-zoom-in group/mainphoto"
+                    >
                       <ProductImage 
                         src={selectedProduct.fotos[activeImageIndex]?.url || selectedProduct.fotos[0]?.url} 
                         alt={selectedProduct.nome}
-                        className="w-full h-full object-contain object-center p-6 sm:p-8"
+                        className="w-full h-full object-contain object-center p-6 sm:p-8 group-hover/mainphoto:scale-105 transition-transform duration-200"
                       />
                       
                       {/* Badge de Modalidade */}
-                      <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+                      <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none">
                         {isProdutoProntaEntrega(selectedProduct) ? (
                           <span className="bg-emerald-800 text-white text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md flex items-center gap-1 shadow-xs">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -1068,6 +1086,11 @@ export default function CatalogClient({
                             {selectedProduct.badge}
                           </span>
                         )}
+                      </div>
+
+                      {/* Hint de Zoom */}
+                      <div className="absolute bottom-3 right-3 bg-black/60 group-hover/mainphoto:bg-black/85 text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1 transition-colors pointer-events-none shadow-xs">
+                        <ZoomIn size={12} /> Ampliar
                       </div>
                     </div>
 
@@ -1384,6 +1407,103 @@ export default function CatalogClient({
               )}
 
             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* LIGHTBOX / ZOOM DA FOTO DO PRODUTO */}
+      <AnimatePresence>
+        {isPhotoZoomOpen && selectedProduct && (
+          <div 
+            className="fixed inset-0 z-60 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
+            onClick={() => {
+              setIsPhotoZoomOpen(false);
+              setCatalogZoomScale(1);
+            }}
+          >
+            {/* Top Bar Controls */}
+            <div 
+              className="w-full max-w-2xl flex items-center justify-between pb-3 z-30"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-white/80 text-xs font-semibold flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/15">
+                  <Sparkles size={13} className="text-[#c5a880]" />
+                  {selectedProduct.marca} • Detalhes do Frasco
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCatalogZoomScale((prev) => (prev > 1 ? 1 : 2))}
+                  className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+                  title={catalogZoomScale > 1 ? "Reduzir zoom" : "Ampliar zoom"}
+                >
+                  {catalogZoomScale > 1 ? <ZoomOut size={14} /> : <ZoomIn size={14} />}
+                  <span>{catalogZoomScale > 1 ? "Zoom 1x" : "Zoom 2x"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPhotoZoomOpen(false);
+                    setCatalogZoomScale(1);
+                  }}
+                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white text-white hover:text-black border border-white/20 flex items-center justify-center transition-all cursor-pointer"
+                  aria-label="Fechar ampliação"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Container da Imagem */}
+            <div 
+              className="relative w-full max-w-2xl max-h-[65vh] min-h-[320px] bg-[#121214]/90 border border-white/15 rounded-3xl p-6 sm:p-10 flex items-center justify-center overflow-hidden shadow-2xl cursor-pointer select-none"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCatalogZoomScale((prev) => (prev > 1 ? 1 : 2));
+              }}
+              title="Clique na foto para alternar entre 1x e 2x de zoom"
+            >
+              <img
+                src={selectedProduct.fotos[activeImageIndex]?.url || selectedProduct.fotos[0]?.url}
+                alt={selectedProduct.nome}
+                style={{
+                  transform: `scale(${catalogZoomScale})`,
+                  transition: "transform 0.25s cubic-bezier(0.2, 0, 0, 1)",
+                }}
+                className={`max-h-[55vh] max-w-full object-contain drop-shadow-2xl ${
+                  catalogZoomScale > 1 ? "cursor-zoom-out" : "cursor-zoom-in"
+                }`}
+              />
+
+              <div className="absolute bottom-3 right-4 pointer-events-none bg-black/60 border border-white/15 text-[10px] text-white/80 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1">
+                <ZoomIn size={11} /> Toque para alternar zoom (1x / 2x)
+              </div>
+            </div>
+
+            {/* Bottom Bar Info */}
+            <div 
+              className="w-full max-w-2xl bg-[#1c1c1f] border border-white/15 rounded-2xl p-4 mt-3 flex items-center justify-between gap-3 shadow-2xl z-30"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-left min-w-0">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider text-[#c5a880] block">
+                  {selectedProduct.marca}
+                </span>
+                <h4 className="font-serif text-sm sm:text-base font-bold text-white truncate">
+                  {selectedProduct.nome}
+                </h4>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-sm font-extrabold text-[#c5a880]">
+                  {selectedProduct.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+            </div>
           </div>
         )}
       </AnimatePresence>

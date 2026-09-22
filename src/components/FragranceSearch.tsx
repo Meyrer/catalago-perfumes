@@ -218,8 +218,11 @@ export default function FragranceSearch({
                         {item.imageUrl ? (
                           <img
                             src={item.imageUrl}
-                            alt=""
+                            alt={item.name}
                             className="w-full h-full object-contain"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                            }}
                           />
                         ) : (
                           <Sparkles size={16} className="text-[#7a5828]" />
