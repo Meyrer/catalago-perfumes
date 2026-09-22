@@ -9,7 +9,6 @@ import {
   ZoomIn, ZoomOut, Clock, CalendarCheck, CheckCircle2, AlertTriangle, Layers,
   Maximize2, RotateCcw, ChevronRight
 } from 'lucide-react';
-import Image from 'next/image';
 import { 
   createProduto, updateProduto, deleteProduto, duplicarProdutoAction, 
   toggleAtivo, toggleDisponibilidade, actionSearchPerfume 
@@ -314,7 +313,7 @@ export default function ProdutosView({ data }: Props) {
                             title="Clique para ampliar foto e abrir dossiê"
                           >
                             {p.fotos && p.fotos[0] ? (
-                              <Image src={p.fotos[0].url} alt={p.nome} width={44} height={44} className="w-full h-full object-contain p-0.5 group-hover:scale-110 transition-transform duration-200" />
+                              <img src={p.fotos[0].url} alt={p.nome} width={44} height={44} className="w-full h-full object-contain p-0.5 group-hover:scale-110 transition-transform duration-200" />
                             ) : (
                               <Package size={18} className="text-[#8c8c8e]" />
                             )}
@@ -1011,13 +1010,12 @@ function ProductQuickViewModal({
                         transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
                       }}
                     >
-                      <Image 
+                      <img 
                         src={currentPhotoUrl} 
                         alt={product.nome} 
                         width={420} 
                         height={420} 
                         className="w-full h-full object-contain p-4 pointer-events-none" 
-                        priority
                       />
                     </div>
                   ) : (
@@ -1096,7 +1094,7 @@ function ProductQuickViewModal({
                             : 'border-[#dcd5c7] bg-[#fcfbf9] opacity-70 hover:opacity-100'
                         }`}
                       >
-                        <Image src={f.url} alt="Miniatura" width={48} height={48} className="w-full h-full object-contain" />
+                        <img src={f.url} alt="Miniatura" width={48} height={48} className="w-full h-full object-contain" />
                       </button>
                     ))}
                   </div>

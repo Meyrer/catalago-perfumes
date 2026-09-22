@@ -7,7 +7,6 @@ import {
   X, Loader2, DollarSign, Calendar, User, Truck, 
   CreditCard, ChevronRight, Eye, AlertCircle
 } from 'lucide-react';
-import Image from 'next/image';
 import { createVendaAction, updateVendaStatusAction, deleteVendaAction } from '../../actions';
 
 type Props = {

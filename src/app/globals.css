@@ -189,7 +189,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 180px; }
 .order-form label { display: block; font-size: 13px; font-weight: 750; color: #09090b; margin-bottom: 10px; }
 .order-form > div { display: flex; gap: 10px; }
 .order-form input { min-width: 0; flex: 1; min-height: 48px; border: 2px solid #18181b; background: white; color: #09090b; font-weight: 600; padding: 12px 16px; border-radius: 10px; font-size: 14px; }
-.product-dialog { max-width: 1040px; max-height: 90dvh; overflow-y: auto; border-radius: 16px; box-shadow: 0 20px 80px #0003; overscroll-behavior: contain; border: 2px solid var(--line); }
+.product-dialog { max-width: 1160px; max-height: 92dvh; overflow-y: auto; border-radius: 16px; box-shadow: 0 20px 80px #0003; overscroll-behavior: contain; border: 2px solid var(--line); }
 .product-dialog .product-detail { overflow: visible; }.product-dialog .product-detail > div:first-child > div:first-child { aspect-ratio: 1; border: 0; background: #fff; }
 .product-dialog .product-detail .text-xs { font-size: 13px; line-height: 1.65; }.product-dialog #product-title { font-size: 30px; }
 .product-dialog .space-y-2\.5 { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--line); border-top: 0; }

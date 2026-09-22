@@ -1049,10 +1049,10 @@ export default function CatalogClient({
                 <X size={18} />
               </button>
 
-              <div className="product-detail p-5 sm:p-8 grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8">
+              <div className="product-detail p-5 sm:p-8 grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-10 items-start">
                 
                 {/* FOTO E GALERIA */}
-                <div className="md:col-span-6 flex flex-col justify-between gap-3.5">
+                <div className="md:col-span-7 flex flex-col gap-5">
                   <div className="space-y-2.5">
                     <div 
                       onClick={() => {
@@ -1164,7 +1164,7 @@ export default function CatalogClient({
                 </div>
 
                 {/* DETALHES */}
-                <div className="md:col-span-6 flex flex-col justify-between">
+                <div className="md:col-span-5 flex flex-col">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap mb-1.5 pr-12">
                       <span className="text-xs uppercase font-extrabold tracking-wider text-[#7a5828]">
@@ -1257,7 +1257,7 @@ export default function CatalogClient({
                   </div>
 
                   {/* DESCRIÇÃO E USO */}
-                  <div className="space-y-2 text-xs text-[#27272a] leading-relaxed pt-3 border-t border-[#dcd5c7]">
+                  <div className="space-y-2 text-xs text-[#27272a] leading-relaxed pt-5 mt-2 border-t border-[#dcd5c7]">
                     <div>
                       <h4 className="font-bold text-[#09090b] uppercase tracking-wider text-[11px] mb-0.5">Descrição:</h4>
                       <p>{selectedProduct.descricao}</p>

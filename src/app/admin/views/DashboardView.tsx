@@ -7,7 +7,6 @@ import {
   ShoppingBag, Clock, ArrowUpRight, ArrowDownRight, 
   Sparkles, CheckCircle2, ChevronRight, Boxes
 } from 'lucide-react';
-import Image from 'next/image';
 
 type Props = {
   data: ERPData;
@@ -645,7 +644,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
                     </span>
                     <div className="w-10 h-10 rounded-xl bg-[#fcfbf9] border border-[#dcd5c7] overflow-hidden shrink-0 flex items-center justify-center">
                       {item.produto.fotos && item.produto.fotos[0] ? (
-                        <Image 
+                          <img
                           src={item.produto.fotos[0].url} 
                           alt={item.produto.nome} 
                           width={40} 

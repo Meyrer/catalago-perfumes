@@ -7,7 +7,6 @@ import {
   Search, History, RefreshCw, X, Loader2,
   Package, Calendar, CheckCircle2, ShieldAlert
 } from 'lucide-react';
-import Image from 'next/image';
 import { movimentarEstoqueAction } from '../../actions';
 
 type Props = {
@@ -281,7 +280,7 @@ export default function EstoqueView({ data }: Props) {
                             <div className="flex items-center gap-2.5">
                               <div className="w-9 h-9 rounded-xl bg-[#fcfbf9] border border-[#dcd5c7] overflow-hidden shrink-0 flex items-center justify-center">
                                 {p.fotos && p.fotos[0] ? (
-                                  <Image src={p.fotos[0].url} alt={p.nome} width={36} height={36} className="w-full h-full object-contain p-0.5" />
+                                  <img src={p.fotos[0].url} alt={p.nome} width={36} height={36} className="w-full h-full object-contain p-0.5" />
                                 ) : (
                                   <Package size={16} className="text-[#8c8c8e]" />
                                 )}
