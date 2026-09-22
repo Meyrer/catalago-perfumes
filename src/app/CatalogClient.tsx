@@ -1052,7 +1052,7 @@ export default function CatalogClient({
               <div className="product-detail p-5 sm:p-8 grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-10 items-start">
                 
                 {/* FOTO E GALERIA */}
-                <div className="order-2 md:order-1 md:col-span-7 flex flex-col gap-5">
+                <div className="order-1 md:order-1 md:col-span-7 flex flex-col gap-4">
                   <div className="space-y-2.5">
                     <div 
                       onClick={() => {
@@ -1164,7 +1164,7 @@ export default function CatalogClient({
                 </div>
 
                 {/* DETALHES */}
-                <div className="order-1 md:order-2 md:col-span-5 flex flex-col">
+                <div className="order-2 md:order-2 md:col-span-5 flex flex-col">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap mb-1.5 pr-12">
                       <span className="text-xs uppercase font-extrabold tracking-wider text-[#7a5828]">
