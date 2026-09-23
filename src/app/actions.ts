@@ -7,6 +7,8 @@ import { writeFile } from "fs/promises";
 import { join } from "path";
 import { searchPerfume } from "@/services/perfumeApi";
 import { loginAdmin, logoutAdmin, requireAdminAuth, changeAdminPassword } from "@/lib/auth";
+import { plainPrismaData } from "@/lib/admin-api";
+import { fromCents, roundMoney, toCents } from "@/lib/money";
 
 export async function loginAdminAction(formData: FormData) {
   const username = formData.get("username") as string;
@@ -307,7 +309,7 @@ export async function toggleAtivo(id: number) {
 }
 
 export async function updateProduto(id: number, data: FormData) {
-  await requireAdminAuth();
+  const session = await requireAdminAuth();
   const nome = data.get('nome') as string;
   const marca = data.get('marca') as string;
   const categoriaId = parseInt(data.get('categoriaId') as string);
@@ -359,9 +361,12 @@ export async function updateProduto(id: number, data: FormData) {
   const anoLancamento = data.get('anoLancamento') ? parseInt(data.get('anoLancamento') as string) : null;
   const descricaoFragrancia = (data.get('descricaoFragrancia') as string) || null;
 
-  await prisma.produto.update({
-    where: { id },
-    data: {
+  await prisma.$transaction(async (tx) => {
+    const current = await tx.produto.findUnique({ where: { id }, select: { quantidade: true } });
+    if (!current) throw new Error("Produto não encontrado.");
+    const changed = await tx.produto.updateMany({
+      where: { id, quantidade: current.quantidade },
+      data: {
       nome,
       marca,
       categoriaId,
@@ -392,6 +397,21 @@ export async function updateProduto(id: number, data: FormData) {
       genero,
       anoLancamento,
       descricaoFragrancia
+      }
+    });
+    if (changed.count !== 1) throw new Error("Estoque alterado por outra operação. Atualize o produto e tente novamente.");
+    if (current.quantidade !== quantidade) {
+      await tx.estoqueMovimentacao.create({
+        data: {
+          produtoId: id,
+          tipo: "AJUSTE",
+          quantidade: quantidade - current.quantidade,
+          quantidadeAnterior: current.quantidade,
+          quantidadeNova: quantidade,
+          motivo: "Ajuste pelo cadastro do produto",
+          usuarioResponsavel: session.name
+        }
+      });
     }
   });
 
@@ -530,12 +550,13 @@ export async function movimentarEstoqueAction(
     updateData.previsaoEntrega = 'Disponível em estoque • Envio ou retirada imediata';
   }
 
-  await prisma.$transaction([
-    prisma.produto.update({
-      where: { id: produtoId },
+  await prisma.$transaction(async (tx) => {
+    const changed = await tx.produto.updateMany({
+      where: { id: produtoId, quantidade: qtdAnterior, quantidadeReservada: produto.quantidadeReservada },
       data: updateData
-    }),
-    prisma.estoqueMovimentacao.create({
+    });
+    if (changed.count !== 1) throw new Error("Estoque alterado por outra operação. Consulte o saldo e tente novamente.");
+    await tx.estoqueMovimentacao.create({
       data: {
         produtoId,
         tipo,
@@ -545,8 +566,8 @@ export async function movimentarEstoqueAction(
         motivo: motivo.trim() || `Movimentação manual (${tipo})`,
         usuarioResponsavel: session.name
       }
-    })
-  ]);
+    });
+  });
 
   revalidatePath('/');
   revalidatePath('/admin');
@@ -577,6 +598,11 @@ export async function createVendaAction(data: {
   if (!itens || itens.length === 0) {
     throw new Error("Selecione pelo menos um produto para registrar a venda.");
   }
+  for (const item of itens) {
+    if (!Number.isInteger(item.quantidade) || item.quantidade < 1) throw new Error("A quantidade dos itens deve ser um inteiro positivo.");
+    if (!Number.isFinite(item.precoUnitario) || item.precoUnitario < 0) throw new Error("Preço unitário inválido.");
+  }
+  if (desconto < 0 || frete < 0) throw new Error("Desconto e frete não podem ser negativos.");
 
   // Buscar produtos no banco para checar estoque e custo
   const produtosIds = itens.map(i => i.produtoId);
@@ -586,30 +612,33 @@ export async function createVendaAction(data: {
 
   const produtosMap = new Map(produtosDB.map(p => [p.id, p]));
 
-  let subtotal = 0;
-  let custoTotal = 0;
+  let subtotalCents = 0;
+  let custoTotalCents = 0;
 
   for (const item of itens) {
     const p = produtosMap.get(item.produtoId);
     if (!p) throw new Error(`Produto #${item.produtoId} não encontrado.`);
     
     // Se for venda confirmada/paga, valida estoque disponível
-    if (status === 'PAGO' && p.quantidade < item.quantidade) {
+    if ((status === 'PAGO' || status === 'ENVIADO' || status === 'PREPARANDO') && p.quantidade < item.quantidade) {
       throw new Error(`Estoque insuficiente para "${p.nome}". Disponível: ${p.quantidade} un.`);
     }
 
-    const itemSubtotal = item.precoUnitario * item.quantidade;
-    const itemCusto = (p.precoCusto || 0) * item.quantidade;
+    const itemSubtotalCents = toCents(item.precoUnitario) * item.quantidade;
+    const itemCustoCents = toCents(Number(p.precoCusto || 0)) * item.quantidade;
 
-    subtotal += itemSubtotal;
-    custoTotal += itemCusto;
+    subtotalCents += itemSubtotalCents;
+    custoTotalCents += itemCustoCents;
   }
 
-  const valorTotal = Math.max(0, subtotal - desconto + frete);
-  const lucroTotal = (subtotal - desconto) - custoTotal;
+  const subtotal = fromCents(subtotalCents);
+  const custoTotal = fromCents(custoTotalCents);
+  const valorTotal = fromCents(Math.max(0, subtotalCents - toCents(desconto) + toCents(frete)));
+  const lucroTotal = fromCents(subtotalCents - toCents(desconto) - custoTotalCents);
   const numeroVenda = `VND-${Date.now().toString().slice(-5)}`;
 
-  const venda = await prisma.venda.create({
+  const venda = await prisma.$transaction(async (tx) => {
+  const venda = await tx.venda.create({
     data: {
       numero: numeroVenda,
       clienteId: clienteId || null,
@@ -629,26 +658,27 @@ export async function createVendaAction(data: {
         create: itens.map(item => {
           const p = produtosMap.get(item.produtoId)!;
           const precoUnit = item.precoUnitario;
-          const custoUnit = p.precoCusto || 0;
+          const custoUnit = Number(p.precoCusto || 0);
           return {
             produtoId: item.produtoId,
             quantidade: item.quantidade,
             precoUnitario: precoUnit,
             custoUnitario: custoUnit,
             lucroUnitario: precoUnit - custoUnit,
-            subtotal: precoUnit * item.quantidade
+            subtotal: fromCents(toCents(precoUnit) * item.quantidade)
           };
         })
       }
     }
   });
 
-  // Se o status for PAGO ou ENVIADO, deduz automaticamente do estoque e gera movimentação
+  // Se a venda comprometer o estoque, registra venda e baixa na mesma transação.
   if (status === 'PAGO' || status === 'ENVIADO' || status === 'PREPARANDO') {
     for (const item of itens) {
       const p = produtosMap.get(item.produtoId)!;
       const qtdAnterior = p.quantidade;
-      const qtdNova = Math.max(0, qtdAnterior - item.quantidade);
+      if (qtdAnterior < item.quantidade) throw new Error(`Estoque insuficiente para "${p.nome}". Atualize os dados e tente novamente.`);
+      const qtdNova = qtdAnterior - item.quantidade;
 
       const updateData: {
         quantidade: number;
@@ -662,12 +692,13 @@ export async function createVendaAction(data: {
         updateData.previsaoEntrega = 'Sob Encomenda • Próximo lote previsto em 7 a 12 dias';
       }
 
-      await prisma.produto.update({
-        where: { id: item.produtoId },
+      const changed = await tx.produto.updateMany({
+        where: { id: item.produtoId, quantidade: qtdAnterior },
         data: updateData
       });
+      if (changed.count !== 1) throw new Error(`Estoque de "${p.nome}" foi alterado por outra operação. Atualize a venda e tente novamente.`);
 
-      await prisma.estoqueMovimentacao.create({
+      await tx.estoqueMovimentacao.create({
         data: {
           produtoId: item.produtoId,
           tipo: 'VENDA',
@@ -682,6 +713,9 @@ export async function createVendaAction(data: {
     }
   }
 
+  return plainPrismaData(venda);
+  });
+
   revalidatePath('/');
   revalidatePath('/admin');
   return venda;
@@ -689,7 +723,8 @@ export async function createVendaAction(data: {
 
 export async function updateVendaStatusAction(vendaId: number, novoStatus: string) {
   const session = await requireAdminAuth();
-  const venda = await prisma.venda.findUnique({
+  await prisma.$transaction(async (tx) => {
+  const venda = await tx.venda.findUnique({
     where: { id: vendaId },
     include: { itens: true }
   });
@@ -704,10 +739,11 @@ export async function updateVendaStatusAction(vendaId: number, novoStatus: strin
     (statusAnterior === 'AGUARDANDO_PAGAMENTO')
   ) {
     for (const item of venda.itens) {
-      const p = await prisma.produto.findUnique({ where: { id: item.produtoId } });
+      const p = await tx.produto.findUnique({ where: { id: item.produtoId } });
       if (p) {
         const qtdAnterior = p.quantidade;
-        const qtdNova = Math.max(0, qtdAnterior - item.quantidade);
+        if (qtdAnterior < item.quantidade) throw new Error(`Estoque insuficiente para "${p.nome}" ao confirmar a venda.`);
+        const qtdNova = qtdAnterior - item.quantidade;
 
         const updateData: {
           quantidade: number;
@@ -720,12 +756,13 @@ export async function updateVendaStatusAction(vendaId: number, novoStatus: strin
           updateData.previsaoEntrega = 'Sob Encomenda • Próximo lote previsto em 7 a 12 dias';
         }
 
-        await prisma.produto.update({
-          where: { id: item.produtoId },
+        const changed = await tx.produto.updateMany({
+          where: { id: item.produtoId, quantidade: qtdAnterior },
           data: updateData
         });
+        if (changed.count !== 1) throw new Error(`Estoque de "${p.nome}" foi alterado por outra operação. Tente novamente.`);
 
-        await prisma.estoqueMovimentacao.create({
+        await tx.estoqueMovimentacao.create({
           data: {
             produtoId: item.produtoId,
             tipo: 'VENDA',
@@ -747,7 +784,7 @@ export async function updateVendaStatusAction(vendaId: number, novoStatus: strin
     (statusAnterior === 'PAGO' || statusAnterior === 'ENVIADO' || statusAnterior === 'PREPARANDO')
   ) {
     for (const item of venda.itens) {
-      const p = await prisma.produto.findUnique({ where: { id: item.produtoId } });
+      const p = await tx.produto.findUnique({ where: { id: item.produtoId } });
       if (p) {
         const qtdAnterior = p.quantidade;
         const qtdNova = qtdAnterior + item.quantidade;
@@ -763,11 +800,12 @@ export async function updateVendaStatusAction(vendaId: number, novoStatus: strin
           updateData.previsaoEntrega = 'Disponível em estoque • Envio ou retirada imediata';
         }
 
-        await prisma.produto.update({
-          where: { id: item.produtoId },
+        const changed = await tx.produto.updateMany({
+          where: { id: item.produtoId, quantidade: qtdAnterior },
           data: updateData
         });
-        await prisma.estoqueMovimentacao.create({
+        if (changed.count !== 1) throw new Error(`Estoque de "${p.nome}" foi alterado por outra operação. Tente novamente.`);
+        await tx.estoqueMovimentacao.create({
           data: {
             produtoId: item.produtoId,
             tipo: 'DEVOLUCAO',
@@ -783,9 +821,11 @@ export async function updateVendaStatusAction(vendaId: number, novoStatus: strin
     }
   }
 
-  await prisma.venda.update({
-    where: { id: vendaId },
+  const statusUpdated = await tx.venda.updateMany({
+    where: { id: vendaId, status: statusAnterior },
     data: { status: novoStatus }
+  });
+  if (statusUpdated.count !== 1) throw new Error("O status da venda foi alterado por outra operação. Atualize os dados e tente novamente.");
   });
 
   revalidatePath('/admin');
@@ -843,7 +883,7 @@ export async function createEncomendaAction(data: {
   });
 
   revalidatePath('/admin');
-  return enc;
+  return plainPrismaData(enc);
 }
 
 export async function updateEncomendaStatusAction(encomendaId: number, status: string) {
@@ -884,20 +924,30 @@ export async function createCompraAction(data: {
   if (!itens || itens.length === 0) {
     throw new Error("Adicione pelo menos um item à compra.");
   }
+  if (![cotacao, frete, taxas, outrosCustos].every(Number.isFinite) || cotacao <= 0 || frete < 0 || taxas < 0 || outrosCustos < 0) {
+    throw new Error("Cotação deve ser positiva e custos não podem ser negativos.");
+  }
+  for (const item of itens) {
+    if (!Number.isInteger(item.quantidade) || item.quantidade < 1 || !Number.isFinite(item.valorUnitarioMoeda) || item.valorUnitarioMoeda < 0) {
+      throw new Error("Itens da compra devem ter quantidade inteira positiva e valor unitário válido.");
+    }
+  }
 
   // Calcula subtotal na moeda original e em BRL
   let subtotalMoeda = 0;
   for (const it of itens) {
-    subtotalMoeda += it.valorUnitarioMoeda * it.quantidade;
+    subtotalMoeda += fromCents(toCents(it.valorUnitarioMoeda) * it.quantidade);
   }
 
-  const subtotalBRL = subtotalMoeda * cotacao;
-  const custosExtrasBRL = frete + taxas + outrosCustos;
-  const custoTotalBRL = subtotalBRL + custosExtrasBRL;
+  subtotalMoeda = roundMoney(subtotalMoeda);
+  const subtotalBRL = roundMoney(subtotalMoeda * cotacao);
+  const custosExtrasBRL = roundMoney(frete + taxas + outrosCustos);
+  const custoTotalBRL = roundMoney(subtotalBRL + custosExtrasBRL);
   const numero = `COMP-${Date.now().toString().slice(-5)}`;
 
   // Rateio proporcional dos custos extras
-  const compra = await prisma.compra.create({
+  const compra = await prisma.$transaction(async (tx) => {
+  const compra = await tx.compra.create({
     data: {
       numero,
       fornecedorId: fornecedorId || null,
@@ -911,17 +961,17 @@ export async function createCompraAction(data: {
       observacoes: observacoes || null,
       itens: {
         create: itens.map(item => {
-          const itemValorBRL = (item.valorUnitarioMoeda * cotacao);
+          const itemValorBRL = roundMoney(item.valorUnitarioMoeda * cotacao);
           const proporcao = subtotalBRL > 0 ? (itemValorBRL * item.quantidade) / subtotalBRL : 1 / itens.length;
-          const custoExtraItem = (custosExtrasBRL * proporcao) / item.quantidade;
-          const custoUnitFinal = itemValorBRL + custoExtraItem;
+          const custoExtraItem = roundMoney((custosExtrasBRL * proporcao) / item.quantidade);
+          const custoUnitFinal = roundMoney(itemValorBRL + custoExtraItem);
           
           return {
             produtoId: item.produtoId,
             quantidade: item.quantidade,
             valorUnitarioMoeda: item.valorUnitarioMoeda,
             custoUnitarioBRL: custoUnitFinal,
-            custoTotalBRL: custoUnitFinal * item.quantidade
+            custoTotalBRL: fromCents(toCents(custoUnitFinal) * item.quantidade)
           };
         })
       }
@@ -932,7 +982,7 @@ export async function createCompraAction(data: {
   // Se o status for RECEBIDO, adiciona imediatamente ao estoque e atualiza preço de custo
   if (status === 'RECEBIDO') {
     for (const item of compra.itens) {
-      const p = await prisma.produto.findUnique({ where: { id: item.produtoId } });
+      const p = await tx.produto.findUnique({ where: { id: item.produtoId } });
       if (p) {
         const qtdAnterior = p.quantidade;
         const qtdNova = qtdAnterior + item.quantidade;
@@ -944,7 +994,7 @@ export async function createCompraAction(data: {
           previsaoEntrega?: string;
         } = {
           quantidade: qtdNova,
-          precoCusto: item.custoUnitarioBRL
+          precoCusto: Number(item.custoUnitarioBRL)
         };
 
         if (qtdNova > 0 && p.tipoDisponibilidade === 'ENCOMENDA') {
@@ -952,12 +1002,13 @@ export async function createCompraAction(data: {
           updateData.previsaoEntrega = 'Disponível em estoque • Envio ou retirada imediata';
         }
 
-        await prisma.produto.update({
-          where: { id: item.produtoId },
+        const changed = await tx.produto.updateMany({
+          where: { id: item.produtoId, quantidade: qtdAnterior },
           data: updateData
         });
+        if (changed.count !== 1) throw new Error(`Estoque de "${p.nome}" foi alterado por outra operação. Tente novamente.`);
 
-        await prisma.estoqueMovimentacao.create({
+        await tx.estoqueMovimentacao.create({
           data: {
             produtoId: item.produtoId,
             tipo: 'ENTRADA',
@@ -973,14 +1024,18 @@ export async function createCompraAction(data: {
     }
   }
 
+  return compra;
+  });
+
   revalidatePath('/');
   revalidatePath('/admin');
-  return compra;
+  return plainPrismaData(compra);
 }
 
 export async function receberCompraAction(compraId: number) {
   const session = await requireAdminAuth();
-  const compra = await prisma.compra.findUnique({
+  await prisma.$transaction(async (tx) => {
+  const compra = await tx.compra.findUnique({
     where: { id: compraId },
     include: { itens: true }
   });
@@ -989,7 +1044,7 @@ export async function receberCompraAction(compraId: number) {
   if (compra.status === 'RECEBIDO') return { success: true };
 
   for (const item of compra.itens) {
-    const p = await prisma.produto.findUnique({ where: { id: item.produtoId } });
+    const p = await tx.produto.findUnique({ where: { id: item.produtoId } });
     if (p) {
       const qtdAnterior = p.quantidade;
       const qtdNova = qtdAnterior + item.quantidade;
@@ -1001,7 +1056,7 @@ export async function receberCompraAction(compraId: number) {
         previsaoEntrega?: string;
       } = {
         quantidade: qtdNova,
-        precoCusto: item.custoUnitarioBRL
+        precoCusto: Number(item.custoUnitarioBRL)
       };
 
       if (qtdNova > 0 && p.tipoDisponibilidade === 'ENCOMENDA') {
@@ -1009,12 +1064,13 @@ export async function receberCompraAction(compraId: number) {
         updateData.previsaoEntrega = 'Disponível em estoque • Envio ou retirada imediata';
       }
 
-      await prisma.produto.update({
-        where: { id: item.produtoId },
+      const changed = await tx.produto.updateMany({
+        where: { id: item.produtoId, quantidade: qtdAnterior },
         data: updateData
       });
+      if (changed.count !== 1) throw new Error(`Estoque de "${p.nome}" foi alterado por outra operação. Tente novamente.`);
 
-      await prisma.estoqueMovimentacao.create({
+      await tx.estoqueMovimentacao.create({
         data: {
           produtoId: item.produtoId,
           tipo: 'ENTRADA',
@@ -1029,9 +1085,11 @@ export async function receberCompraAction(compraId: number) {
     }
   }
 
-  await prisma.compra.update({
-    where: { id: compraId },
+  const statusUpdated = await tx.compra.updateMany({
+    where: { id: compraId, status: compra.status },
     data: { status: 'RECEBIDO' }
+  });
+  if (statusUpdated.count !== 1) throw new Error("O status da compra foi alterado por outra operação. Atualize os dados e tente novamente.");
   });
 
   revalidatePath('/');

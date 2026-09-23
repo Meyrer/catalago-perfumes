@@ -10,7 +10,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://postgres:suasenhaforte@db:5432/catalogo_db?schema=public
+      - DATABASE_URL=${DATABASE_URL:?Configure DATABASE_URL no .env}
+      - ADMIN_SESSION_SECRET=${ADMIN_SESSION_SECRET:?Configure ADMIN_SESSION_SECRET no .env}
+      - API_ADMIN_KEY=${API_ADMIN_KEY:?Configure API_ADMIN_KEY no .env}
     volumes:
       - ./public/uploads:/app/public/uploads
     depends_on:
@@ -22,9 +24,9 @@ services:
     container_name: catalogo_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: suasenhaforte
-      POSTGRES_DB: catalogo_db
+      POSTGRES_USER: ${POSTGRES_USER:?Configure POSTGRES_USER no .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Configure POSTGRES_DB no .env}
     ports:
       - "5432:5432"
     volumes:

@@ -16,6 +16,12 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## API administrativa
+
+Configure `API_ADMIN_KEY` no ambiente do servidor antes de usar os endpoints protegidos. No Docker Compose, defina também `ADMIN_SESSION_SECRET` e `API_ADMIN_KEY` no arquivo `.env` local, usando valores aleatórios fortes. Consulte [docs/admin-api.md](docs/admin-api.md) para autenticação, endpoints e exemplos de cadastro de produtos, categorias, estoque, fornecedores, clientes e banners.
+
+O schema do banco é atualizado por migrations em `prisma/migrations`; o container executa `prisma migrate deploy` ao iniciar. Para bancos existentes que ainda não têm histórico de migrations, faça backup e, usando a imagem nova com o banco antigo ainda acessível, registre o baseline inicial uma vez antes de iniciar o serviço: `docker compose run --rm --no-deps --entrypoint node web node_modules/prisma/build/index.js migrate resolve --applied 20260923000000_initial --schema prisma/schema.prisma`. Em seguida, inicie o serviço; `migrate deploy` aplica as migrations seguintes. Bancos novos aplicam todas as migrations normalmente. A migration de valores monetários converte os valores existentes para centavos (arredondamento de duas casas); verifique valores fora do limite de `Decimal(14,2)` antes de implantá-la.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

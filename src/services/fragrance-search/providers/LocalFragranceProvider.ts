@@ -65,8 +65,8 @@ export class LocalFragranceProvider implements FragranceProvider {
           sourceUrl: p.sourceUrl || undefined,
           isLocal: true,
           verificationStatus: (p.verificationStatus as 'unverified' | 'reviewed' | 'verified') || 'verified',
-          price: p.precoVista,
-          priceFormatted: p.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+          price: Number(p.precoVista),
+          priceFormatted: Number(p.precoVista).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
           available: p.disponivel,
         };
       });

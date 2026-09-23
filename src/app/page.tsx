@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { plainPrismaData } from "@/lib/admin-api";
 import CatalogClient from "./CatalogClient";
 
 export const dynamic = "force-dynamic";
@@ -14,14 +15,17 @@ export default async function Home() {
     orderBy: { createdAt: 'desc' }
   })]);
   const publicProdutos = produtos.map(produto => {
-    const publicProduto = { ...produto } as Omit<typeof produto, 'precoCusto'> & { precoCusto?: number | null };
-    delete publicProduto.precoCusto;
-    return publicProduto;
+    const { precoCusto: _precoCusto, ...publicProduto } = produto;
+    return plainPrismaData({
+      ...publicProduto,
+      precoVista: Number(produto.precoVista),
+      precoOriginal: produto.precoOriginal === null ? null : Number(produto.precoOriginal),
+    });
   });
 
   return (
     <CatalogClient 
-      initialProdutos={publicProdutos} 
+      initialProdutos={publicProdutos as unknown as Parameters<typeof CatalogClient>[0]["initialProdutos"]}
       categorias={categorias} 
       banners={banners} 
     />

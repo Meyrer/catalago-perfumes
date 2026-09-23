@@ -4,6 +4,7 @@ import AdminLoginForm from "./AdminLoginForm";
 import AdminChangePasswordForm from "./AdminChangePasswordForm";
 import { getAdminSession } from "@/lib/auth";
 import type { ERPData } from "./types";
+import { plainPrismaData } from "@/lib/admin-api";
 
 export const dynamic = "force-dynamic";
 
@@ -104,7 +105,7 @@ export default async function AdminPage() {
     })
   ]);
 
-  const erpData: ERPData = {
+  const erpData = plainPrismaData({
     user: session,
     produtos,
     categorias,
@@ -116,7 +117,7 @@ export default async function AdminPage() {
     clientes,
     encomendas,
     despesas
-  };
+  }) as unknown as ERPData;
 
   return <AdminClient data={erpData} />;
 }

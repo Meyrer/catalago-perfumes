@@ -2,15 +2,21 @@ export type { Prisma, Categoria, Banner, Fornecedor, Compra, Cliente, Venda, Enc
 import type { Prisma, Categoria, Banner, Fornecedor, Compra, Cliente, Venda, Encomenda, DespesaFinanceira } from '@prisma/client';
 import type { AdminSessionUser } from '@/lib/auth';
 
-export type AdminProduto = Prisma.ProdutoGetPayload<{
+type Plain<T> = T extends Prisma.Decimal ? number
+  : T extends Date ? Date
+  : T extends (infer Item)[] ? Plain<Item>[]
+  : T extends object ? { [Key in keyof T]: Plain<T[Key]> }
+  : T;
+
+export type AdminProduto = Plain<Prisma.ProdutoGetPayload<{
   include: {
     categoria: true;
     fotos: true;
     fornecedor: true;
   };
-}>;
+}>>;
 
-export type AdminVenda = Prisma.VendaGetPayload<{
+export type AdminVenda = Plain<Prisma.VendaGetPayload<{
   include: {
     cliente: true;
     itens: {
@@ -21,9 +27,9 @@ export type AdminVenda = Prisma.VendaGetPayload<{
       };
     };
   };
-}>;
+}>>;
 
-export type AdminCompra = Prisma.CompraGetPayload<{
+export type AdminCompra = Plain<Prisma.CompraGetPayload<{
   include: {
     fornecedor: true;
     itens: {
@@ -32,9 +38,9 @@ export type AdminCompra = Prisma.CompraGetPayload<{
       };
     };
   };
-}>;
+}>>;
 
-export type AdminEncomenda = Prisma.EncomendaGetPayload<{
+export type AdminEncomenda = Plain<Prisma.EncomendaGetPayload<{
   include: {
     cliente: true;
     produto: {
@@ -42,9 +48,9 @@ export type AdminEncomenda = Prisma.EncomendaGetPayload<{
     };
     fornecedor: true;
   };
-}>;
+}>>;
 
-export type AdminCliente = Prisma.ClienteGetPayload<{
+export type AdminCliente = Plain<Prisma.ClienteGetPayload<{
   include: {
     vendas: {
       include: {
@@ -55,24 +61,24 @@ export type AdminCliente = Prisma.ClienteGetPayload<{
     };
     encomendas: true;
   };
-}>;
+}>>;
 
-export type AdminMovimentacao = Prisma.EstoqueMovimentacaoGetPayload<{
+export type AdminMovimentacao = Plain<Prisma.EstoqueMovimentacaoGetPayload<{
   include: {
     produto: true;
   };
-}>;
+}>>;
 
 export type ERPData = {
   user: AdminSessionUser;
   produtos: AdminProduto[];
-  categorias: Categoria[];
-  banners: Banner[];
-  fornecedores: Fornecedor[];
+  categorias: Plain<Categoria>[];
+  banners: Plain<Banner>[];
+  fornecedores: Plain<Fornecedor>[];
   movimentacoes: AdminMovimentacao[];
   compras: AdminCompra[];
   vendas: AdminVenda[];
   clientes: AdminCliente[];
   encomendas: AdminEncomenda[];
-  despesas: DespesaFinanceira[];
+  despesas: Plain<DespesaFinanceira>[];
 };

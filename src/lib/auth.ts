@@ -6,7 +6,11 @@ const COOKIE_NAME = "elegance_admin_session";
 const SESSION_DURATION_DAYS = 7;
 
 function getSecretKey(): string {
-  return process.env.ADMIN_SESSION_SECRET || "elegance-luxury-perfume-admin-session-secret-2026";
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("ADMIN_SESSION_SECRET deve ser configurada com pelo menos 32 caracteres.");
+  }
+  return secret;
 }
 
 export type AdminSessionUser = {
