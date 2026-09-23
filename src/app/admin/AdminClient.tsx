@@ -128,6 +128,7 @@ export default function AdminClient({ data }: AdminClientProps) {
       group: 'CATÁLOGO & ESTOQUE',
       items: [
         { id: 'produtos' as AdminTab, label: 'Produtos', icon: Sparkles, badge: data.produtos.length, badgeColor: 'bg-neutral-800 text-white' },
+        { id: 'categorias' as AdminTab, label: 'Categorias', icon: Tags, badge: null },
         { id: 'estoque' as AdminTab, label: 'Gestão de Estoque', icon: Boxes, badge: lowStockCount > 0 ? lowStockCount : null, badgeColor: 'bg-rose-500 text-white' },
         { id: 'banners' as AdminTab, label: 'Banners Vitrine', icon: ImageIcon, badge: null }
       ]
