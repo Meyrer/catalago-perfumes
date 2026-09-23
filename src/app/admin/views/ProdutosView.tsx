@@ -598,7 +598,7 @@ function ProductFormModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-      <div className="bg-white w-full max-w-3xl rounded-3xl border border-[#dcd5c7] shadow-2xl p-6 relative my-8 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white w-full max-w-4xl rounded-3xl border border-[#dcd5c7] shadow-2xl p-5 sm:p-6 relative my-8 max-h-[92vh] overflow-y-auto">
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#7a5828] to-[#a37941]" />
 
         <div className="flex items-center justify-between pb-4 border-b border-[#dcd5c7] mb-5">
@@ -622,7 +622,7 @@ function ProductFormModal({
         )}
 
         {/* BUSCADOR INTELIGENTE DE FRAGRÂNCIAS (OPEN BEAUTY FACTS / BASE LOCAL) */}
-        <div className="mb-5 p-4 rounded-2xl bg-[#fcfbf9] border border-[#dcd5c7]">
+        <div className="mb-4 p-3.5 rounded-2xl bg-[#fcfbf9] border border-[#dcd5c7]">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-[#7a5828] uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles size={14} /> Autocomplete Inteligente de Fragrâncias
@@ -672,7 +672,7 @@ function ProductFormModal({
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* PAINEL DE CÁLCULO DE LUCRO, MARGEM E MARKUP AO VIVO */}
-          <div className="p-4 rounded-2xl bg-[#f4efe6] border border-[#dcd5c7] grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+          <div className="p-3 rounded-2xl bg-[#f4efe6] border border-[#dcd5c7] grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
             <div>
               <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider block">Preço de Custo</span>
               <span className="text-base font-bold text-[#09090b]">
@@ -700,7 +700,9 @@ function ProductFormModal({
           </div>
 
           {/* DADOS BÁSICOS */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          <div className="pt-1">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#7a5828]">Identificação</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div className="sm:col-span-2">
               <label className="block text-[11px] font-bold text-[#52525b] uppercase tracking-wider mb-1">Nome do Produto *</label>
               <input type="text" required value={nome} onChange={e => setNome(e.target.value)} className="w-full px-3.5 py-2 bg-[#fcfbf9] text-xs font-bold text-[#09090b] rounded-xl border border-[#dcd5c7] outline-none" placeholder="Ex: Sauvage Eau de Toilette" />
@@ -709,9 +711,12 @@ function ProductFormModal({
               <label className="block text-[11px] font-bold text-[#52525b] uppercase tracking-wider mb-1">Marca / Grife *</label>
               <input type="text" required value={marca} onChange={e => setMarca(e.target.value)} className="w-full px-3.5 py-2 bg-[#fcfbf9] text-xs font-semibold text-[#09090b] rounded-xl border border-[#dcd5c7] outline-none" placeholder="Ex: Dior" />
             </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#7a5828]">Classificação</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
             <div>
               <label className="block text-[11px] font-bold text-[#52525b] uppercase tracking-wider mb-1">Categoria *</label>
               <select value={categoriaId} onChange={e => setCategoriaId(e.target.value)} className="w-full px-3 py-2 bg-[#fcfbf9] text-xs font-bold text-[#09090b] rounded-xl border border-[#dcd5c7] outline-none">
@@ -734,10 +739,13 @@ function ProductFormModal({
                 <option value="Masculino">Masculino</option>
               </select>
             </div>
+            </div>
           </div>
 
           {/* VALORES E ESTOQUE */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#7a5828]">Valores e estoque</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
             <div>
               <label className="block text-[11px] font-bold text-[#52525b] uppercase tracking-wider mb-1">Custo de Aquisição (R$)</label>
               <input type="number" step="0.01" value={precoCusto} onChange={e => setPrecoCusto(parseFloat(e.target.value) || 0)} className="w-full px-3.5 py-2 bg-[#fcfbf9] text-xs font-bold text-[#5c401c] rounded-xl border border-[#dcd5c7] outline-none" />
@@ -754,10 +762,13 @@ function ProductFormModal({
               <label className="block text-[11px] font-bold text-[#52525b] uppercase tracking-wider mb-1">Estoque Mínimo (Alerta)</label>
               <input type="number" min="0" value={estoqueMinimo} onChange={e => setEstoqueMinimo(parseInt(e.target.value) || 2)} className="w-full px-3.5 py-2 bg-[#fcfbf9] text-xs text-[#09090b] rounded-xl border border-[#dcd5c7] outline-none" />
             </div>
+            </div>
           </div>
 
           {/* CÓDIGOS, FORNECEDOR E TIPO */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+          <div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#7a5828]">Logística e disponibilidade</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
             <div>
               <label className="block text-[11px] font-bold text-[#52525b] uppercase tracking-wider mb-1">SKU / Código Interno</label>
               <input type="text" value={sku} onChange={e => setSku(e.target.value)} placeholder="ELG-DIO-100" className="w-full px-3.5 py-2 bg-[#fcfbf9] text-xs font-mono text-[#09090b] rounded-xl border border-[#dcd5c7] outline-none" />
@@ -792,6 +803,7 @@ function ProductFormModal({
                 <option value="">Nenhum vinculado</option>
                 {fornecedores.map(f => <option key={f.id} value={String(f.id)}>{f.nome}</option>)}
               </select>
+            </div>
             </div>
           </div>
 
