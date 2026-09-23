@@ -1235,14 +1235,27 @@ export default function CatalogClient({
               transition={{ duration: 0.2 }}
               ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="product-title" tabIndex={-1} className="product-dialog relative w-full bg-white z-10 my-auto"
             >
+              {/* Top Bar Mobile: Puxador centralizado e botão fechar em linha (sem risco de sobreposição) */}
+              <div className="flex md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-xs items-center justify-between px-4 py-3 border-b border-[#f0ede6]">
+                <div className="w-8" />
+                <span className="w-10 h-1.5 rounded-full bg-[#dcd5c7]" />
+                <button 
+                  aria-label="Fechar detalhes" onClick={() => setSelectedProduct(null)}
+                  className="w-8 h-8 rounded-full bg-white shadow-2xs border border-[#dcd5c7] text-[#09090b] flex items-center justify-center active:bg-[#faf8f5] transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Botão Fechar Desktop (>= 768px) */}
               <button 
                 aria-label="Fechar detalhes" onClick={() => setSelectedProduct(null)}
-                className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-20 w-9 h-9 rounded-full bg-white shadow-xs border border-[#dcd5c7] text-[#09090b] flex items-center justify-center hover:bg-[#faf8f5] hover:border-[#09090b] transition-colors cursor-pointer"
+                className="hidden md:flex absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-white shadow-xs border border-[#dcd5c7] text-[#09090b] items-center justify-center hover:bg-[#faf8f5] hover:border-[#09090b] transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
 
-              <div className="product-detail p-5 sm:p-8 grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-10 items-start">
+              <div className="product-detail p-4 sm:p-8 grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-10 items-start">
                 
                 {/* FOTO E GALERIA */}
                 <div className="order-1 md:order-1 md:col-span-7 flex flex-col gap-4">

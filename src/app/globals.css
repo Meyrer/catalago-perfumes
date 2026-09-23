@@ -316,7 +316,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 180px; }
     margin-bottom: 0; 
   }
   .product-dialog #product-title { font-size: 22px; line-height: 1.25; }
-  .product-dialog .product-detail { padding: 52px 16px 16px; gap: 16px; }
+  .product-dialog .product-detail { padding: 16px; gap: 16px; }
   
   .safe-bottom { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
   .catalog-toast { bottom: 80px; }
