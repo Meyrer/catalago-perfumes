@@ -158,18 +158,7 @@ export default function CatalogClient({
 
   // Curated Featured Products for Hero Showcase
   const heroFeaturedProducts = useMemo(() => {
-    const list: Produto[] = [];
-    const p1 = initialProdutos.find(p => p.nome.toLowerCase().includes('libre le parfum')) || initialProdutos.find(p => p.nome.toLowerCase().includes('libre'));
-    const p2 = initialProdutos.find(p => p.nome.toLowerCase().includes('sauvage'));
-    const p3 = initialProdutos.find(p => p.nome.toLowerCase().includes('crystal noir') && p.categoria?.nome?.toLowerCase().includes('mini'));
-    const p4 = initialProdutos.find(p => p.nome.toLowerCase().includes('bare vanilla'));
-
-    if (p1) list.push(p1);
-    if (p2) list.push(p2);
-    if (p3) list.push(p3);
-    if (p4) list.push(p4);
-
-    return list.length > 0 ? list : initialProdutos.slice(0, 4);
+    return initialProdutos.filter((produto) => produto.destaque).slice(0, 4);
   }, [initialProdutos]);
 
   const [featuredIndex, setFeaturedIndex] = useState(0);
