@@ -73,9 +73,71 @@ export async function createCategoria(data: FormData) {
   revalidatePath('/admin');
 }
 
-export async function deleteCategoria(id: number) {
+export async function updateCategoria(id: number, data: FormData) {
   await requireAdminAuth();
+  const nome = (data.get('nome') as string)?.trim();
+  if (!nome) throw new Error('O nome da categoria é obrigatório.');
+  
+  const file = data.get('imagem') as File;
+  const imagemUrlDirect = data.get('imagemUrlDirect') as string;
+  
+  let imagemUrl: string | null | undefined = undefined;
+
+  if (file && file.size > 0) {
+    imagemUrl = await saveFile(file);
+  } else if (typeof imagemUrlDirect === 'string') {
+    imagemUrl = imagemUrlDirect.trim() || null;
+  }
+
+  await prisma.categoria.update({
+    where: { id },
+    data: {
+      nome,
+      ...(imagemUrl !== undefined ? { imagemUrl } : {})
+    }
+  });
+
+  revalidatePath('/');
+  revalidatePath('/admin');
+}
+
+export async function deleteCategoria(id: number, targetCategoriaId?: number) {
+  await requireAdminAuth();
+
+  const count = await prisma.produto.count({ where: { categoriaId: id } });
+  if (count > 0) {
+    if (targetCategoriaId && targetCategoriaId !== id) {
+      await prisma.produto.updateMany({
+        where: { categoriaId: id },
+        data: { categoriaId: targetCategoriaId }
+      });
+    } else {
+      const otherCat = await prisma.categoria.findFirst({ where: { id: { not: id } } });
+      if (otherCat) {
+        await prisma.produto.updateMany({
+          where: { categoriaId: id },
+          data: { categoriaId: otherCat.id }
+        });
+      } else {
+        throw new Error('Não é possível excluir a única categoria existente enquanto houver produtos nela.');
+      }
+    }
+  }
+
   await prisma.categoria.delete({ where: { id } });
+  revalidatePath('/');
+  revalidatePath('/admin');
+}
+
+export async function vincularProdutosCategoria(categoriaId: number, produtoIds: number[]) {
+  await requireAdminAuth();
+  if (!produtoIds || produtoIds.length === 0) return;
+
+  await prisma.produto.updateMany({
+    where: { id: { in: produtoIds } },
+    data: { categoriaId }
+  });
+
   revalidatePath('/');
   revalidatePath('/admin');
 }
