@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       }) || await prisma.categoria.findFirst();
 
       if (!defaultCat) {
-        const newCat = await prisma.categoria.create({ data: { nome: 'Perfumes Importados' } });
+      const newCat = await prisma.categoria.create({ data: { nome: 'Perfumes' } });
         targetCategoriaId = newCat.id;
       } else {
         targetCategoriaId = defaultCat.id;
