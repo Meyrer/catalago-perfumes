@@ -36,13 +36,17 @@ export default function FragranceSearch({
 
   // Fecha o dropdown ao clicar fora
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   // Debounced search com cancelamento de requisição anterior (AbortController)
@@ -191,7 +195,7 @@ export default function FragranceSearch({
       {/* Dropdown de Resultados Inteligentes */}
       {isOpen && query.trim().length >= 3 && (
         <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border-2 border-[#dcd5c7] shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
-          <div className="p-2 sm:p-2.5 max-h-[380px] overflow-y-auto divide-y divide-[#dcd5c7]">
+          <div className="p-2 sm:p-2.5 max-h-[70vh] sm:max-h-[420px] overflow-y-auto divide-y divide-[#dcd5c7]">
             {results.length > 0 ? (
               <div className="space-y-1">
                 <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#7a5828] flex items-center justify-between">

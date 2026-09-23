@@ -606,7 +606,7 @@ export default function CatalogClient({
       </div>
 
       {/* 2. HEADER ELEGANTE */}
-      <header className={`catalog-header sticky top-0 z-40 transition-all duration-300 w-full max-w-full overflow-hidden ${
+      <header className={`catalog-header sticky top-0 z-40 transition-all duration-300 w-full max-w-full overflow-visible ${
         isScrolled 
           ? 'bg-white/95 backdrop-blur-md border-b border-[#dcd5c7] shadow-[0_2px_15px_rgba(0,0,0,0.04)] py-2.5 sm:py-3' 
           : 'bg-white border-b border-[#dcd5c7] py-3 sm:py-4'
@@ -2153,7 +2153,7 @@ export default function CatalogClient({
       />
 
       {/* 10. BOTAO FLUTUANTE WHATSAPP */}
-      <div className="contact-float fixed bottom-20 md:bottom-6 right-4 md:right-6 z-40">
+      <div className="contact-float hidden md:block fixed bottom-6 right-6 z-40">
         <button
           onClick={() => generalWhatsAppContact()}
           className="group flex items-center gap-2 bg-[#15803d] hover:bg-[#166534] text-white p-3 md:px-4 md:py-3 rounded-full shadow-lg shadow-emerald-700/30 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"

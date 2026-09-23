@@ -252,8 +252,9 @@ html { scroll-behavior: smooth; scroll-padding-top: 180px; }
     gap: 4px; 
   }
   .availability-tabs button {
-    padding: 8px 4px;
-    font-size: 11.5px;
+    padding: 8px 2px;
+    font-size: 11px;
+    letter-spacing: -0.02em;
     min-height: 38px;
     display: flex;
     align-items: center;
