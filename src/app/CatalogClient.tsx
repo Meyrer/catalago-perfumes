@@ -744,14 +744,14 @@ export default function CatalogClient({
                 WebkitOverflowScrolling: 'touch',
                 touchAction: 'pan-x pan-y',
               }}
-              className="w-full min-w-0 overflow-x-auto no-scrollbar touch-scroll-x select-none overscroll-x-contain cursor-grab active:cursor-grabbing px-1 sm:px-2 py-1"
+              className="w-full min-w-0 overflow-x-auto no-scrollbar touch-scroll-x select-none overscroll-x-contain cursor-grab active:cursor-grabbing px-1 sm:px-2 py-2"
             >
               <ul className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap w-max shrink-0 text-xs sm:text-[13px]">
                 <li>
                   <button
                     data-active={activeCategory === 'todos'}
                     onClick={() => selectCategory('todos')}
-                    className={`px-3.5 py-1.5 rounded-full transition-all border shrink-0 ${
+                    className={`px-3.5 py-2.5 rounded-full transition-all border shrink-0 ${
                       activeCategory === 'todos' 
                         ? 'bg-[#09090b] border-[#09090b] text-white font-bold shadow-xs' 
                         : 'border-[#dcd5c7] bg-white text-[#09090b] font-semibold hover:border-[#09090b] hover:bg-[#faf8f5] shadow-2xs'
@@ -768,7 +768,7 @@ export default function CatalogClient({
                       <button
                         data-active={isSelected}
                         onClick={() => selectCategory(cat.nome)}
-                        className={`px-3.5 py-1.5 rounded-full transition-all border shrink-0 ${
+                        className={`px-3.5 py-2.5 rounded-full transition-all border shrink-0 ${
                           isSelected
                             ? 'bg-[#09090b] border-[#09090b] text-white font-bold shadow-xs'
                             : 'border-[#dcd5c7] bg-white text-[#09090b] font-semibold hover:border-[#09090b] hover:bg-[#faf8f5] shadow-2xs'
@@ -784,7 +784,7 @@ export default function CatalogClient({
                   <button
                     data-active={activeCategory === 'promocoes'}
                     onClick={() => selectCategory('promocoes')}
-                    className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 border shrink-0 ${
+                    className={`px-3.5 py-2.5 rounded-full transition-all flex items-center gap-1.5 border shrink-0 ${
                       activeCategory === 'promocoes'
                         ? 'bg-[#7a5828] border-[#7a5828] text-white font-bold shadow-xs'
                         : 'border-[#cbbca8] bg-[#f8f2e9] text-[#6b4719] font-bold hover:bg-[#f0e3ce] shadow-2xs'
