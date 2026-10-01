@@ -188,7 +188,7 @@ export default function AdminClient({ data }: AdminClientProps) {
                 {!isSidebarCollapsed && (
                   <div className="min-w-0 transition-opacity duration-200">
                     <h1 className="font-serif font-bold text-sm tracking-wide text-white uppercase leading-none">
-                      Elegance
+                      Perfumio
                     </h1>
                     <span className="text-[10px] text-[#a1a1aa] uppercase tracking-wider block mt-1 font-mono">
                       Boutique ERP

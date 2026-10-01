@@ -192,7 +192,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
             Loja Operacional & Sincronizada
           </div>
           <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#09090b]">
-            Visão Geral da Elegance
+            Visão Geral da Perfumio
           </h2>
           <p className="text-xs text-[#52525b] mt-0.5">
             Métricas em tempo real de faturamento, estoque, vendas e pedidos sob encomenda.

@@ -618,7 +618,7 @@ export default function CatalogClient({
             <div className="flex items-center gap-3">
               <a href="#" onClick={clearFilters} className="flex flex-col group">
                 <span className="text-xl sm:text-2xl lg:text-3xl font-serif tracking-[0.18em] font-medium text-[#09090b] group-hover:text-[#7a5828] transition-colors">
-                  ELEGANCE
+                  PERFUMIO
                 </span>
                 <span className="text-[9px] uppercase tracking-[0.35em] text-[#3f3f46] font-semibold -mt-1 font-sans">
                   Pronta Entrega & Encomendas
@@ -881,7 +881,7 @@ export default function CatalogClient({
                     Solicitar perfume sob encomenda <ArrowRight size={16} />
                   </button>
                   <a 
-                    href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent('Olá! Gostaria de tirar uma dúvida sobre os perfumes da Elegance.')}`}
+                    href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent('Olá! Gostaria de tirar uma dúvida sobre os perfumes da Perfumio.')}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="button-text flex items-center gap-1.5 text-xs text-[#27272a] hover:text-[#09090b] font-semibold transition-colors"
@@ -2252,7 +2252,7 @@ export default function CatalogClient({
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div>
             <span className="text-xl font-serif tracking-[0.2em] font-medium text-[#09090b] block">
-              ELEGANCE
+              PERFUMIO
             </span>
             <p className="text-xs text-[#27272a] font-medium mt-1">
               Catálogo de Cosméticos e Perfumes Importados • Pronta Entrega e Encomendas.
@@ -2260,7 +2260,7 @@ export default function CatalogClient({
           </div>
           <div className="text-xs text-[#27272a] font-medium space-y-1">
             <p>Atendimento exclusivo via WhatsApp • Pedidos e entregas sob consulta.</p>
-            <p>© {new Date().getFullYear()} Elegance. Todos os direitos reservados.</p>
+            <p>© {new Date().getFullYear()} Perfumio. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>

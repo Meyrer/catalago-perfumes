@@ -72,7 +72,7 @@ export default function AdminLoginForm() {
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-serif tracking-[0.16em] font-medium text-[#09090b]">
-            ELEGANCE
+            PERFUMIO
           </h1>
           <p className="text-[10px] uppercase tracking-[0.25em] text-[#7a5828] font-bold mt-1">
             Painel Administrativo

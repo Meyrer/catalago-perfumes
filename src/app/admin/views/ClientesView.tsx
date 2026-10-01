@@ -159,7 +159,7 @@ export default function ClientesView({ data }: Props) {
         <div>
           <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#09090b] flex items-center gap-2.5">
             <Users size={22} className="text-[#7a5828]" />
-            Clientes VIP & CRM da Elegance
+            Clientes VIP & CRM da Perfumio
           </h2>
           <p className="text-xs text-[#52525b] mt-0.5">
             Histórico de consumo, LTV (Total gasto), preferências olfativas e contato direto pelo WhatsApp.

@@ -251,7 +251,7 @@ export default function AdminChangePasswordForm({ user }: Props) {
             <LogOut size={13} /> Sair / Trocar de Usuário
           </button>
           <span className="text-[10px] text-[#71717a]">
-            Elegance Admin v2.0
+            Perfumio Admin v2.0
           </span>
         </div>
       </div>

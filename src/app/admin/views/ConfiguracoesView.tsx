@@ -234,7 +234,7 @@ export function ConfiguracoesView({ user }: ConfiguracoesViewProps) {
             <div className="space-y-3 text-xs">
               <div>
                 <span className="text-[10px] text-[#a1a1aa] uppercase font-bold tracking-wider block">Nome Comercial</span>
-                <span className="font-semibold text-[#09090b]">Elegance Perfumes Importados</span>
+                <span className="font-semibold text-[#09090b]">Perfumio Perfumes Importados</span>
               </div>
 
               <div>

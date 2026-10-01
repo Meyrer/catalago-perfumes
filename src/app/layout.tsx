@@ -15,7 +15,7 @@ const serifFont = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "ELEGANCE • Alta Perfumaria & Beleza",
+  title: "Perfumio • Alta Perfumaria & Beleza",
   description: "Catálogo exclusivo de maquiagens, perfumes, skincare e cosméticos importados com atendimento personalizado pelo WhatsApp.",
 };
 

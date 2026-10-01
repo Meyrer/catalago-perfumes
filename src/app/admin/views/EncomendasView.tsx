@@ -122,7 +122,7 @@ export default function EncomendasView({ data }: Props) {
     else if (enc.status === 'RECEBIDO' || enc.status === 'PRONTO_ENTREGA') statusText = 'seu perfume chegou na loja e já está pronto para entrega/retirada';
     else statusText = `houve uma atualização no seu pedido: ${STATUS_CONFIG[enc.status]?.label || enc.status}`;
 
-    const text = `Olá, ${enc.nomeCliente}! Tudo bem? Passando para avisar que sobre sua encomenda *${enc.descricaoItem}* (${enc.numero}): ${statusText}! Qualquer dúvida estou à disposição na Elegance. ✨`;
+    const text = `Olá, ${enc.nomeCliente}! Tudo bem? Passando para avisar que sobre sua encomenda *${enc.descricaoItem}* (${enc.numero}): ${statusText}! Qualquer dúvida estou à disposição na Perfumio. ✨`;
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   };
 
