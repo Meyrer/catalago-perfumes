@@ -67,7 +67,7 @@ export function isVolumeBadge(badge?: string | null, volume?: string | null): bo
   return /^\d+\s*ml$/i.test(b) || (v !== '' && b === v);
 }
 
-function hasVisibleDiscount(produto: Produto): boolean {
+function hasVisibleDiscount(produto: Produto): produto is Produto & { precoOriginal: number } {
   return produto.precoOriginal !== null && produto.precoOriginal > 0 &&
     (produto.precoOriginal - produto.precoVista) / produto.precoOriginal >= 0.05;
 }
