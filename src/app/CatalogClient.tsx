@@ -834,7 +834,7 @@ export default function CatalogClient({
               </p>
 
               {/* 3 Selos de Confiança Mobile */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-2 mt-1">
+              <div className="flex flex-wrap items-center gap-1.5 py-2 mt-1">
                 <span className="inline-flex items-center gap-1 bg-white border border-[#dcd5c7] text-[#09090b] text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap shadow-2xs">
                   💎 100% Originais
                 </span>
