@@ -583,10 +583,6 @@ export default function CatalogClient({
     return result;
   }, [initialProdutos, availabilityFilter, activeCategory, selectedBrand, searchTerm, onlyPromos, sortBy, priceRange]);
 
-  const bestSellerProducts = initialProdutos.filter(p => p.badge === 'MAIS VENDIDO' || p.destaque).slice(0, 2);
-  const readyProducts = initialProdutos.filter(isProdutoProntaEntrega).slice(0, 4);
-  const orderProducts = initialProdutos.filter(p => !isProdutoProntaEntrega(p)).slice(0, 4);
-
   // Related products for detail modal
   const relatedProducts = useMemo(() => {
     if (!selectedProduct) return [];
@@ -845,35 +841,6 @@ export default function CatalogClient({
       </header>
 
       <main id="conteudo">
-      {!hasFilters && (
-        <div className="mobile-product-sections md:hidden">
-          {bestSellerProducts.length > 0 && (
-            <section className="shell mobile-product-section" aria-labelledby="mais-vendidos">
-              <div className="mobile-section-heading">
-                <h2 id="mais-vendidos">Mais vendidos</h2>
-              </div>
-              <div className="product-grid">
-                {bestSellerProducts.map(produto => (
-                  <ProductCard key={produto.id} produto={produto} isFavorited={favorites.includes(produto.id)} onToggleFavorite={toggleFavorite} onSelectProduct={chooseProduct} onAddToCart={addToCart} onBuyWhatsApp={buyDirectOnWhatsApp} />
-                ))}
-              </div>
-            </section>
-          )}
-          {readyProducts.length > 0 && (
-            <section className="shell mobile-product-section" aria-labelledby="pronta-entrega">
-              <div className="mobile-section-heading">
-                <h2 id="pronta-entrega">Pronta entrega</h2>
-                <button type="button" onClick={() => { setAvailabilityFilter('PRONTA_ENTREGA'); scrollToCatalog(); }}>Ver todos</button>
-              </div>
-              <div className="product-grid">
-                {readyProducts.map(produto => (
-                  <ProductCard key={produto.id} produto={produto} isFavorited={favorites.includes(produto.id)} onToggleFavorite={toggleFavorite} onSelectProduct={chooseProduct} onAddToCart={addToCart} onBuyWhatsApp={buyDirectOnWhatsApp} />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      )}
       {!hasFilters && (
         <>
           {/* HERO DESKTOP COMPLETO (>= 768px) */}
@@ -1189,20 +1156,6 @@ export default function CatalogClient({
 
         {filteredProdutos.length > visibleCount && <div className="load-more"><p>Mostrando {visibleCount} de {filteredProdutos.length} produtos</p><button className="button-secondary" onClick={()=>setVisibleCount(n=>n+12)}>Ver mais produtos <Plus size={16}/></button></div>}
       </section>
-
-      {!hasFilters && orderProducts.length > 0 && (
-        <section className="shell mobile-product-section md:hidden" aria-labelledby="sob-encomenda">
-          <div className="mobile-section-heading">
-            <h2 id="sob-encomenda">Sob encomenda</h2>
-            <button type="button" onClick={() => { setAvailabilityFilter('ENCOMENDA'); scrollToCatalog(); }}>Ver todos</button>
-          </div>
-          <div className="product-grid">
-            {orderProducts.map(produto => (
-              <ProductCard key={produto.id} produto={produto} isFavorited={favorites.includes(produto.id)} onToggleFavorite={toggleFavorite} onSelectProduct={chooseProduct} onAddToCart={addToCart} onBuyWhatsApp={buyDirectOnWhatsApp} />
-            ))}
-          </div>
-        </section>
-      )}
 
       <section id="secao-encomenda-customizada" className="order-section shell">
         <div className="order-intro">
@@ -2369,13 +2322,13 @@ function ProductCard({
           <button 
             className="button-primary flex items-center justify-center gap-1.5 cursor-pointer" 
             onClick={e => onBuyWhatsApp(produto, e)}
-            title={isProntaEntrega ? 'Reservar no WhatsApp' : 'Encomendar no WhatsApp'}
+            title={isProntaEntrega ? 'Comprar pelo WhatsApp' : 'Consultar pelo WhatsApp'}
           >
-            <MessageCircle size={15} className="hidden sm:block" />
-            <span>{isProntaEntrega ? 'Reservar' : 'Pedir'}</span>
+            <MessageCircle size={15} />
+            <span>{isProntaEntrega ? 'Comprar no WhatsApp' : 'Consultar no WhatsApp'}</span>
           </button>
           <button 
-            className="button-secondary flex items-center justify-center cursor-pointer" 
+            className="button-secondary hidden md:flex items-center justify-center cursor-pointer"
             aria-label={'Adicionar à sacola: ' + produto.nome} 
             onClick={e => onAddToCart(produto, e)}
             title="Adicionar à sacola"

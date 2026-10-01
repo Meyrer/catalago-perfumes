@@ -237,7 +237,8 @@ html { scroll-behavior: smooth; scroll-padding-top: 180px; }
   .breadcrumb { font-size: 11px; margin-bottom: 4px; }
   
   .catalog-toolbar { gap: 8px; margin-bottom: 12px; }
-  .catalog-toolbar .sort-control, .catalog-toolbar .availability-tabs { display: none; }
+  .catalog-toolbar .sort-control { display: none; }
+  .catalog-toolbar .availability-tabs { display: grid; }
   .availability-drawer-options button { font-size: 12px; padding-inline: 4px; }
   .filter-toggle {
     display: inline-flex;
