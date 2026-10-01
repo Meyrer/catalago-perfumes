@@ -8,6 +8,8 @@ import FragrancePreviewModal from './FragrancePreviewModal';
 interface Props {
   placeholder?: string;
   className?: string;
+  query?: string;
+  onQueryChange?: (query: string) => void;
   onSelectLocalProduct?: (productId: number) => void;
   onManualCreate?: () => void;
   onSuccessImport?: (importedProduct: any) => void;
@@ -17,12 +19,16 @@ interface Props {
 export default function FragranceSearch({
   placeholder = 'Buscar fragrância por nome, marca ou versão...',
   className = '',
+  query: controlledQuery,
+  onQueryChange,
   onSelectLocalProduct,
   onManualCreate,
   onSuccessImport,
   autoFocus = false,
 }: Props) {
-  const [query, setQuery] = useState('');
+  const [internalQuery, setInternalQuery] = useState('');
+  const query = controlledQuery ?? internalQuery;
+  const setQuery = onQueryChange ?? setInternalQuery;
   const [results, setResults] = useState<FragranceSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -53,7 +59,7 @@ export default function FragranceSearch({
   useEffect(() => {
     const cleanQuery = query.trim();
 
-    if (cleanQuery.length < 3) {
+    if (cleanQuery.length < 3 || containerRef.current?.offsetParent === null) {
       setResults([]);
       setIsLoading(false);
       setError(null);

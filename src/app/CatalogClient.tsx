@@ -67,6 +67,11 @@ export function isVolumeBadge(badge?: string | null, volume?: string | null): bo
   return /^\d+\s*ml$/i.test(b) || (v !== '' && b === v);
 }
 
+function hasVisibleDiscount(produto: Produto): boolean {
+  return produto.precoOriginal !== null && produto.precoOriginal > 0 &&
+    (produto.precoOriginal - produto.precoVista) / produto.precoOriginal >= 0.05;
+}
+
 function renderGuiaRendimento(selectedProduct: Produto) {
   const isMini = Boolean(selectedProduct.categoria?.nome?.toLowerCase().includes('mini') || (selectedProduct.volume && selectedProduct.volume.includes('25ml')));
   const isPerf = Boolean(selectedProduct.categoria?.nome?.toLowerCase().includes('perfume') || (selectedProduct.volume && (selectedProduct.volume.includes('80ml') || selectedProduct.volume.includes('90ml') || selectedProduct.volume.includes('100ml'))));
@@ -152,9 +157,10 @@ export default function CatalogClient({
     if (activeCategory !== 'todos') count++;
     if (selectedBrand !== 'todas') count++;
     if (priceRange !== 'todos') count++;
+    if (availabilityFilter !== 'TODOS') count++;
     if (onlyPromos) count++;
     return count;
-  }, [activeCategory, selectedBrand, priceRange, onlyPromos]);
+  }, [activeCategory, selectedBrand, priceRange, availabilityFilter, onlyPromos]);
 
   // Curated Featured Products for Hero Showcase
   const heroFeaturedProducts = useMemo(() => {
@@ -166,10 +172,20 @@ export default function CatalogClient({
   // Auto rotate featured showcase
   useEffect(() => {
     if (heroFeaturedProducts.length <= 1) return;
-    const timer = setInterval(() => {
-      setFeaturedIndex(prev => (prev + 1) % heroFeaturedProducts.length);
-    }, 6000);
-    return () => clearInterval(timer);
+    const desktop = window.matchMedia('(min-width: 768px)');
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const syncRotation = () => {
+      if (timer) clearInterval(timer);
+      timer = desktop.matches
+        ? setInterval(() => setFeaturedIndex(prev => (prev + 1) % heroFeaturedProducts.length), 6000)
+        : undefined;
+    };
+    syncRotation();
+    desktop.addEventListener('change', syncRotation);
+    return () => {
+      if (timer) clearInterval(timer);
+      desktop.removeEventListener('change', syncRotation);
+    };
   }, [heroFeaturedProducts.length]);
 
   const currentFeatured = heroFeaturedProducts[featuredIndex] || heroFeaturedProducts[0];
@@ -321,9 +337,9 @@ export default function CatalogClient({
   // Nomes concisos e elegantes para o menu superior (sem cortes)
   const getCategoryShortName = (nome: string) => {
     const clean = nome.trim().toLowerCase();
-    if (clean.includes('mini') || clean.includes('brand')) return 'Mini Brands (25ml)';
+    if (clean.includes('mini') || clean.includes('brand')) return 'Mini 25ml';
     if (clean.includes('splash')) return 'Body Splash';
-    if (clean.includes('creme') || clean.includes('loção') || clean.includes('locao')) return 'Cremes & Loções';
+    if (clean.includes('creme') || clean.includes('loção') || clean.includes('locao')) return 'Cremes';
     if (clean.includes('feminino')) return 'Femininos';
     if (clean.includes('masculino')) return 'Masculinos';
     return nome;
@@ -342,9 +358,10 @@ export default function CatalogClient({
       'mini brands',
       'brand collection',
       'body splash',
-      'cremes e loções',
+      'perfumes',
       'perfumes femininos',
-      'perfumes masculinos'
+      'perfumes masculinos',
+      'cremes e loções'
     ];
     return [...categorias]
       .filter(cat => getCategoryCount(cat.nome) > 0)
@@ -453,12 +470,13 @@ export default function CatalogClient({
   const buyDirectOnWhatsApp = (produto: Produto, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const formattedPrice = produto.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const productName = `${produto.nome}${produto.volume ? ` de ${produto.volume}` : ''}`;
     
     let msg = "";
     if (isProdutoProntaEntrega(produto)) {
-      msg = `Olá! Vi no catálogo o produto *${produto.nome}* (${produto.marca}) a *PRONTA ENTREGA* no valor de ${formattedPrice}. Gostaria de reservar para entrega/retirada!`;
+      msg = `Olá! Tenho interesse no *${productName}* (${produto.marca}), no valor de ${formattedPrice}. Ele ainda está disponível para entrega ou retirada?`;
     } else {
-      msg = `Olá! Vi no catálogo o produto *${produto.nome}* (${produto.marca}) no valor de ${formattedPrice} e gostaria de fazer a *ENCOMENDA* dele. Quando chega o próximo pedido?`;
+      msg = `Olá! Gostaria de encomendar o *${productName}* (${produto.marca}), no valor de ${formattedPrice}. Qual é o prazo de chegada?`;
     }
 
     window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -523,7 +541,7 @@ export default function CatalogClient({
     if (activeCategory !== 'todos' && activeCategory !== 'promocoes') {
       result = result.filter(p => p.categoria.nome.toLowerCase() === activeCategory.toLowerCase());
     } else if (activeCategory === 'promocoes') {
-      result = result.filter(p => (p.precoOriginal && p.precoOriginal > p.precoVista) || p.badge === 'OFERTA');
+      result = result.filter(p => hasVisibleDiscount(p) || p.badge === 'OFERTA');
     }
 
     // Brand filter
@@ -545,7 +563,7 @@ export default function CatalogClient({
 
     // Promo filter
     if (onlyPromos) {
-      result = result.filter(p => (p.precoOriginal && p.precoOriginal > p.precoVista) || p.badge === 'OFERTA');
+      result = result.filter(p => hasVisibleDiscount(p) || p.badge === 'OFERTA');
     }
 
     if (priceRange === 'ate-100') result = result.filter(p => p.precoVista <= 100);
@@ -565,6 +583,10 @@ export default function CatalogClient({
     return result;
   }, [initialProdutos, availabilityFilter, activeCategory, selectedBrand, searchTerm, onlyPromos, sortBy, priceRange]);
 
+  const bestSellerProducts = initialProdutos.filter(p => p.badge === 'MAIS VENDIDO' || p.destaque).slice(0, 2);
+  const readyProducts = initialProdutos.filter(isProdutoProntaEntrega).slice(0, 4);
+  const orderProducts = initialProdutos.filter(p => !isProdutoProntaEntrega(p)).slice(0, 4);
+
   // Related products for detail modal
   const relatedProducts = useMemo(() => {
     if (!selectedProduct) return [];
@@ -582,7 +604,7 @@ export default function CatalogClient({
       
       <a href="#produtos" className="skip-link">Ir para os produtos</a>
       {/* 1. TOP ANNOUNCEMENT BAR */}
-      <div className="bg-[#18181b] text-white py-2 px-3 sm:px-4 text-xs tracking-wide w-full overflow-hidden">
+      <div className="hidden md:block bg-[#18181b] text-white py-2 px-3 sm:px-4 text-xs tracking-wide w-full overflow-hidden">
         <div className="max-w-7xl mx-auto flex justify-between items-center text-[11px] md:text-xs">
           <p className="flex items-center gap-2 mx-auto md:mx-0 font-medium text-white/90 text-center">
             <Sparkles size={13} className="text-[#c5a880] shrink-0" />
@@ -621,7 +643,8 @@ export default function CatalogClient({
                   PERFUMIO
                 </span>
                 <span className="text-[9px] uppercase tracking-[0.35em] text-[#3f3f46] font-semibold -mt-1 font-sans">
-                  Pronta Entrega & Encomendas
+                  <span className="md:hidden">Perfumes, body splash e cuidados</span>
+                  <span className="hidden md:inline">Pronta Entrega & Encomendas</span>
                 </span>
               </a>
             </div>
@@ -629,6 +652,8 @@ export default function CatalogClient({
             {/* SEARCH BAR (DESKTOP) */}
             <div className="hidden md:flex flex-1 max-w-xl relative">
               <FragranceSearch
+                query={searchTerm}
+                onQueryChange={setSearchTerm}
                 onSelectLocalProduct={(id) => {
                   const p = initialProdutos.find(prod => prod.id === id);
                   if (p) chooseProduct(p);
@@ -655,7 +680,7 @@ export default function CatalogClient({
               <button 
                 onClick={() => generalWhatsAppContact()}
                 title="Conversar no WhatsApp"
-                className="p-2.5 text-[#09090b] hover:text-[#15803d] hover:bg-[#f7f4ef] rounded-full transition-all flex items-center justify-center cursor-pointer"
+                className="hidden md:flex p-2.5 text-[#09090b] hover:text-[#15803d] hover:bg-[#f7f4ef] rounded-full transition-all items-center justify-center cursor-pointer"
               >
                 <MessageCircle size={20} />
               </button>
@@ -694,9 +719,11 @@ export default function CatalogClient({
           </div>
 
           {/* SEARCH BAR (MOBILE) */}
-          <div className="mt-3 md:hidden relative mobile-search-container">
+          <div className="mt-2 md:hidden relative mobile-search-container">
             <FragranceSearch
-              placeholder="Buscar perfume, marca ou notas..."
+              placeholder="Buscar perfume, marca ou produto..."
+              query={searchTerm}
+              onQueryChange={setSearchTerm}
               onSelectLocalProduct={(id) => {
                 const p = initialProdutos.find(prod => prod.id === id);
                 if (p) chooseProduct(p);
@@ -709,7 +736,7 @@ export default function CatalogClient({
           </div>
 
           {/* CATEGORIES NAVIGATION WITH FLUID TOUCH, DRAG & CHEVRON CONTROLS (SEM CORTES) */}
-          <div className="relative mt-2.5 pt-2 border-t border-[#dcd5c7] flex items-center min-w-0 w-full overflow-hidden">
+          <div className="relative mt-1.5 pt-1.5 border-t border-[#dcd5c7] flex items-center min-w-0 w-full overflow-hidden">
             {/* Scroll Left Button (Desktop only to prevent mobile overlay) */}
             {canScrollLeft && (
               <button
@@ -757,7 +784,20 @@ export default function CatalogClient({
                         : 'border-[#dcd5c7] bg-white text-[#09090b] font-semibold hover:border-[#09090b] hover:bg-[#faf8f5] shadow-2xs'
                     }`}
                   >
-                    Todos os produtos ({initialProdutos.length})
+                    Todos <span className="hidden md:inline">os produtos</span> ({initialProdutos.length})
+                  </button>
+                </li>
+                <li>
+                  <button
+                    data-active={activeCategory === 'promocoes'}
+                    onClick={() => selectCategory('promocoes')}
+                    className={`px-3.5 py-2.5 rounded-full transition-all flex items-center gap-1.5 border shrink-0 ${
+                      activeCategory === 'promocoes'
+                        ? 'bg-[#7a5828] border-[#7a5828] text-white font-bold shadow-xs'
+                        : 'border-[#cbbca8] bg-[#f8f2e9] text-[#6b4719] font-bold hover:bg-[#f0e3ce] shadow-2xs'
+                    }`}
+                  >
+                    <Sparkles size={12} /> Ofertas
                   </button>
                 </li>
                 {sortedCategorias.map(cat => {
@@ -780,19 +820,6 @@ export default function CatalogClient({
                     </li>
                   );
                 })}
-                <li>
-                  <button
-                    data-active={activeCategory === 'promocoes'}
-                    onClick={() => selectCategory('promocoes')}
-                    className={`px-3.5 py-2.5 rounded-full transition-all flex items-center gap-1.5 border shrink-0 ${
-                      activeCategory === 'promocoes'
-                        ? 'bg-[#7a5828] border-[#7a5828] text-white font-bold shadow-xs'
-                        : 'border-[#cbbca8] bg-[#f8f2e9] text-[#6b4719] font-bold hover:bg-[#f0e3ce] shadow-2xs'
-                    }`}
-                  >
-                    <Sparkles size={12} /> Ofertas
-                  </button>
-                </li>
               </ul>
             </nav>
 
@@ -819,50 +846,36 @@ export default function CatalogClient({
 
       <main id="conteudo">
       {!hasFilters && (
+        <div className="mobile-product-sections md:hidden">
+          {bestSellerProducts.length > 0 && (
+            <section className="shell mobile-product-section" aria-labelledby="mais-vendidos">
+              <div className="mobile-section-heading">
+                <h2 id="mais-vendidos">Mais vendidos</h2>
+              </div>
+              <div className="product-grid">
+                {bestSellerProducts.map(produto => (
+                  <ProductCard key={produto.id} produto={produto} isFavorited={favorites.includes(produto.id)} onToggleFavorite={toggleFavorite} onSelectProduct={chooseProduct} onAddToCart={addToCart} onBuyWhatsApp={buyDirectOnWhatsApp} />
+                ))}
+              </div>
+            </section>
+          )}
+          {readyProducts.length > 0 && (
+            <section className="shell mobile-product-section" aria-labelledby="pronta-entrega">
+              <div className="mobile-section-heading">
+                <h2 id="pronta-entrega">Pronta entrega</h2>
+                <button type="button" onClick={() => { setAvailabilityFilter('PRONTA_ENTREGA'); scrollToCatalog(); }}>Ver todos</button>
+              </div>
+              <div className="product-grid">
+                {readyProducts.map(produto => (
+                  <ProductCard key={produto.id} produto={produto} isFavorited={favorites.includes(produto.id)} onToggleFavorite={toggleFavorite} onSelectProduct={chooseProduct} onAddToCart={addToCart} onBuyWhatsApp={buyDirectOnWhatsApp} />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+      {!hasFilters && (
         <>
-          {/* HERO MOBILE COMPACTO (< 768px) - FOCO EM CONVERSÃO E PRODUTOS NA 1ª DOBRA */}
-          <section className="block md:hidden px-3 sm:px-4 pt-2.5 pb-1">
-            <div className="bg-gradient-to-br from-[#fcfbf9] via-[#f8f4ed] to-[#ede3d5] rounded-2xl border-2 border-[#dcd5c7] p-3.5 sm:p-4 shadow-2xs">
-              <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-[#7a5828] mb-1">
-                <Sparkles size={12} /> Alta Perfumaria & Cuidados
-              </div>
-              <h1 className="font-serif text-lg font-bold text-[#09090b] leading-tight">
-                Encontre sua próxima fragrância.
-              </h1>
-              <p className="text-xs text-[#27272a] font-medium mt-1 leading-relaxed">
-                Importados 100% originais a pronta entrega ou sob encomenda direta pelo WhatsApp.
-              </p>
-
-              {/* 3 Selos de Confiança Mobile */}
-              <div className="flex flex-wrap items-center gap-1.5 py-2 mt-1">
-                <span className="inline-flex items-center gap-1 bg-white border border-[#dcd5c7] text-[#09090b] text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap shadow-2xs">
-                  💎 100% Originais
-                </span>
-                <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-300 text-emerald-900 text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap shadow-2xs">
-                  📦 Pronta Entrega
-                </span>
-                <span className="inline-flex items-center gap-1 bg-[#fcf7ee] border border-[#e8d7be] text-[#7a5828] text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap shadow-2xs">
-                  ✨ Encomendas 50/50
-                </span>
-              </div>
-
-              {/* Atalho Rápido para Encomenda */}
-              <div className="mt-2 bg-white/90 border border-[#dcd5c7] rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-2xs">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-bold text-[#09090b] truncate">Não achou seu perfume?</p>
-                  <p className="text-[10px] text-[#27272a] truncate">Encomendamos qualquer grife com 50% de sinal.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => openCustomOrderModal()}
-                  className="shrink-0 bg-[#09090b] text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-[#27272a] transition-colors cursor-pointer"
-                >
-                  <Sparkles size={11} className="text-[#c5a880]" /> Pedir
-                </button>
-              </div>
-            </div>
-          </section>
-
           {/* HERO DESKTOP COMPLETO (>= 768px) */}
           <section className="catalog-hero hidden md:block">
             <div className="hero-inner shell">
@@ -1085,7 +1098,7 @@ export default function CatalogClient({
             )}
           </button>
 
-          <label className="sort-control">
+          <label className="sort-control hidden md:flex">
             Ordenar por{' '}
             <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}>
               <option value="mais-vendidos">Mais vendidos</option>
@@ -1132,6 +1145,7 @@ export default function CatalogClient({
               {searchTerm.trim() ? 'Busca: “' + searchTerm.trim() + '”' : 'Filtros aplicados'}
               {activeCategory !== 'todos' ? ' · ' + activeCategory : ''}
               {selectedBrand !== 'todas' ? ' · ' + selectedBrand : ''}
+              {availabilityFilter !== 'TODOS' ? ' · ' + (availabilityFilter === 'PRONTA_ENTREGA' ? 'Pronta entrega' : 'Sob encomenda') : ''}
               {priceRange !== 'todos' ? ' · Faixa de preço selecionada' : ''}
               {onlyPromos ? ' · Somente ofertas' : ''}
             </span>
@@ -1175,6 +1189,20 @@ export default function CatalogClient({
 
         {filteredProdutos.length > visibleCount && <div className="load-more"><p>Mostrando {visibleCount} de {filteredProdutos.length} produtos</p><button className="button-secondary" onClick={()=>setVisibleCount(n=>n+12)}>Ver mais produtos <Plus size={16}/></button></div>}
       </section>
+
+      {!hasFilters && orderProducts.length > 0 && (
+        <section className="shell mobile-product-section md:hidden" aria-labelledby="sob-encomenda">
+          <div className="mobile-section-heading">
+            <h2 id="sob-encomenda">Sob encomenda</h2>
+            <button type="button" onClick={() => { setAvailabilityFilter('ENCOMENDA'); scrollToCatalog(); }}>Ver todos</button>
+          </div>
+          <div className="product-grid">
+            {orderProducts.map(produto => (
+              <ProductCard key={produto.id} produto={produto} isFavorited={favorites.includes(produto.id)} onToggleFavorite={toggleFavorite} onSelectProduct={chooseProduct} onAddToCart={addToCart} onBuyWhatsApp={buyDirectOnWhatsApp} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section id="secao-encomenda-customizada" className="order-section shell">
         <div className="order-intro">
@@ -1255,7 +1283,7 @@ export default function CatalogClient({
                         setCatalogZoomScale(1);
                       }}
                       title="Clique para ampliar a foto do produto"
-                      className="aspect-square rounded-2xl bg-[#fcfbf9] overflow-hidden relative border-2 border-[#dcd5c7] cursor-zoom-in group/mainphoto"
+                      className="detail-photo aspect-square rounded-2xl bg-[#fcfbf9] overflow-hidden relative border-2 border-[#dcd5c7] cursor-zoom-in group/mainphoto"
                     >
                       <ProductImage 
                         src={selectedProduct.fotos[activeImageIndex]?.url || selectedProduct.fotos[0]?.url} 
@@ -1360,7 +1388,7 @@ export default function CatalogClient({
                     {/* PREÇOS */}
                     <div className="detail-price py-2 mb-3">
                       <div className="flex items-baseline gap-2">
-                        {selectedProduct.precoOriginal && selectedProduct.precoOriginal > selectedProduct.precoVista && (
+                        {hasVisibleDiscount(selectedProduct) && (
                           <span className="text-xs text-[#52525b] line-through font-semibold">
                             De {selectedProduct.precoOriginal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </span>
@@ -1728,7 +1756,7 @@ export default function CatalogClient({
                       onClick={clearFilters}
                       className="text-xs text-[#7a5828] font-bold hover:underline cursor-pointer"
                     >
-                      Limpar tudo
+                      Limpar filtros
                     </button>
                   )}
                   <button
@@ -1749,7 +1777,7 @@ export default function CatalogClient({
                   <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
                     Disponibilidade
                   </span>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="availability-drawer-options grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => setAvailabilityFilter('TODOS')}
@@ -1947,7 +1975,7 @@ export default function CatalogClient({
                   }}
                   className="w-full bg-[#09090b] hover:bg-black text-white py-3.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-98 transition-all"
                 >
-                  <span>Ver {filteredProdutos.length} {filteredProdutos.length === 1 ? 'produto' : 'produtos'}</span>
+                  <span>Aplicar filtros · {filteredProdutos.length} {filteredProdutos.length === 1 ? 'produto' : 'produtos'}</span>
                   <ArrowRight size={16} />
                 </button>
               </div>
@@ -2174,14 +2202,14 @@ export default function CatalogClient({
             type="button"
             onClick={() => {
               clearFilters();
-              scrollToCatalog();
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors cursor-pointer ${
               availabilityFilter === 'TODOS' && activeCategory === 'todos' ? 'text-[#09090b] font-bold' : 'text-[#3f3f46]'
             }`}
           >
             <Home size={18} />
-            <span className="text-[10px] font-semibold">Catálogo</span>
+            <span className="text-[10px] font-semibold">Início</span>
           </button>
 
           <button 
@@ -2199,15 +2227,6 @@ export default function CatalogClient({
           >
             <Search size={18} />
             <span className="text-[10px] font-semibold">Buscar</span>
-          </button>
-
-          <button 
-            type="button"
-            onClick={() => openCustomOrderModal()}
-            className="flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors text-[#7a5828] font-bold cursor-pointer"
-          >
-            <Sparkles size={18} className="text-[#7a5828]" />
-            <span className="text-[10px] font-semibold">Encomendar</span>
           </button>
 
           <button 
@@ -2286,8 +2305,8 @@ function ProductCard({
   onBuyWhatsApp: (p: Produto, e?: React.MouseEvent) => void;
 }) {
   const isProntaEntrega = isProdutoProntaEntrega(produto);
-  const hasDiscount = produto.precoOriginal && produto.precoOriginal > produto.precoVista;
-  const discountPercent = hasDiscount 
+  const hasDiscount = hasVisibleDiscount(produto);
+  const discountPercent = hasDiscount
     ? Math.round(((produto.precoOriginal! - produto.precoVista) / produto.precoOriginal!) * 100)
     : 0;
 
@@ -2299,13 +2318,7 @@ function ProductCard({
           <span className="product-badge bg-[#dc2626] text-white">−{discountPercent}%</span>
         ) : produto.badge && !isVolumeBadge(produto.badge, produto.volume) ? (
           <span className="product-badge">{produto.badge}</span>
-        ) : (
-          <span className={`product-badge text-[9px] font-bold ${
-            isProntaEntrega ? 'bg-emerald-800 text-white' : 'bg-[#7a5828] text-white'
-          }`}>
-            {isProntaEntrega ? 'Pronta Entrega' : 'Sob Encomenda'}
-          </span>
-        )}
+        ) : null}
 
         <button 
           className="favorite-button" 
@@ -2347,9 +2360,7 @@ function ProductCard({
         </p>
 
         <div className="product-pricing">
-          <span className="original-price">
-            {hasDiscount ? produto.precoOriginal!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '\u00A0'}
-          </span>
+          {hasDiscount && <span className="original-price">{produto.precoOriginal!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
           <strong>{produto.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
           <small>{produto.precoParcelado || 'Consulte condições de pagamento'}</small>
         </div>
@@ -2360,8 +2371,8 @@ function ProductCard({
             onClick={e => onBuyWhatsApp(produto, e)}
             title={isProntaEntrega ? 'Reservar no WhatsApp' : 'Encomendar no WhatsApp'}
           >
-            <MessageCircle size={15} />
-            <span>{isProntaEntrega ? 'Reservar' : 'Encomendar'}</span>
+            <MessageCircle size={15} className="hidden sm:block" />
+            <span>{isProntaEntrega ? 'Reservar' : 'Pedir'}</span>
           </button>
           <button 
             className="button-secondary flex items-center justify-center cursor-pointer" 
