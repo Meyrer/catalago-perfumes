@@ -300,6 +300,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 180px; }
     margin-top: 8px;
     gap: 6px;
   }
+  .product-actions .button-secondary { display: none; }
   .product-actions .button-primary {
     padding: 8px 6px;
     font-size: 11px;
