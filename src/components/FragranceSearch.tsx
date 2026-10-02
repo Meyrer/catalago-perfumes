@@ -163,7 +163,7 @@ export default function FragranceSearch({
       <div className="relative flex items-center w-full">
         <Search
           size={16}
-          className="absolute left-3.5 text-[#09090b] pointer-events-none transition-colors"
+          className="absolute left-3.5 text-brand-chocolate pointer-events-none transition-colors"
         />
 
         <input
@@ -177,19 +177,19 @@ export default function FragranceSearch({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           autoFocus={autoFocus}
-          className="w-full bg-white hover:bg-white focus:bg-white text-xs sm:text-sm text-[#09090b] font-medium placeholder:text-[#64748b] pl-10 pr-10 py-2.5 rounded-full border-2 border-[#dcd5c7] focus:border-[#09090b] focus:ring-4 focus:ring-[#09090b]/5 outline-none transition-all shadow-xs"
+          className="w-full bg-brand-card hover:bg-brand-card focus:bg-brand-card text-xs sm:text-sm text-brand-chocolate font-medium placeholder:text-brand-muted pl-10 pr-10 py-2.5 rounded-xl border border-brand-line focus:border-brand-chocolate focus:ring-4 focus:ring-brand-chocolate/5 outline-none transition-all shadow-xs"
         />
 
         <div className="absolute right-3 flex items-center gap-1.5">
           {isLoading && (
-            <Loader2 size={15} className="animate-spin text-[#7a5828]" />
+            <Loader2 size={15} className="animate-spin text-brand-muted" />
           )}
 
           {query && !isLoading && (
             <button
               type="button"
               onClick={handleClear}
-              className="p-1 text-[#09090b] hover:bg-[#faf8f5] rounded-full transition-colors cursor-pointer"
+              className="p-1 text-brand-chocolate hover:bg-brand-nude rounded-full transition-colors cursor-pointer"
               title="Limpar busca"
             >
               <X size={14} />
@@ -200,13 +200,13 @@ export default function FragranceSearch({
 
       {/* Dropdown de Resultados Inteligentes */}
       {isOpen && query.trim().length >= 3 && (
-        <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border-2 border-[#dcd5c7] shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
-          <div className="p-2 sm:p-2.5 max-h-[70vh] sm:max-h-[420px] overflow-y-auto divide-y divide-[#dcd5c7]">
+        <div className="absolute left-0 right-0 top-full mt-2 bg-brand-card rounded-2xl border-2 border-brand-line shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
+          <div className="p-2 sm:p-2.5 max-h-[70vh] sm:max-h-[420px] overflow-y-auto divide-y divide-brand-line">
             {results.length > 0 ? (
               <div className="space-y-1">
-                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#7a5828] flex items-center justify-between">
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-muted flex items-center justify-between">
                   <span>Fragrâncias Encontradas</span>
-                  <span className="font-bold text-[#27272a]">{results.length} resultados</span>
+                  <span className="font-bold text-brand-muted">{results.length} resultados</span>
                 </div>
 
                 {results.map((item, index) => {
@@ -219,12 +219,12 @@ export default function FragranceSearch({
                       onMouseEnter={() => setActiveIndex(index)}
                       className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center gap-3 min-w-0 cursor-pointer ${
                         isSelected
-                          ? 'bg-[#f5ede2] border border-[#dcd5c7]'
-                          : 'hover:bg-[#faf8f5] border border-transparent'
+                          ? 'bg-brand-nude border border-brand-line'
+                          : 'hover:bg-brand-nude border border-transparent'
                       }`}
                     >
                       {/* Miniatura do Perfume */}
-                      <div className="w-11 h-12 rounded-lg bg-white border border-[#dcd5c7] shrink-0 p-1 flex items-center justify-center overflow-hidden">
+                      <div className="w-11 h-12 rounded-lg bg-brand-card border border-brand-line shrink-0 p-1 flex items-center justify-center overflow-hidden">
                         {item.imageUrl ? (
                           <img
                             src={item.imageUrl}
@@ -235,40 +235,40 @@ export default function FragranceSearch({
                             }}
                           />
                         ) : (
-                          <Sparkles size={16} className="text-[#7a5828]" />
+                          <Sparkles size={16} className="text-brand-muted" />
                         )}
                       </div>
 
                       {/* Informações Principais */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-[#7a5828] truncate">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-brand-muted truncate">
                             {item.brand || 'Importado'}
                           </span>
                           {item.year && (
                             <>
-                              <span className="text-[#dcd5c7] text-[10px] font-bold">•</span>
-                              <span className="text-[10px] text-[#27272a] font-semibold">
+                              <span className="text-brand-line text-[10px] font-bold">•</span>
+                              <span className="text-[10px] text-brand-muted font-semibold">
                                 {item.year}
                               </span>
                             </>
                           )}
                           {item.concentration && (
                             <>
-                              <span className="text-[#dcd5c7] text-[10px] font-bold">•</span>
-                              <span className="text-[10px] text-[#27272a] font-semibold truncate">
+                              <span className="text-brand-line text-[10px] font-bold">•</span>
+                              <span className="text-[10px] text-brand-muted font-semibold truncate">
                                 {item.concentration}
                               </span>
                             </>
                           )}
                         </div>
 
-                        <h5 className="font-serif text-xs sm:text-sm font-bold text-[#09090b] truncate mt-0.5">
+                        <h5 className="font-serif text-xs sm:text-sm font-bold text-brand-chocolate truncate mt-0.5">
                           {item.name}
                         </h5>
 
                         {item.family && (
-                          <p className="text-[10px] text-[#3f3f46] font-medium truncate">
+                          <p className="text-[10px] text-brand-muted font-medium truncate">
                             {item.family}
                           </p>
                         )}
@@ -278,18 +278,18 @@ export default function FragranceSearch({
                       <div className="shrink-0 flex flex-col items-end gap-1">
                         {item.isLocal ? (
                           <>
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-950 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                              <CheckCircle2 size={11} className="text-emerald-700" />
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-brand-chocolate bg-brand-nude px-2 py-0.5 rounded-full border border-brand-line">
+                              <CheckCircle2 size={11} className="text-brand-chocolate" />
                               Já cadastrado
                             </span>
                             {item.priceFormatted && (
-                              <span className="text-[11px] font-extrabold text-[#09090b]">
+                              <span className="text-[11px] font-extrabold text-brand-chocolate">
                                 {item.priceFormatted}
                               </span>
                             )}
                           </>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#7a5828] bg-[#f8f3eb] px-2 py-0.5 rounded-full border border-[#dcd5c7]">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-brand-muted bg-brand-card px-2 py-0.5 rounded-full border border-brand-line">
                             <PlusCircle size={11} />
                             Importar
                           </span>
@@ -301,9 +301,9 @@ export default function FragranceSearch({
               </div>
             ) : !isLoading ? (
               <div className="py-6 px-4 text-center space-y-2.5">
-                <AlertCircle size={22} className="mx-auto text-[#a1a1aa]" />
-                <p className="text-xs text-[#71717a] font-medium">
-                  Nenhuma fragrância encontrada para <strong className="text-[#18181b]">"{query}"</strong>.
+                <AlertCircle size={22} className="mx-auto text-brand-muted" />
+                <p className="text-xs text-brand-muted font-medium">
+                  Nenhuma fragrância encontrada para <strong className="text-brand-deep">"{query}"</strong>.
                 </p>
                 {onManualCreate && (
                   <button
@@ -312,7 +312,7 @@ export default function FragranceSearch({
                       setIsOpen(false);
                       onManualCreate();
                     }}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#a37941] hover:text-[#7a572a] hover:underline"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-muted hover:text-brand-chocolate hover:underline"
                   >
                     <PlusCircle size={14} /> Cadastrar manualmente no catálogo
                   </button>
@@ -321,7 +321,7 @@ export default function FragranceSearch({
             ) : null}
 
             {error && (
-              <div className="p-3 text-center text-xs text-red-600 bg-red-50 rounded-xl mt-1">
+              <div className="p-3 text-center text-xs text-brand-deep bg-brand-rose-beige rounded-xl mt-1">
                 {error}
               </div>
             )}

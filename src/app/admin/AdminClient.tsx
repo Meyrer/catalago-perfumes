@@ -119,17 +119,17 @@ export default function AdminClient({ data }: AdminClientProps) {
     {
       group: 'OPERAÇÃO COMERCIAL',
       items: [
-        { id: 'vendas' as AdminTab, label: 'Vendas & PDV', icon: ShoppingBag, badge: pendingVendasCount > 0 ? pendingVendasCount : null, badgeColor: 'bg-emerald-500' },
-        { id: 'encomendas' as AdminTab, label: 'Sob Encomenda', icon: Clock, badge: pendingOrdersCount > 0 ? pendingOrdersCount : null, badgeColor: 'bg-amber-500' },
+        { id: 'vendas' as AdminTab, label: 'Vendas & PDV', icon: ShoppingBag, badge: pendingVendasCount > 0 ? pendingVendasCount : null, badgeColor: 'bg-brand-chocolate' },
+        { id: 'encomendas' as AdminTab, label: 'Sob Encomenda', icon: Clock, badge: pendingOrdersCount > 0 ? pendingOrdersCount : null, badgeColor: 'bg-brand-chocolate' },
         { id: 'clientes' as AdminTab, label: 'Clientes & CRM', icon: Users, badge: null }
       ]
     },
     {
       group: 'CATÁLOGO & ESTOQUE',
       items: [
-        { id: 'produtos' as AdminTab, label: 'Produtos', icon: Sparkles, badge: data.produtos.length, badgeColor: 'bg-neutral-800 text-white' },
+        { id: 'produtos' as AdminTab, label: 'Produtos', icon: Sparkles, badge: data.produtos.length, badgeColor: 'bg-brand-chocolate text-brand-cream' },
         { id: 'categorias' as AdminTab, label: 'Categorias', icon: Tags, badge: null },
-        { id: 'estoque' as AdminTab, label: 'Gestão de Estoque', icon: Boxes, badge: lowStockCount > 0 ? lowStockCount : null, badgeColor: 'bg-rose-500 text-white' },
+        { id: 'estoque' as AdminTab, label: 'Gestão de Estoque', icon: Boxes, badge: lowStockCount > 0 ? lowStockCount : null, badgeColor: 'bg-brand-chocolate text-brand-cream' },
         { id: 'banners' as AdminTab, label: 'Banners Vitrine', icon: ImageIcon, badge: null }
       ]
     },
@@ -151,7 +151,7 @@ export default function AdminClient({ data }: AdminClientProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-[#fcfbf9] text-[#09090b] flex flex-col antialiased selection:bg-[#7a5828]/20 selection:text-[#7a5828]">
+    <div className="min-h-screen bg-brand-cream text-brand-chocolate flex flex-col antialiased selection:bg-brand-chocolate/20 selection:text-brand-muted">
       
       {/* WRAPPER PRINCIPAL: SIDEBAR + MAIN CONTENT */}
       <div className="flex flex-1 relative">
@@ -160,14 +160,14 @@ export default function AdminClient({ data }: AdminClientProps) {
         {isMobileMenuOpen && (
           <div 
             onClick={() => setIsMobileMenuOpen(false)}
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-brand-deep/50 z-40 lg:hidden backdrop-blur-xs transition-opacity"
           />
         )}
 
         {/* SIDEBAR LUXUOSA */}
         <aside 
           className={`
-            fixed lg:sticky top-0 h-screen z-50 bg-[#0c0c0e] text-[#e4e4e7] border-r border-[#27272a]
+            fixed lg:sticky top-0 h-screen z-50 bg-brand-deep text-brand-cream border-r border-brand-rose-beige/25
             flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0
             ${isSidebarCollapsed ? 'w-20' : 'w-64'}
             ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -175,22 +175,22 @@ export default function AdminClient({ data }: AdminClientProps) {
         >
           {/* TOPO DA SIDEBAR: LOGO & BRAND */}
           <div>
-            <div className="p-4 border-b border-[#27272a] flex items-center justify-between">
+            <div className="p-4 border-b border-brand-muted flex items-center justify-between">
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d4af37] via-[#99732f] to-[#593e10] p-[1px] shrink-0 shadow-lg shadow-black/40">
-                  <div className="w-full h-full bg-[#0c0c0e] rounded-[11px] flex items-center justify-center">
-                    <span className="font-serif text-lg font-bold bg-gradient-to-r from-[#e8dfd3] to-[#d4af37] bg-clip-text text-transparent">
-                      E
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-caramel via-brand-caramel to-brand-deep p-[1px] shrink-0 shadow-lg shadow-brand-deep/40">
+                  <div className="w-full h-full bg-brand-deep rounded-[11px] flex items-center justify-center">
+                    <span className="font-serif text-lg font-bold bg-gradient-to-r from-brand-nude to-brand-caramel bg-clip-text text-transparent">
+                      P
                     </span>
                   </div>
                 </div>
 
                 {!isSidebarCollapsed && (
                   <div className="min-w-0 transition-opacity duration-200">
-                    <h1 className="font-serif font-bold text-sm tracking-wide text-white uppercase leading-none">
+                    <h1 className="font-serif font-bold text-sm tracking-wide text-brand-cream uppercase leading-none">
                       Perfumio
                     </h1>
-                    <span className="text-[10px] text-[#a1a1aa] uppercase tracking-wider block mt-1 font-mono">
+                    <span className="text-[10px] text-brand-rose-beige uppercase tracking-wider block mt-1 font-mono">
                       Boutique ERP
                     </span>
                   </div>
@@ -200,7 +200,7 @@ export default function AdminClient({ data }: AdminClientProps) {
               {/* Botão de colapsar (desktop apenas) */}
               <button
                 onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                className="hidden lg:flex p-1.5 rounded-lg text-[#71717a] hover:text-white hover:bg-[#18181b] transition-colors"
+                className="hidden lg:flex p-1.5 rounded-lg text-brand-rose-beige hover:text-brand-cream hover:bg-brand-chocolate transition-colors"
                 title={isSidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
               >
                 {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
@@ -208,11 +208,11 @@ export default function AdminClient({ data }: AdminClientProps) {
             </div>
 
             {/* ITENS DE NAVEGAÇÃO */}
-            <nav className="p-3 space-y-6 overflow-y-auto max-h-[calc(100vh-170px)] scrollbar-thin scrollbar-thumb-zinc-800">
+            <nav className="p-3 space-y-6 overflow-y-auto max-h-[calc(100vh-170px)] scrollbar-thin scrollbar-thumb-brand-chocolate">
               {navGroups.map((group, gIdx) => (
                 <div key={gIdx} className="space-y-1">
                   {!isSidebarCollapsed && (
-                    <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-[#71717a] block mb-2 font-mono">
+                    <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-brand-rose-beige block mb-2 font-mono">
                       {group.group}
                     </span>
                   )}
@@ -229,20 +229,20 @@ export default function AdminClient({ data }: AdminClientProps) {
                         className={`
                           w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all relative group
                           ${isActive 
-                            ? 'bg-[#18181b] text-white font-semibold shadow-xs border border-[#3f3f46]/40' 
-                            : 'text-[#a1a1aa] hover:text-white hover:bg-[#141416]'}
+                            ? 'bg-brand-chocolate text-brand-cream font-semibold shadow-xs border border-brand-rose-beige/30'
+                            : 'text-brand-rose-beige hover:text-brand-cream hover:bg-brand-chocolate'}
                           ${isSidebarCollapsed ? 'justify-center px-0' : ''}
                         `}
                       >
                         {/* Linha indicadora dourada na aba ativa */}
                         {isActive && (
-                          <div className="absolute left-0 top-2 bottom-2 w-1 bg-gradient-to-b from-[#d4af37] to-[#8c6721] rounded-r" />
+                          <div className="absolute left-0 top-2 bottom-2 w-1 bg-gradient-to-b from-brand-caramel to-brand-caramel rounded-r" />
                         )}
 
                         <Icon 
                           size={18} 
                           className={`shrink-0 transition-colors ${
-                            isActive ? 'text-[#d4af37]' : 'text-[#71717a] group-hover:text-white'
+                            isActive ? 'text-brand-rose-beige' : 'text-brand-rose-beige group-hover:text-brand-cream'
                           }`} 
                         />
 
@@ -252,14 +252,14 @@ export default function AdminClient({ data }: AdminClientProps) {
 
                         {/* Badges */}
                         {item.badge !== null && !isSidebarCollapsed && (
-                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${item.badgeColor || 'bg-[#27272a] text-[#a1a1aa]'}`}>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${item.badgeColor || 'bg-brand-chocolate text-brand-rose-beige'}`}>
                             {item.badge}
                           </span>
                         )}
 
                         {/* Dot badge quando recolhido */}
                         {item.badge !== null && isSidebarCollapsed && (
-                          <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#d4af37]" />
+                          <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-brand-caramel" />
                         )}
                       </button>
                     );
@@ -270,18 +270,18 @@ export default function AdminClient({ data }: AdminClientProps) {
           </div>
 
           {/* RODAPÉ DA SIDEBAR: USUÁRIO E LOGOUT */}
-          <div className="p-3 border-t border-[#27272a] bg-[#09090b]/80">
+          <div className="p-3 border-t border-brand-rose-beige/25 bg-brand-chocolate/80">
             <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} gap-2`}>
               <div className="flex items-center gap-2.5 overflow-hidden">
-                <div className="w-8 h-8 rounded-lg bg-[#27272a] border border-[#3f3f46] text-[#e4e4e7] flex items-center justify-center font-bold text-xs shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-brand-deep border border-brand-rose-beige/30 text-brand-cream flex items-center justify-center font-bold text-xs shrink-0">
                   {data.user.name.charAt(0).toUpperCase()}
                 </div>
                 {!isSidebarCollapsed && (
                   <div className="min-w-0">
-                    <span className="block text-xs font-semibold text-white truncate leading-tight">
+                    <span className="block text-xs font-semibold text-brand-cream truncate leading-tight">
                       {data.user.name}
                     </span>
-                    <span className="block text-[10px] text-[#71717a] truncate font-mono">
+                    <span className="block text-[10px] text-brand-rose-beige truncate font-mono">
                       @{data.user.username}
                     </span>
                   </div>
@@ -291,7 +291,7 @@ export default function AdminClient({ data }: AdminClientProps) {
               {!isSidebarCollapsed && (
                 <button
                   onClick={handleLogout}
-                  className="p-1.5 text-[#71717a] hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors"
+                  className="p-1.5 text-brand-rose-beige hover:text-brand-cream hover:bg-brand-chocolate/30 rounded-lg transition-colors"
                   title="Encerrar Sessão"
                 >
                   <LogOut size={16} />
@@ -305,12 +305,12 @@ export default function AdminClient({ data }: AdminClientProps) {
         <div className="flex-1 flex flex-col min-w-0">
           
           {/* TOPBAR LUXUOSA */}
-          <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#dcd5c7] px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
+          <header className="sticky top-0 z-30 bg-brand-card/95 backdrop-blur-md border-b border-brand-line px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
             <div className="flex items-center gap-3">
               {/* Botão de abrir menu no mobile */}
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden p-2 rounded-xl text-[#09090b] hover:bg-[#f4efe6] transition-colors"
+                className="lg:hidden p-2 rounded-xl text-brand-chocolate hover:bg-brand-nude transition-colors"
               >
                 <div className="w-5 h-4 flex flex-col justify-between">
                   <span className="w-full h-0.5 bg-current rounded" />
@@ -320,14 +320,14 @@ export default function AdminClient({ data }: AdminClientProps) {
               </button>
 
               <div>
-                <div className="flex items-center gap-2 text-[11px] text-[#71717a]">
+                <div className="flex items-center gap-2 text-[11px] text-brand-muted">
                   <span>Painel Administrativo</span>
                   <span>/</span>
-                  <span className="font-semibold text-[#7a5828] capitalize">
+                  <span className="font-semibold text-brand-muted capitalize">
                     {activeTab}
                   </span>
                 </div>
-                <h2 className="font-serif text-lg font-bold text-[#09090b] leading-tight">
+                <h2 className="font-serif text-lg font-bold text-brand-chocolate leading-tight">
                   {activeTab === 'dashboard' && 'Dashboard Executivo'}
                   {activeTab === 'vendas' && 'Vendas & Ponto de Venda (PDV)'}
                   {activeTab === 'encomendas' && 'Gestão de Pedidos Sob Encomenda'}
@@ -349,7 +349,7 @@ export default function AdminClient({ data }: AdminClientProps) {
             <div className="flex items-center gap-2.5">
               <button
                 onClick={() => handleSelectTab('vendas')}
-                className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#09090b] hover:bg-[#18181b] text-white text-xs font-semibold shadow-xs transition-all active:scale-95"
+                className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-semibold shadow-xs transition-all active:scale-95"
               >
                 <Plus size={14} />
                 <span>Nova Venda</span>
@@ -357,7 +357,7 @@ export default function AdminClient({ data }: AdminClientProps) {
 
               <button
                 onClick={() => handleSelectTab('produtos')}
-                className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#fdfbf7] hover:bg-[#f4efe6] text-[#7a5828] border border-[#dcd5c7] text-xs font-semibold shadow-xs transition-all active:scale-95"
+                className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-brand-card hover:bg-brand-nude text-brand-muted border border-brand-line text-xs font-semibold shadow-xs transition-all active:scale-95"
               >
                 <Plus size={14} />
                 <span>Novo Produto</span>
@@ -366,10 +366,10 @@ export default function AdminClient({ data }: AdminClientProps) {
               <Link
                 href="/"
                 target="_blank"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#f4efe6] border border-[#dcd5c7] text-[#09090b] text-xs font-semibold transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-card hover:bg-brand-nude border border-brand-line text-brand-chocolate text-xs font-semibold transition-colors"
                 title="Abrir a loja para clientes em nova aba"
               >
-                <ExternalLink size={14} className="text-[#7a5828]" />
+                <ExternalLink size={14} className="text-brand-muted" />
                 <span className="hidden md:inline">Ver Loja</span>
               </Link>
             </div>

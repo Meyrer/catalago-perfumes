@@ -26,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={`${sansFont.variable} ${serifFont.variable}`}>
-      <body className="antialiased bg-white text-[#1a1a1a] font-sans selection:bg-[#eedfd2] selection:text-[#1a1a1a]">
+      <body className="antialiased bg-brand-cream text-brand-chocolate font-sans selection:bg-brand-nude selection:text-brand-chocolate">
         {children}
       </body>
     </html>

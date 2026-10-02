@@ -79,42 +79,42 @@ function renderGuiaRendimento(selectedProduct: Produto) {
   const isSplash = Boolean(selectedProduct.categoria?.nome?.toLowerCase().includes('splash') || selectedProduct.nome?.toLowerCase().includes('splash'));
   
   return (
-    <div className="rounded-2xl border border-[#dcd5c7] bg-[#fbf9f5] p-3.5 sm:p-4 space-y-2.5">
-      <div className="flex items-center justify-between pb-2 border-b border-[#dcd5c7]">
+    <div className="rounded-2xl border border-brand-line bg-brand-cream p-3.5 sm:p-4 space-y-2.5">
+      <div className="flex items-center justify-between pb-2 border-b border-brand-line">
         <div className="flex items-center gap-1.5">
-          <Sparkles size={14} className="text-[#7a5828]" />
-          <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-[#09090b]">
+          <Sparkles size={14} className="text-brand-muted" />
+          <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-brand-chocolate">
             Guia Prático &amp; Rendimento
           </h4>
         </div>
-        <span className="text-[10px] font-bold text-[#543b18] bg-[#f5ede2] border border-[#dcd5c7] px-2 py-0.5 rounded">
+        <span className="text-[10px] font-bold text-brand-chocolate bg-brand-nude border border-brand-line px-2 py-0.5 rounded">
           {selectedProduct.volume || 'Alta Performance'}
         </span>
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-xs">
         {/* Item 1: Concentração e Fixação */}
-        <div className="bg-white rounded-xl p-2.5 border border-[#dcd5c7] flex flex-col justify-between shadow-2xs">
-          <span className="text-[10px] text-[#27272a] uppercase font-bold tracking-wide">
+        <div className="bg-brand-card rounded-xl p-2.5 border border-brand-line flex flex-col justify-between shadow-2xs">
+          <span className="text-[10px] text-brand-muted uppercase font-bold tracking-wide">
             {isMini || isPerf ? 'Concentração' : 'Sensação'}
           </span>
-          <p className="text-xs font-bold text-[#09090b] mt-0.5">
+          <p className="text-xs font-bold text-brand-chocolate mt-0.5">
             {isMini ? 'Eau de Parfum (EDP)' : isPerf ? (selectedProduct.concentracao || 'Eau de Parfum') : isSplash ? 'Bruma Refrescante' : 'Hidratação 24h'}
           </p>
-          <span className="text-[10px] text-[#7a5828] font-bold mt-1">
+          <span className="text-[10px] text-brand-muted font-bold mt-1">
             {isMini || isPerf ? 'Fixação prolongada (6h a 8h)' : isSplash ? 'Toque leve & perfumado' : 'Manteiga de Karité & Coco'}
           </span>
         </div>
 
         {/* Item 2: Rendimento */}
-        <div className="bg-white rounded-xl p-2.5 border border-[#dcd5c7] flex flex-col justify-between shadow-2xs">
-          <span className="text-[10px] text-[#27272a] uppercase font-bold tracking-wide">
+        <div className="bg-brand-card rounded-xl p-2.5 border border-brand-line flex flex-col justify-between shadow-2xs">
+          <span className="text-[10px] text-brand-muted uppercase font-bold tracking-wide">
             Rendimento
           </span>
-          <p className="text-xs font-bold text-[#09090b] mt-0.5">
+          <p className="text-xs font-bold text-brand-chocolate mt-0.5">
             {isMini ? '~350 a 400 borrifadas' : isPerf ? '~1.200 a 1.500 borrifadas' : isSplash ? '~3.000 borrifadas' : '~60 a 90 aplicações'}
           </p>
-          <span className="text-[10px] text-emerald-800 font-bold mt-1">
+          <span className="text-[10px] text-brand-chocolate font-bold mt-1">
             {isMini ? 'Dura até 3 meses de uso diário' : isPerf ? 'Dura mais de 1 ano' : isSplash ? 'Uso generoso pós-banho' : 'Absorção rápida e maciez'}
           </span>
         </div>
@@ -609,27 +609,27 @@ export default function CatalogClient({
   const cartTotalItems = cart.reduce((acc, item) => acc + item.qtd, 0);
 
   return (
-    <MotionConfig reducedMotion="user"><div className="catalog-app min-h-screen w-full max-w-full bg-[#fcfbf9] text-[#18181b] flex flex-col selection:bg-[#eedfd2] selection:text-[#18181b] relative">
+    <MotionConfig reducedMotion="user"><div className="catalog-app min-h-screen w-full max-w-full bg-brand-cream text-brand-chocolate flex flex-col selection:bg-brand-nude selection:text-brand-chocolate relative">
       
       <a href="#produtos" className="skip-link">Ir para os produtos</a>
       {/* 1. TOP ANNOUNCEMENT BAR */}
-      <div className="hidden md:block bg-[#18181b] text-white py-2 px-3 sm:px-4 text-xs tracking-wide w-full overflow-hidden">
+      <div className="hidden md:block bg-brand-deep text-brand-cream py-2 px-3 sm:px-4 text-xs tracking-wide w-full overflow-hidden">
         <div className="max-w-7xl mx-auto flex justify-between items-center text-[11px] md:text-xs">
-          <p className="flex items-center gap-2 mx-auto md:mx-0 font-medium text-white/90 text-center">
-            <Sparkles size={13} className="text-[#c5a880] shrink-0" />
+          <p className="flex items-center gap-2 mx-auto md:mx-0 font-medium text-brand-cream/90 text-center">
+            <Sparkles size={13} className="text-brand-rose-beige shrink-0" />
             <span className="truncate sm:whitespace-normal">Pronta Entrega & Encomendas • 100% Originais</span>
           </p>
-          <div className="hidden md:flex items-center gap-4 text-white/80 font-medium">
-            <span className="flex items-center gap-1.5"><Truck size={13} className="text-[#c5a880]" /> Entrega combinada</span>
-            <span className="w-1 h-1 rounded-full bg-white/30" />
+          <div className="hidden md:flex items-center gap-4 text-brand-cream/80 font-medium">
+            <span className="flex items-center gap-1.5"><Truck size={13} className="text-brand-rose-beige" /> Entrega combinada</span>
+            <span className="w-1 h-1 rounded-full bg-brand-card/30" />
             <button 
               onClick={() => openCustomOrderModal()} 
-              className="text-[#eedfd2] hover:text-[#c5a880] transition-colors flex items-center gap-1.5 font-semibold"
+              className="text-brand-rose-beige hover:text-brand-rose-beige transition-colors flex items-center gap-1.5 font-semibold"
             >
-              <Sparkles size={12} className="text-[#c5a880]" /> Pedir Sob Encomenda
+              <Sparkles size={12} className="text-brand-rose-beige" /> Pedir Sob Encomenda
             </button>
-            <span className="w-1 h-1 rounded-full bg-white/30" />
-            <button onClick={() => generalWhatsAppContact()} className="hover:text-[#c5a880] transition-colors flex items-center gap-1">
+            <span className="w-1 h-1 rounded-full bg-brand-card/30" />
+            <button onClick={() => generalWhatsAppContact()} className="hover:text-brand-rose-beige transition-colors flex items-center gap-1">
               Fale no WhatsApp
             </button>
           </div>
@@ -639,8 +639,8 @@ export default function CatalogClient({
       {/* 2. HEADER ELEGANTE */}
       <header className={`catalog-header sticky top-0 z-40 transition-all duration-300 w-full max-w-full overflow-visible ${
         isScrolled 
-          ? 'bg-white/95 backdrop-blur-md border-b border-[#dcd5c7] shadow-[0_2px_15px_rgba(0,0,0,0.04)] py-2.5 sm:py-3' 
-          : 'bg-white border-b border-[#dcd5c7] py-3 sm:py-4'
+          ? 'bg-brand-cream/95 backdrop-blur-md border-b border-brand-line shadow-[0_2px_15px_rgba(67,44,31,0.04)] py-2.5 sm:py-3'
+          : 'bg-brand-cream border-b border-brand-line py-3 sm:py-4'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="flex items-center justify-between gap-4 md:gap-8">
@@ -648,10 +648,10 @@ export default function CatalogClient({
             {/* LOGO */}
             <div className="flex items-center gap-3">
               <a href="#" onClick={clearFilters} aria-label="Perfumio — início" className="flex flex-col group brand-lockup">
-                <span className="brand-wordmark text-xl sm:text-2xl lg:text-3xl font-serif tracking-[0.18em] font-medium text-[#09090b] group-hover:text-[#7a5828] transition-colors">
+                <span className="brand-wordmark text-xl sm:text-2xl lg:text-3xl font-serif tracking-[0.18em] font-medium text-brand-chocolate group-hover:text-brand-muted transition-colors">
                   PERFUMIO
                 </span>
-                <span className="brand-tagline text-[9px] uppercase tracking-[0.35em] text-[#3f3f46] font-semibold font-sans">
+                <span className="brand-tagline text-[9px] uppercase tracking-[0.35em] text-brand-muted font-semibold font-sans">
                   <span className="md:hidden">Perfumes, body splash e cuidados</span>
                   <span className="hidden md:inline">Pronta Entrega & Encomendas</span>
                 </span>
@@ -680,16 +680,16 @@ export default function CatalogClient({
                 type="button"
                 onClick={() => openCustomOrderModal()}
                 title="Pedir perfume sob encomenda"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 border-[#dcd5c7] bg-[#fbf9f5] hover:bg-[#09090b] hover:border-[#09090b] hover:text-white text-xs font-bold text-[#09090b] transition-all shadow-xs mr-1 cursor-pointer"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-brand-chocolate bg-transparent hover:bg-brand-nude text-xs font-bold text-brand-chocolate transition-all mr-1 cursor-pointer"
               >
-                <Sparkles size={13} className="text-[#7a5828]" />
+                <Sparkles size={13} className="text-brand-muted" />
                 <span>Sob Encomenda</span>
               </button>
 
               <button 
                 onClick={() => generalWhatsAppContact()}
                 title="Conversar no WhatsApp"
-                className="hidden md:flex p-2.5 text-[#09090b] hover:text-[#15803d] hover:bg-[#f7f4ef] rounded-full transition-all items-center justify-center cursor-pointer"
+                className="hidden md:flex p-2.5 text-brand-chocolate hover:text-brand-muted hover:bg-brand-nude rounded-full transition-all items-center justify-center cursor-pointer"
               >
                 <MessageCircle size={20} />
               </button>
@@ -698,11 +698,11 @@ export default function CatalogClient({
                 onClick={() => setIsFavoritesOpen(true)}
                 title="Meus Favoritos"
                 aria-label="Meus favoritos"
-                className="relative p-2.5 text-[#09090b] hover:text-[#7a5828] hover:bg-[#f7f4ef] rounded-full transition-all cursor-pointer"
+                className="relative p-2.5 text-brand-chocolate hover:text-brand-muted hover:bg-brand-nude rounded-full transition-all cursor-pointer"
               >
-                <Heart size={20} className={favorites.length > 0 ? "fill-[#7a5828] text-[#7a5828]" : ""} />
+                <Heart size={20} className={favorites.length > 0 ? "fill-brand-caramel text-brand-muted" : ""} />
                 {favorites.length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#7a5828] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-brand-chocolate text-brand-cream text-[10px] font-bold rounded-full flex items-center justify-center">
                     {favorites.length}
                   </span>
                 )}
@@ -712,15 +712,15 @@ export default function CatalogClient({
                 onClick={() => setIsCartOpen(true)}
                 title="Sacola de Compras"
                 aria-label="Sacola de compras"
-                className="relative p-2.5 text-[#09090b] hover:text-[#7a5828] hover:bg-[#f7f4ef] rounded-full transition-all flex items-center gap-2 cursor-pointer"
+                className="relative p-2.5 text-brand-chocolate hover:text-brand-muted hover:bg-brand-nude rounded-full transition-all flex items-center gap-2 cursor-pointer"
               >
                 <ShoppingBag size={20} />
                 {cartTotalItems > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#09090b] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-brand-chocolate text-brand-cream text-[10px] font-bold rounded-full flex items-center justify-center">
                     {cartTotalItems}
                   </span>
                 )}
-                <span className="hidden lg:inline-block text-xs font-bold text-[#09090b]">
+                <span className="hidden lg:inline-block text-xs font-bold text-brand-chocolate">
                   {cartTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
               </button>
@@ -745,13 +745,13 @@ export default function CatalogClient({
           </div>
 
           {/* CATEGORIES NAVIGATION WITH FLUID TOUCH, DRAG & CHEVRON CONTROLS (SEM CORTES) */}
-          <div className="relative mt-1.5 pt-1.5 border-t border-[#dcd5c7] flex items-center min-w-0 w-full overflow-hidden">
+          <div className="relative mt-1.5 pt-1.5 border-t border-brand-line flex items-center min-w-0 w-full overflow-hidden">
             {/* Scroll Left Button (Desktop only to prevent mobile overlay) */}
             {canScrollLeft && (
               <button
                 type="button"
                 onClick={() => scrollCategoryNav('left')}
-                className="hidden md:flex absolute left-0 z-20 w-7 h-7 rounded-full bg-white shadow-md border-1.5 border-[#dcd5c7] items-center justify-center text-[#09090b] hover:bg-[#f7f4ef] hover:border-[#09090b] active:scale-90 transition-all cursor-pointer"
+                className="hidden md:flex absolute left-0 z-20 w-7 h-7 rounded-full bg-brand-card shadow-md border-1.5 border-brand-line items-center justify-center text-brand-chocolate hover:bg-brand-nude hover:border-brand-chocolate active:scale-90 transition-all cursor-pointer"
                 title="Rolar para a esquerda"
               >
                 <ChevronLeft size={15} />
@@ -760,7 +760,7 @@ export default function CatalogClient({
 
             {/* Left fade gradient */}
             {canScrollLeft && (
-              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white via-white/80 to-transparent z-10" />
+              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-brand-cream via-brand-cream/80 to-transparent z-10" />
             )}
 
             <nav 
@@ -825,7 +825,7 @@ export default function CatalogClient({
 
             {/* Right fade gradient */}
             {canScrollRight && (
-              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white via-white/80 to-transparent z-10" />
+              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-brand-cream via-brand-cream/80 to-transparent z-10" />
             )}
 
             {/* Scroll Right Button (Desktop only to prevent mobile overlay) */}
@@ -833,7 +833,7 @@ export default function CatalogClient({
               <button
                 type="button"
                 onClick={() => scrollCategoryNav('right')}
-                className="hidden md:flex absolute right-0 z-20 w-7 h-7 rounded-full bg-white shadow-md border-1.5 border-[#dcd5c7] items-center justify-center text-[#09090b] hover:bg-[#f7f4ef] hover:border-[#09090b] active:scale-90 transition-all cursor-pointer"
+                className="hidden md:flex absolute right-0 z-20 w-7 h-7 rounded-full bg-brand-card shadow-md border-1.5 border-brand-line items-center justify-center text-brand-chocolate hover:bg-brand-nude hover:border-brand-chocolate active:scale-90 transition-all cursor-pointer"
                 title="Rolar para a direita"
               >
                 <ChevronRight size={15} />
@@ -851,7 +851,7 @@ export default function CatalogClient({
           <section className="catalog-hero hidden md:block">
             <div className="hero-inner shell">
               <div className="hero-copy">
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-widest text-[#7a5828] mb-2.5">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-widest text-brand-muted mb-2.5">
                   <Sparkles size={13} /> Alta Perfumaria & Cuidados
                 </span>
                 <h1>Encontre sua<br />próxima fragrância.</h1>
@@ -868,9 +868,9 @@ export default function CatalogClient({
                     href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent('Olá! Gostaria de tirar uma dúvida sobre os perfumes da Perfumio.')}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="button-text flex items-center gap-1.5 text-xs text-[#27272a] hover:text-[#09090b] font-semibold transition-colors"
+                    className="button-text flex items-center gap-1.5 text-xs text-brand-muted hover:text-brand-chocolate font-semibold transition-colors"
                   >
-                    <MessageCircle size={15} className="text-[#15803d]" /> Dúvidas no WhatsApp
+                    <MessageCircle size={15} className="text-brand-caramel" /> Dúvidas no WhatsApp
                   </a>
                 </div>
               </div>
@@ -878,30 +878,30 @@ export default function CatalogClient({
               {/* VITRINE INTERATIVA DE PERFUMES EM DESTAQUE (ESTILO SEPHORA / FRAGRANTICA) */}
               {currentFeatured && (
                 <div className="hero-featured-wrapper">
-                  <div className="w-full min-w-0 bg-white rounded-2xl border-2 border-[#dcd5c7] shadow-md hover:shadow-lg transition-all p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative overflow-hidden sm:h-[365px]">
+                  <div className="w-full min-w-0 bg-brand-card rounded-2xl border border-brand-line shadow-sm hover:shadow-sm transition-all p-4 sm:p-5 flex flex-col justify-between gap-3.5 relative overflow-hidden sm:h-[365px]">
                     {/* Top bar with badge and navigation */}
-                    <div className="flex items-center justify-between gap-2 border-b border-[#dcd5c7] pb-2.5 min-w-0">
+                    <div className="flex items-center justify-between gap-2 border-b border-brand-line pb-2.5 min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <Sparkles size={14} className="text-[#7a5828] shrink-0" />
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#09090b] truncate">
+                        <Sparkles size={14} className="text-brand-muted shrink-0" />
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-brand-chocolate truncate">
                           Destaque em Alta
                         </span>
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[10px] text-[#27272a] font-bold mr-1">
+                        <span className="text-[10px] text-brand-muted font-bold mr-1">
                           {featuredIndex + 1} de {heroFeaturedProducts.length}
                         </span>
                         <button
                           onClick={() => setFeaturedIndex((prev) => (prev - 1 + heroFeaturedProducts.length) % heroFeaturedProducts.length)}
-                          className="w-6 h-6 rounded-full border border-[#dcd5c7] flex items-center justify-center text-[#09090b] hover:border-[#09090b] hover:bg-[#faf8f5] transition-colors cursor-pointer"
+                          className="w-6 h-6 rounded-full border border-brand-line flex items-center justify-center text-brand-chocolate hover:border-brand-chocolate hover:bg-brand-nude transition-colors cursor-pointer"
                           title="Anterior"
                         >
                           <ChevronLeft size={13} />
                         </button>
                         <button
                           onClick={() => setFeaturedIndex((prev) => (prev + 1) % heroFeaturedProducts.length)}
-                          className="w-6 h-6 rounded-full border border-[#dcd5c7] flex items-center justify-center text-[#09090b] hover:border-[#09090b] hover:bg-[#faf8f5] transition-colors cursor-pointer"
+                          className="w-6 h-6 rounded-full border border-brand-line flex items-center justify-center text-brand-chocolate hover:border-brand-chocolate hover:bg-brand-nude transition-colors cursor-pointer"
                           title="Próximo"
                         >
                           <ChevronRight size={13} />
@@ -915,18 +915,18 @@ export default function CatalogClient({
                       className="flex gap-4 cursor-pointer group min-w-0 h-[136px] sm:h-[142px]"
                     >
                       {/* Photo */}
-                      <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-xl bg-white border border-[#dcd5c7] p-2 flex items-center justify-center shrink-0 relative overflow-hidden self-center shadow-2xs">
+                      <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-xl bg-brand-card border border-brand-line p-2 flex items-center justify-center shrink-0 relative overflow-hidden self-center shadow-2xs">
                         <ProductImage
                           src={currentFeatured.fotos[0]?.url}
                           alt={currentFeatured.nome}
                           className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                         />
                         {isProdutoProntaEntrega(currentFeatured) ? (
-                          <span className="absolute bottom-1.5 left-1.5 right-1.5 text-center text-[9px] font-extrabold uppercase tracking-wider bg-emerald-800 text-white py-0.5 rounded shadow-xs">
+                          <span className="absolute bottom-1.5 left-1.5 right-1.5 text-center text-[9px] font-extrabold uppercase tracking-wider bg-brand-chocolate text-brand-cream py-0.5 rounded shadow-xs">
                             Pronta Entrega
                           </span>
                         ) : (
-                          <span className="absolute bottom-1.5 left-1.5 right-1.5 text-center text-[9px] font-extrabold uppercase tracking-wider bg-[#7a5828] text-white py-0.5 rounded shadow-xs">
+                          <span className="absolute bottom-1.5 left-1.5 right-1.5 text-center text-[9px] font-extrabold uppercase tracking-wider bg-brand-chocolate text-brand-cream py-0.5 rounded shadow-xs">
                             Sob Encomenda
                           </span>
                         )}
@@ -936,13 +936,13 @@ export default function CatalogClient({
                       <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5 h-full">
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 mb-0.5 min-w-0">
-                            <span className="text-[10px] uppercase font-extrabold tracking-wider text-[#7a5828] truncate">
+                            <span className="text-[10px] uppercase font-extrabold tracking-wider text-brand-muted truncate">
                               {currentFeatured.marca}
                             </span>
                             {currentFeatured.volume && (
                               <>
-                                <span className="text-[#dcd5c7] shrink-0 font-bold">•</span>
-                                <span className="text-[10px] text-[#27272a] font-bold shrink-0">
+                                <span className="text-brand-line shrink-0 font-bold">•</span>
+                                <span className="text-[10px] text-brand-muted font-bold shrink-0">
                                   {currentFeatured.volume}
                                 </span>
                               </>
@@ -950,15 +950,15 @@ export default function CatalogClient({
                           </div>
 
                           <div className="h-[2.85rem] flex items-start overflow-hidden">
-                            <h3 className="font-serif text-base sm:text-lg font-bold text-[#09090b] group-hover:text-[#7a5828] transition-colors line-clamp-2 leading-snug break-words">
+                            <h3 className="font-serif text-base sm:text-lg font-bold text-brand-chocolate group-hover:text-brand-muted transition-colors line-clamp-2 leading-snug break-words">
                               {currentFeatured.nome}
                             </h3>
                           </div>
 
                           <div className="h-[18px] mt-0.5 overflow-hidden">
                             {currentFeatured.familiaOlfativa ? (
-                              <p className="text-[11px] text-[#27272a] font-medium line-clamp-1 truncate">
-                                Família: <span className="text-[#09090b] font-bold">{currentFeatured.familiaOlfativa}</span>
+                              <p className="text-[11px] text-brand-muted font-medium line-clamp-1 truncate">
+                                Família: <span className="text-brand-chocolate font-bold">{currentFeatured.familiaOlfativa}</span>
                               </p>
                             ) : (
                               <span className="block h-[18px]" />
@@ -971,7 +971,7 @@ export default function CatalogClient({
                             featuredAcordes.slice(0, 3).map((acorde, i) => (
                               <span
                                 key={i}
-                                className="text-[10px] bg-[#f5ede2] text-[#543b18] border border-[#e2d8c5] px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0 shadow-2xs"
+                                className="text-[10px] bg-brand-nude text-brand-chocolate border border-brand-line px-2 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0 shadow-2xs"
                               >
                                 {acorde}
                               </span>
@@ -982,30 +982,30 @@ export default function CatalogClient({
                         </div>
 
                         <div className="mt-1 flex items-baseline gap-2 shrink-0 h-[24px]">
-                          <span className="text-xl font-extrabold text-[#09090b] leading-none">
+                          <span className="text-xl font-extrabold text-brand-chocolate leading-none">
                             {currentFeatured.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </span>
-                          <span className="text-xs text-[#27272a] font-medium">à vista</span>
+                          <span className="text-xs text-brand-muted font-medium">à vista</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Mini Thumbnails Selector */}
-                    <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-[#dcd5c7] w-full min-w-0">
+                    <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-brand-line w-full min-w-0">
                       {heroFeaturedProducts.map((p, idx) => (
                         <button
                           key={p.id}
                           onClick={() => setFeaturedIndex(idx)}
                           className={`p-1.5 rounded-lg border text-left transition-all flex items-center gap-1.5 min-w-0 overflow-hidden cursor-pointer ${
                             idx === featuredIndex
-                              ? 'border-2 border-[#09090b] bg-[#fbf9f5] shadow-xs'
-                              : 'border-[#dcd5c7] hover:border-[#09090b] opacity-80 hover:opacity-100 bg-white'
+                              ? 'border-2 border-brand-chocolate bg-brand-cream shadow-xs'
+                              : 'border-brand-line hover:border-brand-chocolate opacity-80 hover:opacity-100 bg-brand-card'
                           }`}
                         >
-                          <div className="w-6 h-6 rounded bg-white shrink-0 overflow-hidden border border-[#dcd5c7]">
+                          <div className="w-6 h-6 rounded bg-brand-card shrink-0 overflow-hidden border border-brand-line">
                             <ProductImage src={p.fotos[0]?.url} alt="" className="w-full h-full object-contain" />
                           </div>
-                          <span className="text-[10px] font-bold text-[#09090b] truncate min-w-0 hidden sm:inline">
+                          <span className="text-[10px] font-bold text-brand-chocolate truncate min-w-0 hidden sm:inline">
                             {p.marca.split(' ')[0]}
                           </span>
                         </button>
@@ -1015,9 +1015,9 @@ export default function CatalogClient({
                     {/* CTA Button */}
                     <button
                       onClick={() => chooseProduct(currentFeatured)}
-                      className="w-full bg-[#09090b] hover:bg-black text-white py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
+                      className="w-full bg-brand-chocolate hover:bg-brand-deep text-brand-cream py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
                     >
-                      <Sparkles size={14} className="text-[#e8cda8]" />
+                      <Sparkles size={14} className="text-brand-rose-beige" />
                       Ver Pirâmide Olfativa & Detalhes
                     </button>
                   </div>
@@ -1070,7 +1070,7 @@ export default function CatalogClient({
             <SlidersHorizontal size={15} /> 
             <span>Filtros</span>
             {activeFiltersCount > 0 && (
-              <span className="w-5 h-5 rounded-full bg-[#09090b] text-white text-[10px] font-bold flex items-center justify-center">
+              <span className="w-5 h-5 rounded-full bg-brand-chocolate text-brand-cream text-[10px] font-bold flex items-center justify-center">
                 {activeFiltersCount}
               </span>
             )}
@@ -1161,17 +1161,17 @@ export default function CatalogClient({
             ))}
           </div>
         ) : (
-          <div className="bg-white border-2 border-[#dcd5c7] rounded-2xl p-12 text-center max-w-md mx-auto my-8 shadow-xs">
-            <div className="w-16 h-16 bg-[#faf8f5] border border-[#dcd5c7] rounded-full flex items-center justify-center mx-auto mb-4 text-[#09090b]">
+          <div className="bg-brand-card border-2 border-brand-line rounded-2xl p-12 text-center max-w-md mx-auto my-8 shadow-xs">
+            <div className="w-16 h-16 bg-brand-nude border border-brand-line rounded-full flex items-center justify-center mx-auto mb-4 text-brand-chocolate">
               <Search size={24} />
             </div>
-            <h4 className="text-base font-bold text-[#09090b] mb-1">Nenhum produto encontrado</h4>
-            <p className="text-xs text-[#27272a] font-medium mb-5">
+            <h4 className="text-base font-bold text-brand-chocolate mb-1">Nenhum produto encontrado</h4>
+            <p className="text-xs text-brand-muted font-medium mb-5">
               Não encontramos resultados com esses filtros. Experimente trocar a disponibilidade ou limpar os filtros.
             </p>
             <button 
               onClick={clearFilters}
-              className="bg-[#09090b] text-white text-xs font-bold px-6 py-2.5 rounded-full hover:bg-[#27272a] transition-all shadow-xs cursor-pointer"
+              className="bg-brand-chocolate text-brand-cream text-xs font-bold px-6 py-2.5 rounded-full hover:bg-brand-deep transition-all shadow-xs cursor-pointer"
             >
               Ver todos os produtos
             </button>
@@ -1219,7 +1219,7 @@ export default function CatalogClient({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedProduct(null)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 bg-brand-deep/50 backdrop-blur-sm"
             />
 
             <motion.div 
@@ -1227,15 +1227,15 @@ export default function CatalogClient({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.2 }}
-              ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="product-title" tabIndex={-1} className="product-dialog relative w-full bg-white z-10 my-auto"
+              ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="product-title" tabIndex={-1} className="product-dialog relative w-full bg-brand-card z-10 my-auto"
             >
               {/* Top Bar Mobile: Puxador centralizado e botão fechar em linha (sem risco de sobreposição) */}
-              <div className="flex md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-xs items-center justify-between px-4 py-3 border-b border-[#f0ede6]">
+              <div className="flex md:hidden sticky top-0 z-30 bg-brand-card/95 backdrop-blur-xs items-center justify-between px-4 py-3 border-b border-brand-nude">
                 <div className="w-8" />
-                <span className="w-10 h-1.5 rounded-full bg-[#dcd5c7]" />
+                <span className="w-10 h-1.5 rounded-full bg-brand-line" />
                 <button 
                   aria-label="Fechar detalhes" onClick={() => setSelectedProduct(null)}
-                  className="w-8 h-8 rounded-full bg-white shadow-2xs border border-[#dcd5c7] text-[#09090b] flex items-center justify-center active:bg-[#faf8f5] transition-colors cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-brand-card shadow-2xs border border-brand-line text-brand-chocolate flex items-center justify-center active:bg-brand-nude transition-colors cursor-pointer"
                 >
                   <X size={16} />
                 </button>
@@ -1244,7 +1244,7 @@ export default function CatalogClient({
               {/* Botão Fechar Desktop (>= 768px) */}
               <button 
                 aria-label="Fechar detalhes" onClick={() => setSelectedProduct(null)}
-                className="hidden md:flex absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-white shadow-xs border border-[#dcd5c7] text-[#09090b] items-center justify-center hover:bg-[#faf8f5] hover:border-[#09090b] transition-colors cursor-pointer"
+                className="hidden md:flex absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-brand-card shadow-xs border border-brand-line text-brand-chocolate items-center justify-center hover:bg-brand-nude hover:border-brand-chocolate transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -1260,7 +1260,7 @@ export default function CatalogClient({
                         setCatalogZoomScale(1);
                       }}
                       title="Clique para ampliar a foto do produto"
-                      className="detail-photo aspect-square rounded-2xl bg-[#fcfbf9] overflow-hidden relative border-2 border-[#dcd5c7] cursor-zoom-in group/mainphoto"
+                      className="detail-photo aspect-square rounded-2xl bg-brand-nude overflow-hidden relative border-2 border-brand-line cursor-zoom-in group/mainphoto"
                     >
                       <ProductImage 
                         src={selectedProduct.fotos[activeImageIndex]?.url || selectedProduct.fotos[0]?.url} 
@@ -1271,25 +1271,25 @@ export default function CatalogClient({
                       {/* Badge de Modalidade */}
                       <div className="absolute top-3 left-3 flex flex-row flex-wrap gap-1.5 max-w-[75%] pointer-events-none">
                         {isProdutoProntaEntrega(selectedProduct) ? (
-                          <span className="bg-emerald-800 text-white text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md flex items-center gap-1 shadow-xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="bg-brand-chocolate text-brand-cream text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md flex items-center gap-1 shadow-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-brand-rose-beige animate-pulse" />
                             Pronta Entrega
                           </span>
                         ) : (
-                          <span className="bg-[#7a5828] text-white text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md flex items-center gap-1 shadow-xs">
+                          <span className="bg-brand-chocolate text-brand-cream text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md flex items-center gap-1 shadow-xs">
                             <CalendarCheck size={12} />
                             Sob Encomenda
                           </span>
                         )}
                         {selectedProduct.badge && !isVolumeBadge(selectedProduct.badge, selectedProduct.volume) && (
-                          <span className="bg-[#09090b] text-white text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md shadow-xs">
+                          <span className="bg-brand-chocolate text-brand-cream text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md shadow-xs">
                             {selectedProduct.badge}
                           </span>
                         )}
                       </div>
 
                       {/* Hint de Zoom */}
-                      <div className="absolute bottom-3 right-3 bg-black/60 group-hover/mainphoto:bg-black/85 text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1 transition-colors pointer-events-none shadow-xs">
+                      <div className="absolute bottom-3 right-3 bg-brand-deep/60 group-hover/mainphoto:bg-brand-deep/85 text-brand-cream text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1 transition-colors pointer-events-none shadow-xs">
                         <ZoomIn size={12} /> Ampliar
                       </div>
                     </div>
@@ -1301,7 +1301,7 @@ export default function CatalogClient({
                             key={foto.id || idx}
                             aria-label={"Ver foto "+(idx+1)} aria-pressed={activeImageIndex===idx} onClick={() => setActiveImageIndex(idx)}
                             className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
-                              activeImageIndex === idx ? 'border-[#09090b] shadow-xs' : 'border-[#dcd5c7] opacity-70 hover:opacity-100 hover:border-[#09090b]'
+                              activeImageIndex === idx ? 'border-brand-chocolate shadow-xs' : 'border-brand-line opacity-70 hover:opacity-100 hover:border-brand-chocolate'
                             }`}
                           >
                             <ProductImage src={foto.url} alt="" className="w-full h-full object-contain" />
@@ -1321,39 +1321,39 @@ export default function CatalogClient({
                 <div className="order-2 md:order-2 md:col-span-5 flex flex-col">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap mb-1.5 pr-12">
-                      <span className="text-xs uppercase font-extrabold tracking-wider text-[#7a5828]">
+                      <span className="text-xs uppercase font-extrabold tracking-wider text-brand-muted">
                         {selectedProduct.marca}
                       </span>
-                      <span className="text-[#dcd5c7] font-bold">•</span>
-                      <span className="text-xs text-[#27272a] font-semibold">
+                      <span className="text-brand-line font-bold">•</span>
+                      <span className="text-xs text-brand-muted font-semibold">
                         {selectedProduct.categoria.nome}
                       </span>
                     </div>
 
-                    <h2 id="product-title" className="text-2xl font-serif font-bold text-[#09090b] mb-1.5 leading-snug pr-10">
+                    <h2 id="product-title" className="text-2xl font-serif font-bold text-brand-chocolate mb-1.5 leading-snug pr-10">
                       {selectedProduct.nome}
                     </h2>
 
                     {selectedProduct.volume && (
-                      <p className="text-xs text-[#27272a] mb-3 font-medium">
-                        Volume / Quantidade: <span className="font-bold text-[#09090b]">{selectedProduct.volume}</span>
+                      <p className="text-xs text-brand-muted mb-3 font-medium">
+                        Volume / Quantidade: <span className="font-bold text-brand-chocolate">{selectedProduct.volume}</span>
                       </p>
                     )}
 
                     {/* STATUS DE ENTREGA DETALHADO */}
                     <div className={`detail-availability p-3.5 rounded-xl border-2 mb-3 text-xs ${
                       isProdutoProntaEntrega(selectedProduct)
-                        ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950 font-medium'
-                        : 'bg-[#fcf7ee] border-[#e8d7be] text-[#543b18] font-medium'
+                        ? 'bg-brand-nude/80 border-brand-line text-brand-chocolate font-medium'
+                        : 'bg-brand-card border-brand-rose-beige text-brand-chocolate font-medium'
                     }`}>
                       <div className="font-extrabold flex items-center gap-1.5 mb-0.5">
                         {isProdutoProntaEntrega(selectedProduct) ? (
-                          <><CheckCircle2 size={16} className="text-emerald-700"/> Pronta entrega imediata</>
+                          <><CheckCircle2 size={16} className="text-brand-chocolate"/> Pronta entrega imediata</>
                         ) : (
-                          <><CalendarCheck size={16} className="text-[#7a5828]"/> Disponível sob encomenda</>
+                          <><CalendarCheck size={16} className="text-brand-muted"/> Disponível sob encomenda</>
                         )}
                       </div>
-                      <p className="text-[#27272a] font-medium">
+                      <p className="text-brand-muted font-medium">
                         {selectedProduct.previsaoEntrega || (
                           isProdutoProntaEntrega(selectedProduct)
                             ? 'Envio ou retirada combinada de imediato.'
@@ -1366,30 +1366,30 @@ export default function CatalogClient({
                     <div className="detail-price py-2 mb-3">
                       <div className="flex items-baseline gap-2">
                         {hasVisibleDiscount(selectedProduct) && (
-                          <span className="text-xs text-[#52525b] line-through font-semibold">
+                          <span className="text-xs text-brand-muted line-through font-semibold">
                             De {selectedProduct.precoOriginal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </span>
                         )}
-                        <span className="text-2xl font-extrabold text-[#09090b]">
+                        <span className="text-2xl font-extrabold text-brand-chocolate">
                           {selectedProduct.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
-                        <span className="text-xs text-[#27272a] font-semibold">à vista</span>
+                        <span className="text-xs text-brand-muted font-semibold">à vista</span>
                       </div>
                       {selectedProduct.precoParcelado && (
-                        <p className="text-xs text-[#7a5828] font-bold mt-0.5">
+                        <p className="text-xs text-brand-muted font-bold mt-0.5">
                           {selectedProduct.precoParcelado}
                         </p>
                       )}
                     </div>
 
                     {/* BOTAO DE ACAO DINAMICO (PRONTA ENTREGA vs ENCOMENDA) */}
-                    <div className="detail-actions space-y-2.5 pt-3 mb-4 border-t border-[#dcd5c7]">
+                    <div className="detail-actions space-y-2.5 pt-3 mb-4 border-t border-brand-line">
                       <button 
                         onClick={() => buyDirectOnWhatsApp(selectedProduct)}
-                        className={`w-full text-white py-3.5 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer shadow-xs ${
+                        className={`w-full text-brand-cream py-3.5 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer shadow-xs ${
                           isProdutoProntaEntrega(selectedProduct)
-                            ? 'bg-[#09090b] hover:bg-[#27272a]'
-                            : 'bg-[#7a5828] hover:bg-[#63451e]'
+                            ? 'bg-brand-chocolate hover:bg-brand-deep'
+                            : 'bg-brand-chocolate hover:bg-brand-deep'
                         }`}
                       >
                         <MessageCircle size={18} />
@@ -1403,7 +1403,7 @@ export default function CatalogClient({
                           addToCart(selectedProduct);
                           setSelectedProduct(null);
                         }}
-                        className="w-full bg-white hover:bg-[#faf8f5] text-[#09090b] border-2 border-[#09090b] py-3 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-2xs"
+                        className="w-full bg-brand-card hover:bg-brand-nude text-brand-chocolate border-2 border-brand-chocolate py-3 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-2xs"
                       >
                         <ShoppingBag size={16} /> Adicionar à Sacola
                       </button>
@@ -1416,23 +1416,23 @@ export default function CatalogClient({
                   </div>
 
                   {/* DESCRIÇÃO E USO */}
-                  <div className="space-y-2 text-xs text-[#27272a] leading-relaxed pt-5 mt-2 border-t border-[#dcd5c7]">
+                  <div className="space-y-2 text-xs text-brand-muted leading-relaxed pt-5 mt-2 border-t border-brand-line">
                     <div>
-                      <h4 className="font-bold text-[#09090b] uppercase tracking-wider text-[11px] mb-0.5">Descrição:</h4>
+                      <h4 className="font-bold text-brand-chocolate uppercase tracking-wider text-[11px] mb-0.5">Descrição:</h4>
                       <p>{selectedProduct.descricao}</p>
                     </div>
 
                     {selectedProduct.caracteristicas && (
                       <div>
-                        <h4 className="font-bold text-[#09090b] uppercase tracking-wider text-[11px] mb-0.5">Destaques:</h4>
-                        <p className="text-[#3f3f46] font-medium">{selectedProduct.caracteristicas}</p>
+                        <h4 className="font-bold text-brand-chocolate uppercase tracking-wider text-[11px] mb-0.5">Destaques:</h4>
+                        <p className="text-brand-muted font-medium">{selectedProduct.caracteristicas}</p>
                       </div>
                     )}
 
                     {selectedProduct.modoUso && (
                       <div>
-                        <h4 className="font-bold text-[#09090b] uppercase tracking-wider text-[11px] mb-0.5">Modo de Uso:</h4>
-                        <p className="text-[#3f3f46] font-medium">{selectedProduct.modoUso}</p>
+                        <h4 className="font-bold text-brand-chocolate uppercase tracking-wider text-[11px] mb-0.5">Modo de Uso:</h4>
+                        <p className="text-brand-muted font-medium">{selectedProduct.modoUso}</p>
                       </div>
                     )}
                   </div>
@@ -1441,21 +1441,21 @@ export default function CatalogClient({
 
               {/* PERFIL DA FRAGRÂNCIA (SEÇÃO NOBRE LARGURA TOTAL) */}
               {(selectedProduct.familiaOlfativa || selectedProduct.acordesPrincipais || selectedProduct.notasSaida) && (
-                <div className="bg-[#fcfbf9] border-t-2 border-[#dcd5c7] p-5 sm:p-8">
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-3 border-b border-[#dcd5c7]">
+                <div className="bg-brand-nude border-t-2 border-brand-line p-5 sm:p-8">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-3 border-b border-brand-line">
                     <div className="flex items-center gap-2">
-                      <Sparkles className="text-[#7a5828]" size={18} />
-                      <h4 className="font-serif text-[#09090b] text-lg font-bold">Perfil da Fragrância & Pirâmide Olfativa</h4>
+                      <Sparkles className="text-brand-muted" size={18} />
+                      <h4 className="font-serif text-brand-chocolate text-lg font-bold">Perfil da Fragrância & Pirâmide Olfativa</h4>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
                       {selectedProduct.familiaOlfativa && (
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#543b18] bg-[#f5ede2] border border-[#dcd5c7] px-3 py-1 rounded-md">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-brand-chocolate bg-brand-nude border border-brand-line px-3 py-1 rounded-md">
                           {selectedProduct.familiaOlfativa}
                         </span>
                       )}
                       {selectedProduct.concentracao && (
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#09090b] bg-[#fbf9f5] border border-[#dcd5c7] px-3 py-1 rounded-md">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-brand-chocolate bg-brand-cream border border-brand-line px-3 py-1 rounded-md">
                           {selectedProduct.concentracao}
                         </span>
                       )}
@@ -1466,10 +1466,10 @@ export default function CatalogClient({
                     {/* Acordes Principais */}
                     {selectedProduct.acordesPrincipais && Array.isArray(selectedProduct.acordesPrincipais) && selectedProduct.acordesPrincipais.length > 0 && (
                       <div>
-                        <p className="text-[11px] uppercase font-bold text-[#09090b] tracking-wider mb-2">Acordes Principais</p>
+                        <p className="text-[11px] uppercase font-bold text-brand-chocolate tracking-wider mb-2">Acordes Principais</p>
                         <div className="flex flex-wrap gap-2">
                           {selectedProduct.acordesPrincipais.filter((value): value is string => typeof value === 'string').map((acorde: string, idx: number) => (
-                            <span key={idx} className="text-xs text-[#09090b] font-semibold border border-[#dcd5c7] bg-white px-3 py-1 rounded-full shadow-2xs">
+                            <span key={idx} className="text-xs text-brand-chocolate font-semibold border border-brand-line bg-brand-card px-3 py-1 rounded-full shadow-2xs">
                               {acorde}
                             </span>
                           ))}
@@ -1481,57 +1481,57 @@ export default function CatalogClient({
                     {[selectedProduct.notasSaida, selectedProduct.notasCoracao, selectedProduct.notasFundo].some(notes => Array.isArray(notes) && notes.length > 0) && (
                       <div>
                         <div className="flex items-center justify-between mb-2.5">
-                          <p className="text-[11px] uppercase font-bold text-[#09090b] tracking-wider">Evolução Olfativa na Pele</p>
-                          <span className="text-[10px] text-[#27272a] font-medium italic">Fases médias de referência olfativa</span>
+                          <p className="text-[11px] uppercase font-bold text-brand-chocolate tracking-wider">Evolução Olfativa na Pele</p>
+                          <span className="text-[10px] text-brand-muted font-medium italic">Fases médias de referência olfativa</span>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           {/* Topo */}
-                          <div className="bg-white border-1.5 border-[#dcd5c7] rounded-xl p-3.5 flex flex-col justify-between shadow-2xs">
+                          <div className="bg-brand-card border-1.5 border-brand-line rounded-xl p-3.5 flex flex-col justify-between shadow-2xs">
                             <div>
                               <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-bold text-[#09090b]">Notas de Topo (Saída)</span>
-                                <span className="text-[10px] text-[#543b18] font-bold bg-[#f5ede2] border border-[#dcd5c7] px-2 py-0.5 rounded" title="Média de evaporação na perfumaria">~5 a 15 min</span>
+                                <span className="text-xs font-bold text-brand-chocolate">Notas de Topo (Saída)</span>
+                                <span className="text-[10px] text-brand-chocolate font-bold bg-brand-nude border border-brand-line px-2 py-0.5 rounded" title="Média de evaporação na perfumaria">~5 a 15 min</span>
                               </div>
-                              <p className="text-xs text-[#27272a] font-medium leading-relaxed">
+                              <p className="text-xs text-brand-muted font-medium leading-relaxed">
                                 {selectedProduct.notasSaida && Array.isArray(selectedProduct.notasSaida) && selectedProduct.notasSaida.length > 0
                                   ? selectedProduct.notasSaida.join(' • ')
                                   : 'Acordes frescos de abertura'}
                               </p>
                             </div>
-                            <small className="text-[10px] text-[#3f3f46] font-medium mt-3">A primeira impressão que você sente ao borrifar</small>
+                            <small className="text-[10px] text-brand-muted font-medium mt-3">A primeira impressão que você sente ao borrifar</small>
                           </div>
 
                           {/* Coração */}
-                          <div className="bg-white border-1.5 border-[#dcd5c7] rounded-xl p-3.5 flex flex-col justify-between shadow-2xs">
+                          <div className="bg-brand-card border-1.5 border-brand-line rounded-xl p-3.5 flex flex-col justify-between shadow-2xs">
                             <div>
                               <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-bold text-[#09090b]">Notas de Coração (Corpo)</span>
-                                <span className="text-[10px] text-[#543b18] font-bold bg-[#f5ede2] border border-[#dcd5c7] px-2 py-0.5 rounded" title="Média de evaporação na perfumaria">~2 a 4 horas</span>
+                                <span className="text-xs font-bold text-brand-chocolate">Notas de Coração (Corpo)</span>
+                                <span className="text-[10px] text-brand-chocolate font-bold bg-brand-nude border border-brand-line px-2 py-0.5 rounded" title="Média de evaporação na perfumaria">~2 a 4 horas</span>
                               </div>
-                              <p className="text-xs text-[#27272a] font-medium leading-relaxed">
+                              <p className="text-xs text-brand-muted font-medium leading-relaxed">
                                 {selectedProduct.notasCoracao && Array.isArray(selectedProduct.notasCoracao) && selectedProduct.notasCoracao.length > 0
                                   ? selectedProduct.notasCoracao.join(' • ')
                                   : 'Alma e personalidade marcante'}
                               </p>
                             </div>
-                            <small className="text-[10px] text-[#3f3f46] font-medium mt-3">A essência e personalidade que exala no ambiente</small>
+                            <small className="text-[10px] text-brand-muted font-medium mt-3">A essência e personalidade que exala no ambiente</small>
                           </div>
 
                           {/* Fundo */}
-                          <div className="bg-white border-1.5 border-[#dcd5c7] rounded-xl p-3.5 flex flex-col justify-between shadow-2xs">
+                          <div className="bg-brand-card border-1.5 border-brand-line rounded-xl p-3.5 flex flex-col justify-between shadow-2xs">
                             <div>
                               <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-bold text-[#09090b]">Notas de Fundo (Base)</span>
-                                <span className="text-[10px] text-[#543b18] font-bold bg-[#f5ede2] border border-[#dcd5c7] px-2 py-0.5 rounded" title="Média de evaporação na perfumaria">~6+ horas</span>
+                                <span className="text-xs font-bold text-brand-chocolate">Notas de Fundo (Base)</span>
+                                <span className="text-[10px] text-brand-chocolate font-bold bg-brand-nude border border-brand-line px-2 py-0.5 rounded" title="Média de evaporação na perfumaria">~6+ horas</span>
                               </div>
-                              <p className="text-xs text-[#27272a] font-medium leading-relaxed">
+                              <p className="text-xs text-brand-muted font-medium leading-relaxed">
                                 {selectedProduct.notasFundo && Array.isArray(selectedProduct.notasFundo) && selectedProduct.notasFundo.length > 0
                                   ? selectedProduct.notasFundo.join(' • ')
                                   : 'Fixação duradoura e aconchegante'}
                               </p>
                             </div>
-                            <small className="text-[10px] text-[#3f3f46] font-medium mt-3">As notas mais nobres que duram o dia todo na pele</small>
+                            <small className="text-[10px] text-brand-muted font-medium mt-3">As notas mais nobres que duram o dia todo na pele</small>
                           </div>
                         </div>
                       </div>
@@ -1542,21 +1542,21 @@ export default function CatalogClient({
 
               {/* VOCE TAMBEM PODE GOSTAR */}
               {relatedProducts.length > 0 && (
-                <div className="bg-[#fcfbf9] border-t-2 border-[#dcd5c7] p-5 sm:p-6">
-                  <h4 className="text-sm font-serif font-bold text-[#09090b] mb-3">Você também pode gostar:</h4>
+                <div className="bg-brand-nude border-t-2 border-brand-line p-5 sm:p-6">
+                  <h4 className="text-sm font-serif font-bold text-brand-chocolate mb-3">Você também pode gostar:</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {relatedProducts.map(rel => (
                       <div 
                         key={rel.id} 
                         role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();chooseProduct(rel);}}} onClick={() => chooseProduct(rel)}
-                        className="bg-white p-2.5 rounded-xl border border-[#dcd5c7] cursor-pointer hover:border-[#09090b] transition-all flex flex-col shadow-2xs hover:shadow-xs"
+                        className="bg-brand-card p-2.5 rounded-xl border border-brand-line cursor-pointer hover:border-brand-chocolate transition-all flex flex-col shadow-2xs hover:shadow-xs"
                       >
-                        <div className="aspect-square rounded-lg bg-[#f7f4ef] overflow-hidden mb-2 border border-[#dcd5c7]">
+                        <div className="aspect-square rounded-lg bg-brand-nude overflow-hidden mb-2 border border-brand-line">
                           <ProductImage src={rel.fotos[0]?.url} alt="" className="w-full h-full object-contain" />
                         </div>
-                        <span className="text-[10px] text-[#7a5828] font-extrabold uppercase truncate">{rel.marca}</span>
-                        <p className="text-xs font-bold text-[#09090b] truncate mb-1">{rel.nome}</p>
-                        <span className="text-xs font-extrabold text-[#09090b] mt-auto">
+                        <span className="text-[10px] text-brand-muted font-extrabold uppercase truncate">{rel.marca}</span>
+                        <p className="text-xs font-bold text-brand-chocolate truncate mb-1">{rel.nome}</p>
+                        <span className="text-xs font-extrabold text-brand-chocolate mt-auto">
                           {rel.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
                       </div>
@@ -1566,13 +1566,13 @@ export default function CatalogClient({
               )}
 
               {/* STICKY BOTTOM ACTION BAR FOR MOBILE (< 768px) */}
-              <div className="md:hidden sticky bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t-2 border-[#dcd5c7] p-3 px-4 flex items-center gap-2 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] safe-bottom">
+              <div className="md:hidden sticky bottom-0 left-0 right-0 z-30 bg-brand-card/95 backdrop-blur-md border-t-2 border-brand-line p-3 px-4 flex items-center gap-2 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] safe-bottom">
                 <button
                   onClick={() => buyDirectOnWhatsApp(selectedProduct)}
-                  className={`flex-1 py-3 px-4 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-98 transition-all shadow-xs cursor-pointer ${
+                  className={`flex-1 py-3 px-4 rounded-xl text-brand-cream font-bold text-xs flex items-center justify-center gap-2 active:scale-98 transition-all shadow-xs cursor-pointer ${
                     isProdutoProntaEntrega(selectedProduct)
-                      ? 'bg-[#15803d] hover:bg-[#166534]'
-                      : 'bg-[#7a5828] hover:bg-[#63451e]'
+                      ? 'bg-brand-chocolate hover:bg-brand-deep'
+                      : 'bg-brand-chocolate hover:bg-brand-deep'
                   }`}
                 >
                   <MessageCircle size={16} />
@@ -1585,7 +1585,7 @@ export default function CatalogClient({
                   }}
                   aria-label="Adicionar à sacola"
                   title="Adicionar à sacola"
-                  className="w-12 h-11 bg-white hover:bg-[#faf8f5] text-[#09090b] border-2 border-[#09090b] rounded-xl font-bold flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                  className="w-12 h-11 bg-brand-card hover:bg-brand-nude text-brand-chocolate border-2 border-brand-chocolate rounded-xl font-bold flex items-center justify-center transition-colors cursor-pointer shrink-0"
                 >
                   <ShoppingBag size={18} />
                 </button>
@@ -1600,7 +1600,7 @@ export default function CatalogClient({
       <AnimatePresence>
         {isPhotoZoomOpen && selectedProduct && (
           <div 
-            className="fixed inset-0 z-60 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
+            className="fixed inset-0 z-60 bg-brand-deep/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
             onClick={() => {
               setIsPhotoZoomOpen(false);
               setCatalogZoomScale(1);
@@ -1612,8 +1612,8 @@ export default function CatalogClient({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center gap-2">
-                <span className="text-white/80 text-xs font-semibold flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/15">
-                  <Sparkles size={13} className="text-[#c5a880]" />
+                <span className="text-brand-cream/80 text-xs font-semibold flex items-center gap-1.5 bg-brand-card/10 backdrop-blur-md px-3 py-1.5 rounded-full border border-brand-cream/15">
+                  <Sparkles size={13} className="text-brand-rose-beige" />
                   {selectedProduct.marca} • Detalhes do Frasco
                 </span>
               </div>
@@ -1622,7 +1622,7 @@ export default function CatalogClient({
                 <button
                   type="button"
                   onClick={() => setCatalogZoomScale((prev) => (prev > 1 ? 1 : 2))}
-                  className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 bg-brand-card/10 hover:bg-brand-card/20 border border-brand-cream/20 text-brand-cream text-xs font-bold px-3 py-1.5 rounded-full transition-colors cursor-pointer"
                   title={catalogZoomScale > 1 ? "Reduzir zoom" : "Ampliar zoom"}
                 >
                   {catalogZoomScale > 1 ? <ZoomOut size={14} /> : <ZoomIn size={14} />}
@@ -1635,7 +1635,7 @@ export default function CatalogClient({
                     setIsPhotoZoomOpen(false);
                     setCatalogZoomScale(1);
                   }}
-                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white text-white hover:text-black border border-white/20 flex items-center justify-center transition-all cursor-pointer"
+                  className="w-9 h-9 rounded-full bg-brand-card/10 hover:bg-brand-card text-brand-cream hover:text-brand-deep border border-brand-cream/20 flex items-center justify-center transition-all cursor-pointer"
                   aria-label="Fechar ampliação"
                 >
                   <X size={18} />
@@ -1645,7 +1645,7 @@ export default function CatalogClient({
 
             {/* Container da Imagem */}
             <div 
-              className="relative w-full max-w-2xl max-h-[65vh] min-h-[320px] bg-[#121214]/90 border border-white/15 rounded-3xl p-6 sm:p-10 flex items-center justify-center overflow-hidden shadow-2xl cursor-pointer select-none"
+              className="relative w-full max-w-2xl max-h-[65vh] min-h-[320px] bg-brand-deep/90 border border-brand-cream/15 rounded-3xl p-6 sm:p-10 flex items-center justify-center overflow-hidden shadow-2xl cursor-pointer select-none"
               onClick={(e) => {
                 e.stopPropagation();
                 setCatalogZoomScale((prev) => (prev > 1 ? 1 : 2));
@@ -1664,27 +1664,27 @@ export default function CatalogClient({
                 }`}
               />
 
-              <div className="absolute bottom-3 right-4 pointer-events-none bg-black/60 border border-white/15 text-[10px] text-white/80 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1">
+              <div className="absolute bottom-3 right-4 pointer-events-none bg-brand-deep/60 border border-brand-cream/15 text-[10px] text-brand-cream/80 px-2.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1">
                 <ZoomIn size={11} /> Toque para alternar zoom (1x / 2x)
               </div>
             </div>
 
             {/* Bottom Bar Info */}
             <div 
-              className="w-full max-w-2xl bg-[#1c1c1f] border border-white/15 rounded-2xl p-4 mt-3 flex items-center justify-between gap-3 shadow-2xl z-30"
+              className="w-full max-w-2xl bg-brand-deep border border-brand-cream/15 rounded-2xl p-4 mt-3 flex items-center justify-between gap-3 shadow-2xl z-30"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-left min-w-0">
-                <span className="text-[10px] uppercase font-extrabold tracking-wider text-[#c5a880] block">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider text-brand-rose-beige block">
                   {selectedProduct.marca}
                 </span>
-                <h4 className="font-serif text-sm sm:text-base font-bold text-white truncate">
+                <h4 className="font-serif text-sm sm:text-base font-bold text-brand-cream truncate">
                   {selectedProduct.nome}
                 </h4>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-sm font-extrabold text-[#c5a880]">
+                <span className="text-sm font-extrabold text-brand-rose-beige">
                   {selectedProduct.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
               </div>
@@ -1702,7 +1702,7 @@ export default function CatalogClient({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileFiltersOpen(false)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-xs"
+              className="fixed inset-0 bg-brand-deep/50 backdrop-blur-xs"
             />
             <motion.div
               initial={{ y: '100%' }}
@@ -1713,15 +1713,15 @@ export default function CatalogClient({
               role="dialog"
               aria-modal="true"
               aria-label="Filtros do catálogo"
-              className="relative w-full max-h-[85vh] bg-white rounded-t-3xl shadow-2xl z-10 flex flex-col border-t-2 border-[#dcd5c7] overflow-hidden"
+              className="relative w-full max-h-[85vh] bg-brand-card rounded-t-3xl shadow-2xl z-10 flex flex-col border-t-2 border-brand-line overflow-hidden"
             >
               {/* Drawer Header */}
-              <div className="p-4 px-5 border-b border-[#dcd5c7] flex items-center justify-between bg-white shrink-0">
+              <div className="p-4 px-5 border-b border-brand-line flex items-center justify-between bg-brand-card shrink-0">
                 <div className="flex items-center gap-2">
-                  <SlidersHorizontal size={18} className="text-[#09090b]" />
-                  <h3 className="font-serif text-lg font-bold text-[#09090b]">Filtros</h3>
+                  <SlidersHorizontal size={18} className="text-brand-chocolate" />
+                  <h3 className="font-serif text-lg font-bold text-brand-chocolate">Filtros</h3>
                   {activeFiltersCount > 0 && (
-                    <span className="bg-[#7a5828] text-white text-[11px] font-bold px-2 py-0.5 rounded-full">
+                    <span className="bg-brand-chocolate text-brand-cream text-[11px] font-bold px-2 py-0.5 rounded-full">
                       {activeFiltersCount}
                     </span>
                   )}
@@ -1731,7 +1731,7 @@ export default function CatalogClient({
                     <button
                       type="button"
                       onClick={clearFilters}
-                      className="text-xs text-[#7a5828] font-bold hover:underline cursor-pointer"
+                      className="text-xs text-brand-muted font-bold hover:underline cursor-pointer"
                     >
                       Limpar filtros
                     </button>
@@ -1739,7 +1739,7 @@ export default function CatalogClient({
                   <button
                     type="button"
                     onClick={() => setIsMobileFiltersOpen(false)}
-                    className="p-1.5 rounded-full hover:bg-[#faf8f5] text-[#09090b] transition-colors cursor-pointer"
+                    className="p-1.5 rounded-full hover:bg-brand-nude text-brand-chocolate transition-colors cursor-pointer"
                     aria-label="Fechar filtros"
                   >
                     <X size={20} />
@@ -1751,7 +1751,7 @@ export default function CatalogClient({
               <div className="flex-1 overflow-y-auto p-5 space-y-5">
                 {/* Disponibilidade */}
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-brand-muted block mb-2">
                     Disponibilidade
                   </span>
                   <div className="availability-drawer-options flex flex-wrap gap-2">
@@ -1784,7 +1784,7 @@ export default function CatalogClient({
 
                 {/* Categorias */}
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-brand-muted block mb-2">
                     Categorias
                   </span>
                   <div className="flex flex-wrap gap-2">
@@ -1820,7 +1820,7 @@ export default function CatalogClient({
 
                 {/* Gênero */}
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-brand-muted block mb-2">
                     Gênero
                   </span>
                   <div className="flex flex-wrap gap-2">
@@ -1843,7 +1843,7 @@ export default function CatalogClient({
 
                 {/* Marcas */}
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-brand-muted block mb-2">
                     Marcas
                   </span>
                   <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
@@ -1871,7 +1871,7 @@ export default function CatalogClient({
 
                 {/* Faixa de Preço */}
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-brand-muted block mb-2">
                     Faixa de Preço
                   </span>
                   <div className="flex flex-wrap gap-2">
@@ -1896,7 +1896,7 @@ export default function CatalogClient({
 
                 {/* Ordenação */}
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-brand-muted block mb-2">
                     Ordenar Produtos
                   </span>
                   <div className="flex flex-wrap gap-2">
@@ -1920,7 +1920,7 @@ export default function CatalogClient({
                 </div>
 
                 {/* Somente Ofertas */}
-                <div className="pt-2 border-t border-[#dcd5c7]">
+                <div className="pt-2 border-t border-brand-line">
                   <button
                     type="button"
                     aria-pressed={onlyPromos}
@@ -1933,7 +1933,7 @@ export default function CatalogClient({
               </div>
 
               {/* Fixed Footer */}
-              <div className="p-4 px-5 border-t border-[#dcd5c7] bg-white safe-bottom shrink-0">
+              <div className="p-4 px-5 border-t border-brand-line bg-brand-card safe-bottom shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -1960,23 +1960,23 @@ export default function CatalogClient({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsCartOpen(false)}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+              className="fixed inset-0 bg-brand-deep/40 backdrop-blur-sm"
             />
             <motion.div 
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              ref={dialogRef} role="dialog" aria-modal="true" aria-label="Sacola" tabIndex={-1} className="catalog-drawer relative w-full max-w-md bg-white h-full shadow-2xl z-10 flex flex-col border-l-2 border-[#dcd5c7]"
+              ref={dialogRef} role="dialog" aria-modal="true" aria-label="Sacola" tabIndex={-1} className="catalog-drawer relative w-full max-w-md bg-brand-card h-full shadow-2xl z-10 flex flex-col border-l-2 border-brand-line"
             >
-              <div className="p-5 border-b border-[#dcd5c7] flex items-center justify-between bg-white">
+              <div className="p-5 border-b border-brand-line flex items-center justify-between bg-brand-card">
                 <div className="flex items-center gap-2">
-                  <ShoppingBag size={20} className="text-[#09090b]" />
-                  <h3 className="font-serif text-lg font-bold text-[#09090b]">Sua Sacola ({cartTotalItems})</h3>
+                  <ShoppingBag size={20} className="text-brand-chocolate" />
+                  <h3 className="font-serif text-lg font-bold text-brand-chocolate">Sua Sacola ({cartTotalItems})</h3>
                 </div>
                 <button 
                   aria-label="Fechar sacola" onClick={() => setIsCartOpen(false)}
-                  className="p-2 rounded-full hover:bg-[#faf8f5] text-[#09090b] transition-colors cursor-pointer"
+                  className="p-2 rounded-full hover:bg-brand-nude text-brand-chocolate transition-colors cursor-pointer"
                 >
                   <X size={18} />
                 </button>
@@ -1984,47 +1984,47 @@ export default function CatalogClient({
 
               <div className="flex-1 overflow-y-auto p-5 space-y-4">
                 {cart.length === 0 ? (
-                  <div className="text-center py-16 text-[#3f3f46]">
-                    <div className="w-16 h-16 bg-[#faf8f5] border border-[#dcd5c7] rounded-full flex items-center justify-center mx-auto mb-3 text-[#09090b]">
+                  <div className="text-center py-16 text-brand-muted">
+                    <div className="w-16 h-16 bg-brand-nude border border-brand-line rounded-full flex items-center justify-center mx-auto mb-3 text-brand-chocolate">
                       <ShoppingBag size={24} />
                     </div>
-                    <p className="text-sm font-bold text-[#09090b] mb-1">Sua sacola está vazia</p>
-                    <p className="text-xs text-[#27272a] font-medium">Explore nossos itens a pronta entrega e sob encomenda.</p>
+                    <p className="text-sm font-bold text-brand-chocolate mb-1">Sua sacola está vazia</p>
+                    <p className="text-xs text-brand-muted font-medium">Explore nossos itens a pronta entrega e sob encomenda.</p>
                   </div>
                 ) : (
                   cart.map(({ produto, qtd }) => (
-                    <div key={produto.id} className="flex gap-3 bg-[#fcfbf9] p-3 rounded-2xl border border-[#dcd5c7] shadow-2xs">
-                      <div className="w-16 h-20 rounded-xl bg-white overflow-hidden shrink-0 border border-[#dcd5c7]">
+                    <div key={produto.id} className="flex gap-3 bg-brand-nude p-3 rounded-2xl border border-brand-line shadow-2xs">
+                      <div className="w-16 h-20 rounded-xl bg-brand-card overflow-hidden shrink-0 border border-brand-line">
                         <ProductImage src={produto.fotos[0]?.url} alt="" className="w-full h-full object-contain" />
                       </div>
                       <div className="flex-1 flex flex-col justify-between py-0.5">
                         <div>
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] text-[#7a5828] uppercase font-extrabold">{produto.marca}</span>
+                            <span className="text-[10px] text-brand-muted uppercase font-extrabold">{produto.marca}</span>
                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                               isProdutoProntaEntrega(produto) 
-                                ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' 
-                                : 'bg-[#f5ede2] text-[#543b18] border border-[#dcd5c7]'
+                                ? 'bg-brand-nude text-brand-chocolate border border-brand-line'
+                                : 'bg-brand-nude text-brand-chocolate border border-brand-line'
                             }`}>
                               {isProdutoProntaEntrega(produto) ? 'Pronta Entrega' : 'Encomenda'}
                             </span>
                           </div>
-                          <h4 className="text-xs font-bold text-[#09090b] line-clamp-1">{produto.nome}</h4>
-                          <span className="text-xs font-extrabold text-[#09090b]">
+                          <h4 className="text-xs font-bold text-brand-chocolate line-clamp-1">{produto.nome}</h4>
+                          <span className="text-xs font-extrabold text-brand-chocolate">
                             {produto.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </span>
                         </div>
                         <div className="flex items-center justify-between mt-2">
-                          <div className="flex items-center border border-[#dcd5c7] bg-white rounded-full">
-                            <button aria-label={"Diminuir quantidade de "+produto.nome} onClick={() => updateCartQtd(produto.id, -1)} className="p-1 px-2 text-xs hover:bg-[#faf8f5] rounded-l-full text-[#09090b] font-bold cursor-pointer">
+                          <div className="flex items-center border border-brand-line bg-brand-card rounded-full">
+                            <button aria-label={"Diminuir quantidade de "+produto.nome} onClick={() => updateCartQtd(produto.id, -1)} className="p-1 px-2 text-xs hover:bg-brand-nude rounded-l-full text-brand-chocolate font-bold cursor-pointer">
                               <Minus size={11} />
                             </button>
-                            <span className="text-xs font-bold text-[#09090b] px-2">{qtd}</span>
-                            <button aria-label={"Aumentar quantidade de "+produto.nome} onClick={() => updateCartQtd(produto.id, 1)} className="p-1 px-2 text-xs hover:bg-[#faf8f5] rounded-r-full text-[#09090b] font-bold cursor-pointer">
+                            <span className="text-xs font-bold text-brand-chocolate px-2">{qtd}</span>
+                            <button aria-label={"Aumentar quantidade de "+produto.nome} onClick={() => updateCartQtd(produto.id, 1)} className="p-1 px-2 text-xs hover:bg-brand-nude rounded-r-full text-brand-chocolate font-bold cursor-pointer">
                               <Plus size={11} />
                             </button>
                           </div>
-                          <button onClick={() => removeFromCart(produto.id)} className="text-xs text-red-600 hover:text-red-800 font-bold cursor-pointer">
+                          <button onClick={() => removeFromCart(produto.id)} className="text-xs text-brand-muted hover:text-brand-deep font-bold cursor-pointer">
                             Remover
                           </button>
                         </div>
@@ -2035,26 +2035,26 @@ export default function CatalogClient({
               </div>
 
               {cart.length > 0 && (
-                <div className="p-5 border-t border-[#dcd5c7] bg-[#fcfbf9]">
-                  <div className="flex justify-between items-center text-xs text-[#27272a] font-medium mb-1">
+                <div className="p-5 border-t border-brand-line bg-brand-nude">
+                  <div className="flex justify-between items-center text-xs text-brand-muted font-medium mb-1">
                     <span>Subtotal</span>
-                    <span className="font-bold text-[#09090b]">{cartTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    <span className="font-bold text-brand-chocolate">{cartTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                   </div>
-                  <div className="flex justify-between items-center text-xs text-[#27272a] font-medium mb-3">
+                  <div className="flex justify-between items-center text-xs text-brand-muted font-medium mb-3">
                     <span>Entrega e Prazos</span>
-                    <span className="text-emerald-800 font-bold">A combinar</span>
+                    <span className="text-brand-chocolate font-bold">A combinar</span>
                   </div>
-                  <div className="flex justify-between items-center text-base font-extrabold text-[#09090b] pt-2 border-t border-[#dcd5c7] mb-4">
+                  <div className="flex justify-between items-center text-base font-extrabold text-brand-chocolate pt-2 border-t border-brand-line mb-4">
                     <span>Total Estimado</span>
                     <span>{cartTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                   </div>
                   <button 
                     onClick={checkoutCartOnWhatsApp}
-                    className="w-full bg-[#15803d] hover:bg-[#166534] text-white py-3.5 rounded-full font-bold text-sm flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
+                    className="w-full bg-brand-chocolate hover:bg-brand-deep text-brand-cream py-3.5 rounded-full font-bold text-sm flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
                   >
                     <MessageCircle size={18} /> Enviar Pedido no WhatsApp
                   </button>
-                  <p className="text-[11px] text-center text-[#3f3f46] font-medium mt-2.5">
+                  <p className="text-[11px] text-center text-brand-muted font-medium mt-2.5">
                     Você enviará a lista detalhada para combinarmos entrega ou prazos de encomenda.
                   </p>
                 </div>
@@ -2073,58 +2073,58 @@ export default function CatalogClient({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsFavoritesOpen(false)}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+              className="fixed inset-0 bg-brand-deep/40 backdrop-blur-sm"
             />
             <motion.div 
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              ref={dialogRef} role="dialog" aria-modal="true" aria-label="Favoritos" tabIndex={-1} className="catalog-drawer relative w-full max-w-md bg-white h-full shadow-2xl z-10 flex flex-col border-l-2 border-[#dcd5c7]"
+              ref={dialogRef} role="dialog" aria-modal="true" aria-label="Favoritos" tabIndex={-1} className="catalog-drawer relative w-full max-w-md bg-brand-card h-full shadow-2xl z-10 flex flex-col border-l-2 border-brand-line"
             >
-              <div className="p-5 border-b border-[#dcd5c7] flex items-center justify-between">
+              <div className="p-5 border-b border-brand-line flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Heart size={20} className="text-[#7a5828] fill-[#7a5828]" />
-                  <h3 className="font-serif text-lg font-bold text-[#09090b]">Meus Favoritos ({favorites.length})</h3>
+                  <Heart size={20} className="text-brand-muted fill-brand-caramel" />
+                  <h3 className="font-serif text-lg font-bold text-brand-chocolate">Meus Favoritos ({favorites.length})</h3>
                 </div>
-                <button aria-label="Fechar favoritos" onClick={() => setIsFavoritesOpen(false)} className="p-2 rounded-full hover:bg-[#faf8f5] text-[#09090b] cursor-pointer">
+                <button aria-label="Fechar favoritos" onClick={() => setIsFavoritesOpen(false)} className="p-2 rounded-full hover:bg-brand-nude text-brand-chocolate cursor-pointer">
                   <X size={18} />
                 </button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-5 space-y-3">
                 {favorites.length === 0 ? (
-                  <div className="text-center py-16 text-[#3f3f46]">
-                    <div className="w-16 h-16 bg-[#faf8f5] border border-[#dcd5c7] rounded-full flex items-center justify-center mx-auto mb-3 text-[#7a5828]">
+                  <div className="text-center py-16 text-brand-muted">
+                    <div className="w-16 h-16 bg-brand-nude border border-brand-line rounded-full flex items-center justify-center mx-auto mb-3 text-brand-muted">
                       <Heart size={28} />
                     </div>
-                    <p className="text-sm font-bold text-[#09090b]">Nenhum item favoritado ainda</p>
-                    <p className="text-xs text-[#27272a] font-medium mt-1">Toque no coração dos produtos para salvá-los aqui.</p>
+                    <p className="text-sm font-bold text-brand-chocolate">Nenhum item favoritado ainda</p>
+                    <p className="text-xs text-brand-muted font-medium mt-1">Toque no coração dos produtos para salvá-los aqui.</p>
                   </div>
                 ) : (
                   initialProdutos.filter(p => favorites.includes(p.id)).map(fav => (
-                    <div key={fav.id} className="flex items-center gap-3 bg-[#fcfbf9] p-3 rounded-2xl border border-[#dcd5c7] shadow-2xs">
-                      <div className="w-14 h-16 rounded-xl bg-white overflow-hidden shrink-0 border border-[#dcd5c7]">
+                    <div key={fav.id} className="flex items-center gap-3 bg-brand-nude p-3 rounded-2xl border border-brand-line shadow-2xs">
+                      <div className="w-14 h-16 rounded-xl bg-brand-card overflow-hidden shrink-0 border border-brand-line">
                         <ProductImage src={fav.fotos[0]?.url} alt="" className="w-full h-full object-contain" />
                       </div>
                       <div className="flex-1">
-                        <span className="text-[10px] text-[#7a5828] uppercase font-extrabold">{fav.marca}</span>
-                        <h4 className="text-xs font-bold text-[#09090b] line-clamp-1">{fav.nome}</h4>
-                        <span className="text-xs font-extrabold text-[#09090b]">
+                        <span className="text-[10px] text-brand-muted uppercase font-extrabold">{fav.marca}</span>
+                        <h4 className="text-xs font-bold text-brand-chocolate line-clamp-1">{fav.nome}</h4>
+                        <span className="text-xs font-extrabold text-brand-chocolate">
                           {fav.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
                       </div>
                       <div className="flex flex-col gap-1">
                         <button 
                           onClick={() => buyDirectOnWhatsApp(fav)}
-                          className="p-2 bg-[#15803d] hover:bg-[#166534] text-white rounded-full cursor-pointer shadow-2xs"
+                          className="p-2 bg-brand-chocolate hover:bg-brand-deep text-brand-cream rounded-full cursor-pointer shadow-2xs"
                           title="Falar no WhatsApp"
                         >
                           <MessageCircle size={14} />
                         </button>
                         <button 
                           onClick={() => toggleFavorite(fav.id)}
-                          className="p-2 text-[#3f3f46] hover:text-red-600 rounded-full cursor-pointer"
+                          className="p-2 text-brand-muted hover:text-brand-deep rounded-full cursor-pointer"
                           title="Remover"
                         >
                           <X size={14} />
@@ -2151,20 +2151,20 @@ export default function CatalogClient({
       <div className="contact-float hidden md:block fixed bottom-6 right-6 z-40">
         <button
           onClick={() => generalWhatsAppContact()}
-          className="group flex items-center gap-2 bg-[#15803d] hover:bg-[#166534] text-white p-3 md:px-4 md:py-3 rounded-full shadow-lg shadow-emerald-700/30 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+          className="group flex items-center gap-2 bg-brand-chocolate hover:bg-brand-deep text-brand-cream p-3 md:px-4 md:py-3 rounded-full shadow-sm shadow-brand-chocolate/10 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
           title="Fale conosco no WhatsApp"
         >
           <MessageCircle size={22} className="shrink-0" />
           <span className="hidden md:inline text-xs font-bold tracking-wide">
             Dúvidas & Encomendas
           </span>
-          <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+          <span className="w-2 h-2 rounded-full bg-brand-card animate-ping" />
         </button>
       </div>
 
       {/* 11. DOCK DE NAVEGAÇÃO MOBILE (FIXO NA PARTE INFERIOR) */}
       {!selectedProduct && !isPhotoZoomOpen && !isCartOpen && !isFavoritesOpen && !isMobileFiltersOpen && (
-        <div className="mobile-dock md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t-2 border-[#dcd5c7] px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_16px_rgba(0,0,0,0.06)] safe-bottom">
+        <div className="mobile-dock md:hidden fixed bottom-0 left-0 right-0 z-40 bg-brand-cream/95 backdrop-blur-md border-t border-brand-line px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_16px_rgba(67,44,31,0.05)] safe-bottom">
           <button 
             type="button"
             onClick={() => {
@@ -2172,7 +2172,7 @@ export default function CatalogClient({
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors cursor-pointer ${
-              availabilityFilter === 'TODOS' && activeCategory === 'todos' ? 'text-[#09090b] font-bold' : 'text-[#3f3f46]'
+              availabilityFilter === 'TODOS' && activeCategory === 'todos' ? 'text-brand-chocolate font-bold' : 'text-brand-muted'
             }`}
           >
             <Home size={18} />
@@ -2190,7 +2190,7 @@ export default function CatalogClient({
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }
             }}
-            className="flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors text-[#3f3f46] hover:text-[#09090b] cursor-pointer"
+            className="flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors text-brand-muted hover:text-brand-chocolate cursor-pointer"
           >
             <Search size={18} />
             <span className="text-[10px] font-semibold">Buscar</span>
@@ -2199,12 +2199,12 @@ export default function CatalogClient({
           <button 
             type="button"
             onClick={() => setIsCartOpen(true)}
-            className="flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors text-[#3f3f46] hover:text-[#09090b] cursor-pointer"
+            className="flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors text-brand-muted hover:text-brand-chocolate cursor-pointer"
           >
             <div className="relative">
               <ShoppingBag size={18} />
               {cartTotalItems > 0 && (
-                <span className="absolute -top-1.5 -right-2 bg-[#09090b] text-white text-[8px] font-bold px-1 rounded-full">
+                <span className="absolute -top-1.5 -right-2 bg-brand-chocolate text-brand-cream text-[8px] font-bold px-1 rounded-full">
                   {cartTotalItems}
                 </span>
               )}
@@ -2215,10 +2215,10 @@ export default function CatalogClient({
           <button 
             type="button"
             onClick={() => generalWhatsAppContact()}
-            className="flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors text-emerald-700 font-semibold cursor-pointer"
+            className="flex flex-col items-center gap-1 py-1 px-2 rounded-xl transition-colors text-brand-chocolate font-semibold cursor-pointer"
           >
-            <MessageCircle size={18} className="text-[#15803d]" />
-            <span className="text-[10px] font-bold text-emerald-800">WhatsApp</span>
+            <MessageCircle size={18} className="text-brand-caramel" />
+            <span className="text-[10px] font-bold text-brand-chocolate">WhatsApp</span>
           </button>
         </div>
       )}
@@ -2227,24 +2227,24 @@ export default function CatalogClient({
       <div role="status" aria-live="polite" className={`catalog-toast fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${
         toast.show ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0 pointer-events-none'
       }`}>
-        <div className="bg-[#09090b] text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg flex items-center gap-2 border border-white/20">
-          <CheckCircle2 size={14} className="text-[#e8cda8]" />
+        <div className="bg-brand-chocolate text-brand-cream text-xs font-semibold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 border border-brand-cream/20">
+          <CheckCircle2 size={14} className="text-brand-rose-beige" />
           <span>{toast.message}</span>
         </div>
       </div>
 
       {/* 13. FOOTER */}
-      <footer className="mt-auto bg-white border-t-2 border-[#dcd5c7] py-12 px-4 sm:px-6 lg:px-8 pb-28 md:pb-12">
+      <footer className="mt-auto bg-brand-card border-t-2 border-brand-line py-12 px-4 sm:px-6 lg:px-8 pb-28 md:pb-12">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div>
-            <span className="text-xl font-serif tracking-[0.2em] font-medium text-[#09090b] block">
+            <span className="text-xl font-serif tracking-[0.2em] font-medium text-brand-chocolate block">
               PERFUMIO
             </span>
-            <p className="text-xs text-[#27272a] font-medium mt-1">
+            <p className="text-xs text-brand-muted font-medium mt-1">
               Catálogo de Cosméticos e Perfumes Importados • Pronta Entrega e Encomendas.
             </p>
           </div>
-          <div className="text-xs text-[#27272a] font-medium space-y-1">
+          <div className="text-xs text-brand-muted font-medium space-y-1">
             <p>Atendimento exclusivo via WhatsApp • Pedidos e entregas sob consulta.</p>
             <p>© {new Date().getFullYear()} Perfumio. Todos os direitos reservados.</p>
           </div>
@@ -2282,7 +2282,7 @@ function ProductCard({
       <div className="product-visual">
         {/* Badges no topo esquerdo */}
         {hasDiscount ? (
-          <span className="product-badge bg-[#dc2626] text-white">−{discountPercent}%</span>
+          <span className="product-badge bg-brand-terracotta text-brand-deep">−{discountPercent}%</span>
         ) : produto.badge && !isVolumeBadge(produto.badge, produto.volume) ? (
           <span className="product-badge">{produto.badge}</span>
         ) : null}
@@ -2293,7 +2293,7 @@ function ProductCard({
           aria-pressed={isFavorited} 
           onClick={e => onToggleFavorite(produto.id, e)}
         >
-          <Heart size={18} fill={isFavorited ? '#dc2626' : 'none'} className={isFavorited ? 'text-[#dc2626]' : ''} />
+          <Heart size={18} fill={isFavorited ? 'var(--brand-caramel)' : 'none'} className={isFavorited ? 'text-brand-caramel' : ''} />
         </button>
 
         <button 
@@ -2315,14 +2315,14 @@ function ProductCard({
         <h3 className="h-[36px] sm:h-[40px] flex items-start overflow-hidden">
           <button 
             onClick={() => onSelectProduct(produto)}
-            className="text-left font-serif font-bold text-[#09090b] hover:text-[#7a5828] transition-colors line-clamp-2 leading-snug"
+            className="text-left font-serif font-bold text-brand-chocolate hover:text-brand-muted transition-colors line-clamp-2 leading-snug"
           >
             {produto.nome}
           </button>
         </h3>
 
-        <p className={'product-availability ' + (isProntaEntrega ? 'in-stock text-emerald-800' : 'text-[#7a5828]')}>
-          {isProntaEntrega ? <Check size={13} className="text-emerald-700" /> : <Clock size={13} className="text-[#7a5828]" />} 
+        <p className={'product-availability ' + (isProntaEntrega ? 'in-stock text-brand-chocolate' : 'text-brand-muted')}>
+          {isProntaEntrega ? <Check size={13} className="text-brand-chocolate" /> : <Clock size={13} className="text-brand-muted" />}
           {isProntaEntrega ? 'Pronta entrega' : 'Sob encomenda'}
         </p>
 

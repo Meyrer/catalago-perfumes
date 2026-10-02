@@ -49,35 +49,35 @@ export default function AdminLoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfbf9] flex flex-col justify-center items-center p-4 sm:p-6 selection:bg-[#f5ede2] selection:text-[#09090b]">
+    <div className="min-h-screen bg-brand-cream flex flex-col justify-center items-center p-4 sm:p-6 selection:bg-brand-nude selection:text-brand-chocolate">
       {/* Botão de retorno ao catálogo */}
       <div className="w-full max-w-md mb-6 flex justify-start">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-xs font-semibold text-[#27272a] hover:text-[#09090b] transition-colors py-1.5 px-3 rounded-full hover:bg-white border border-transparent hover:border-[#dcd5c7]"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-brand-muted hover:text-brand-chocolate transition-colors py-1.5 px-3 rounded-full hover:bg-brand-card border border-transparent hover:border-brand-line"
         >
           <ArrowLeft size={15} /> Voltar à loja pública
         </Link>
       </div>
 
       {/* Card Principal de Login */}
-      <div className="w-full max-w-md bg-white rounded-3xl border-2 border-[#dcd5c7] shadow-xl p-7 sm:p-10 relative overflow-hidden">
+      <div className="w-full max-w-md bg-brand-card rounded-3xl border-2 border-brand-line shadow-xl p-7 sm:p-10 relative overflow-hidden">
         {/* Detalhe superior em bronze */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#7a5828] via-[#a37941] to-[#7a5828]" />
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-caramel via-brand-caramel to-brand-caramel" />
 
         {/* Cabeçalho da Marca */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 mx-auto mb-3.5 rounded-2xl bg-[#fbf9f5] border-1.5 border-[#dcd5c7] flex items-center justify-center text-[#7a5828] shadow-xs">
+          <div className="w-14 h-14 mx-auto mb-3.5 rounded-2xl bg-brand-cream border-1.5 border-brand-line flex items-center justify-center text-brand-muted shadow-xs">
             <ShieldCheck size={28} />
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-serif tracking-[0.16em] font-medium text-[#09090b]">
+          <h1 className="text-2xl sm:text-3xl font-serif tracking-[0.16em] font-medium text-brand-chocolate">
             PERFUMIO
           </h1>
-          <p className="text-[10px] uppercase tracking-[0.25em] text-[#7a5828] font-bold mt-1">
+          <p className="text-[10px] uppercase tracking-[0.25em] text-brand-muted font-bold mt-1">
             Painel Administrativo
           </p>
-          <p className="text-xs text-[#27272a] mt-2 font-medium">
+          <p className="text-xs text-brand-muted mt-2 font-medium">
             Área restrita de gestão de produtos, estoque e custos.
           </p>
         </div>
@@ -85,8 +85,8 @@ export default function AdminLoginForm() {
         {/* Formulário de Login */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200 font-medium">
-              <AlertCircle size={16} className="text-red-600 shrink-0" />
+            <div className="p-3.5 rounded-xl bg-brand-rose-beige border border-brand-terracotta text-brand-chocolate text-xs flex items-center gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200 font-medium">
+              <AlertCircle size={16} className="text-brand-chocolate shrink-0" />
               <span>{error}</span>
             </div>
           )}
@@ -94,12 +94,12 @@ export default function AdminLoginForm() {
           <div>
             <label
               htmlFor="admin-username"
-              className="block text-xs font-bold text-[#09090b] uppercase tracking-wider mb-1.5"
+              className="block text-xs font-bold text-brand-chocolate uppercase tracking-wider mb-1.5"
             >
               Usuário
             </label>
             <div className="relative flex items-center">
-              <User size={16} className="absolute left-3.5 text-[#3f3f46] pointer-events-none" />
+              <User size={16} className="absolute left-3.5 text-brand-muted pointer-events-none" />
               <input
                 id="admin-username"
                 name="username"
@@ -108,7 +108,7 @@ export default function AdminLoginForm() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                className="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-[#dcd5c7] rounded-xl text-sm font-semibold text-[#09090b] outline-none focus:border-[#09090b] focus:ring-4 focus:ring-[#09090b]/5 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-brand-card border-2 border-brand-line rounded-xl text-sm font-semibold text-brand-chocolate outline-none focus:border-brand-chocolate focus:ring-4 focus:ring-brand-chocolate/5 transition-all"
                 placeholder="Ex: Meyrer ou Felipe"
               />
             </div>
@@ -117,12 +117,12 @@ export default function AdminLoginForm() {
           <div>
             <label
               htmlFor="admin-password"
-              className="block text-xs font-bold text-[#09090b] uppercase tracking-wider mb-1.5"
+              className="block text-xs font-bold text-brand-chocolate uppercase tracking-wider mb-1.5"
             >
               Senha
             </label>
             <div className="relative flex items-center">
-              <Lock size={16} className="absolute left-3.5 text-[#3f3f46] pointer-events-none" />
+              <Lock size={16} className="absolute left-3.5 text-brand-muted pointer-events-none" />
               <input
                 id="admin-password"
                 name="password"
@@ -132,13 +132,13 @@ export default function AdminLoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoFocus
-                className="w-full pl-10 pr-11 py-2.5 bg-white border-2 border-[#dcd5c7] rounded-xl text-sm font-semibold text-[#09090b] outline-none focus:border-[#09090b] focus:ring-4 focus:ring-[#09090b]/5 transition-all"
+                className="w-full pl-10 pr-11 py-2.5 bg-brand-card border-2 border-brand-line rounded-xl text-sm font-semibold text-brand-chocolate outline-none focus:border-brand-chocolate focus:ring-4 focus:ring-brand-chocolate/5 transition-all"
                 placeholder="••••••••••••"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 p-1 text-[#3f3f46] hover:text-[#09090b] rounded-lg transition-colors cursor-pointer"
+                className="absolute right-3 p-1 text-brand-muted hover:text-brand-chocolate rounded-lg transition-colors cursor-pointer"
                 title={showPassword ? "Ocultar senha" : "Ver senha"}
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -150,11 +150,11 @@ export default function AdminLoginForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#09090b] hover:bg-[#27272a] text-white py-3 px-5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md hover:shadow-lg disabled:opacity-50 active:scale-98"
+              className="w-full bg-brand-chocolate hover:bg-brand-deep text-brand-cream py-3 px-5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md hover:shadow-lg disabled:opacity-50 active:scale-98"
             >
               {isLoading ? (
                 <>
-                  <Loader2 size={16} className="animate-spin text-[#e8cda8]" />
+                  <Loader2 size={16} className="animate-spin text-brand-rose-beige" />
                   <span>Autenticando...</span>
                 </>
               ) : (
@@ -168,9 +168,9 @@ export default function AdminLoginForm() {
         </form>
 
         {/* Rodapé de Segurança */}
-        <div className="mt-8 pt-5 border-t border-[#dcd5c7] text-center">
-          <p className="text-[11px] text-[#3f3f46] font-medium flex items-center justify-center gap-1.5">
-            <Lock size={12} className="text-[#7a5828]" />
+        <div className="mt-8 pt-5 border-t border-brand-line text-center">
+          <p className="text-[11px] text-brand-muted font-medium flex items-center justify-center gap-1.5">
+            <Lock size={12} className="text-brand-muted" />
             Ambiente seguro com sessão criptografada (7 dias).
           </p>
         </div>
