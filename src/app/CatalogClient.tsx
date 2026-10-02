@@ -1383,7 +1383,7 @@ export default function CatalogClient({
                     </div>
 
                     {/* BOTAO DE ACAO DINAMICO (PRONTA ENTREGA vs ENCOMENDA) */}
-                    <div className="detail-actions space-y-2.5 pt-3 mb-4 border-t border-brand-line">
+                    <div className="detail-actions hidden md:block space-y-2.5 pt-3 mb-4 border-t border-brand-line">
                       <button 
                         onClick={() => buyDirectOnWhatsApp(selectedProduct)}
                         className={`w-full text-brand-cream py-3.5 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer shadow-xs ${
