@@ -1062,7 +1062,7 @@ export default function CatalogClient({
                 {value === 'TODOS' ? (
                   <>Todos <span className="availability-count">({initialProdutos.length})</span></>
                 ) : value === 'PRONTA_ENTREGA' ? (
-                  <>Pronta entrega <span className="availability-count">({prontaEntregaCount})</span></>
+                  <>Em estoque <span className="availability-count">({prontaEntregaCount})</span></>
                 ) : (
                   <>Encomenda <span className="availability-count">({encomendaCount})</span></>
                 )}
@@ -1139,7 +1139,7 @@ export default function CatalogClient({
               {activeCategory !== 'todos' ? ' · ' + activeCategory : ''}
               {selectedBrand !== 'todas' ? ' · ' + selectedBrand : ''}
               {selectedGender !== 'Todos' ? ' · ' + selectedGender : ''}
-              {availabilityFilter !== 'TODOS' ? ' · ' + (availabilityFilter === 'PRONTA_ENTREGA' ? 'Pronta entrega' : 'Sob encomenda') : ''}
+              {availabilityFilter !== 'TODOS' ? ' · ' + (availabilityFilter === 'PRONTA_ENTREGA' ? 'Em estoque' : 'Sob encomenda') : ''}
               {priceRange !== 'todos' ? ' · Faixa de preço selecionada' : ''}
               {onlyPromos ? ' · Somente ofertas' : ''}
             </span>
@@ -1778,7 +1778,7 @@ export default function CatalogClient({
                           : 'bg-[#faf8f5] border-[#dcd5c7] text-emerald-900'
                       }`}
                     >
-                      Pronta entrega ({prontaEntregaCount})
+                      Em estoque ({prontaEntregaCount})
                     </button>
                     <button
                       type="button"
