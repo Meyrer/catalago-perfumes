@@ -1059,7 +1059,13 @@ export default function CatalogClient({
                   setVisibleCount(12);
                 }}
               >
-                {value === 'TODOS' ? `Todos (${initialProdutos.length})` : value === 'PRONTA_ENTREGA' ? `Pronta (${prontaEntregaCount})` : `Encomenda (${encomendaCount})`}
+                {value === 'TODOS' ? (
+                  <>Todos <span className="availability-count">({initialProdutos.length})</span></>
+                ) : value === 'PRONTA_ENTREGA' ? (
+                  <>Pronta entrega <span className="availability-count">({prontaEntregaCount})</span></>
+                ) : (
+                  <>Encomenda <span className="availability-count">({encomendaCount})</span></>
+                )}
               </button>
             ))}
           </div>
@@ -1772,7 +1778,7 @@ export default function CatalogClient({
                           : 'bg-[#faf8f5] border-[#dcd5c7] text-emerald-900'
                       }`}
                     >
-                      Pronta ({prontaEntregaCount})
+                      Pronta entrega ({prontaEntregaCount})
                     </button>
                     <button
                       type="button"
