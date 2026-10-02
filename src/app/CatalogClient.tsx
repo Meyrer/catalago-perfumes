@@ -647,11 +647,11 @@ export default function CatalogClient({
             
             {/* LOGO */}
             <div className="flex items-center gap-3">
-              <a href="#" onClick={clearFilters} className="flex flex-col group">
-                <span className="text-xl sm:text-2xl lg:text-3xl font-serif tracking-[0.18em] font-medium text-[#09090b] group-hover:text-[#7a5828] transition-colors">
+              <a href="#" onClick={clearFilters} aria-label="Perfumio — início" className="flex flex-col group brand-lockup">
+                <span className="brand-wordmark text-xl sm:text-2xl lg:text-3xl font-serif tracking-[0.18em] font-medium text-[#09090b] group-hover:text-[#7a5828] transition-colors">
                   PERFUMIO
                 </span>
-                <span className="text-[9px] uppercase tracking-[0.35em] text-[#3f3f46] font-semibold -mt-1 font-sans">
+                <span className="brand-tagline text-[9px] uppercase tracking-[0.35em] text-[#3f3f46] font-semibold font-sans">
                   <span className="md:hidden">Perfumes, body splash e cuidados</span>
                   <span className="hidden md:inline">Pronta Entrega & Encomendas</span>
                 </span>
@@ -782,16 +782,13 @@ export default function CatalogClient({
               }}
               className="w-full min-w-0 overflow-x-auto no-scrollbar touch-scroll-x select-none overscroll-x-contain cursor-grab active:cursor-grabbing px-1 sm:px-2 py-2"
             >
-              <ul className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap w-max shrink-0 text-xs sm:text-[13px]">
+              <ul className="flex items-center gap-2 whitespace-nowrap w-max shrink-0 text-xs sm:text-[13px]">
                 <li>
                   <button
                     data-active={activeCategory === 'todos'}
+                    aria-pressed={activeCategory === 'todos'}
                     onClick={() => selectCategory('todos')}
-                    className={`px-3.5 py-2.5 rounded-full transition-all border shrink-0 ${
-                      activeCategory === 'todos' 
-                        ? 'bg-[#09090b] border-[#09090b] text-white font-bold shadow-xs' 
-                        : 'border-[#dcd5c7] bg-white text-[#09090b] font-semibold hover:border-[#09090b] hover:bg-[#faf8f5] shadow-2xs'
-                    }`}
+                    className="filter-chip shrink-0"
                   >
                     Todos <span className="hidden md:inline">os produtos</span> ({initialProdutos.length})
                   </button>
@@ -799,12 +796,9 @@ export default function CatalogClient({
                 <li>
                   <button
                     data-active={activeCategory === 'promocoes'}
+                    aria-pressed={activeCategory === 'promocoes'}
                     onClick={() => selectCategory('promocoes')}
-                    className={`px-3.5 py-2.5 rounded-full transition-all flex items-center gap-1.5 border shrink-0 ${
-                      activeCategory === 'promocoes'
-                        ? 'bg-[#7a5828] border-[#7a5828] text-white font-bold shadow-xs'
-                        : 'border-[#cbbca8] bg-[#f8f2e9] text-[#6b4719] font-bold hover:bg-[#f0e3ce] shadow-2xs'
-                    }`}
+                    className="filter-chip shrink-0"
                   >
                     <Sparkles size={12} /> Ofertas
                   </button>
@@ -816,12 +810,9 @@ export default function CatalogClient({
                     <li key={cat.id}>
                       <button
                         data-active={isSelected}
+                        aria-pressed={isSelected}
                         onClick={() => selectCategory(cat.nome)}
-                        className={`px-3.5 py-2.5 rounded-full transition-all border shrink-0 ${
-                          isSelected
-                            ? 'bg-[#09090b] border-[#09090b] text-white font-bold shadow-xs'
-                            : 'border-[#dcd5c7] bg-white text-[#09090b] font-semibold hover:border-[#09090b] hover:bg-[#faf8f5] shadow-2xs'
-                        }`}
+                        className="filter-chip shrink-0"
                         title={cat.nome}
                       >
                         {getCategoryShortName(cat.nome)} <span className="opacity-70 text-[11px] font-normal">({count})</span>
@@ -1054,6 +1045,7 @@ export default function CatalogClient({
               <button
                 key={value}
                 aria-pressed={availabilityFilter === value}
+                className="filter-chip"
                 onClick={() => {
                   setAvailabilityFilter(value);
                   setVisibleCount(12);
@@ -1071,7 +1063,7 @@ export default function CatalogClient({
           </div>
 
           <button 
-            className="filter-toggle" 
+            className="filter-chip filter-toggle"
             aria-expanded={isMobileFiltersOpen} 
             onClick={() => setIsMobileFiltersOpen(true)}
           >
@@ -1086,7 +1078,7 @@ export default function CatalogClient({
 
           <label className="sort-control hidden md:flex">
             Ordenar por{' '}
-            <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}>
+            <select className="filter-select" value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}>
               <option value="mais-vendidos">Mais vendidos</option>
               <option value="novidades">Novidades</option>
               <option value="menor-preco">Menor preço</option>
@@ -1098,7 +1090,7 @@ export default function CatalogClient({
         <div id="catalog-filters" className={'catalog-filters hidden md:flex ' + (filtersOpen ? 'is-open' : '')}>
           <label>
             Categoria
-            <select value={activeCategory} onChange={e => { setActiveCategory(e.target.value); setVisibleCount(12); }}>
+            <select className="filter-select" value={activeCategory} onChange={e => { setActiveCategory(e.target.value); setVisibleCount(12); }}>
               <option value="todos">Todas as categorias</option>
               {sortedCategorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
               <option value="promocoes">Ofertas</option>
@@ -1106,14 +1098,14 @@ export default function CatalogClient({
           </label>
           <label>
             Marca
-            <select value={selectedBrand} onChange={e => { setSelectedBrand(e.target.value); setVisibleCount(12); }}>
+            <select className="filter-select" value={selectedBrand} onChange={e => { setSelectedBrand(e.target.value); setVisibleCount(12); }}>
               <option value="todas">Todas as marcas</option>
               {brandsList.map(b => <option key={b}>{b}</option>)}
             </select>
           </label>
           <label>
             Faixa de preço
-            <select value={priceRange} onChange={e => { setPriceRange(e.target.value); setVisibleCount(12); }}>
+            <select className="filter-select" value={priceRange} onChange={e => { setPriceRange(e.target.value); setVisibleCount(12); }}>
               <option value="todos">Todos os preços</option>
               <option value="ate-100">Até R$ 100</option>
               <option value="100-200">R$ 100 a R$ 200</option>
@@ -1122,14 +1114,19 @@ export default function CatalogClient({
           </label>
           <label>
             Gênero
-            <select value={selectedGender} onChange={e => { setSelectedGender(e.target.value as ProductGender | 'Todos'); setVisibleCount(12); }}>
+            <select className="filter-select" value={selectedGender} onChange={e => { setSelectedGender(e.target.value as ProductGender | 'Todos'); setVisibleCount(12); }}>
               <option value="Todos">Todos</option>
               {PRODUCT_GENDERS.map(gender => <option key={gender} value={gender}>{gender} ({genderCounts[gender]})</option>)}
             </select>
           </label>
-          <label className="promo-check">
-            <input type="checkbox" checked={onlyPromos} onChange={e => setOnlyPromos(e.target.checked)} /> Somente ofertas
-          </label>
+          <button
+            type="button"
+            aria-pressed={onlyPromos}
+            onClick={() => setOnlyPromos(value => !value)}
+            className="filter-chip"
+          >
+            <Sparkles size={14} /> Somente ofertas
+          </button>
         </div>
 
         {hasFilters && (
@@ -1757,37 +1754,28 @@ export default function CatalogClient({
                   <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
                     Disponibilidade
                   </span>
-                  <div className="availability-drawer-options grid grid-cols-3 gap-2">
+                  <div className="availability-drawer-options flex flex-wrap gap-2">
                     <button
                       type="button"
+                      aria-pressed={availabilityFilter === 'TODOS'}
                       onClick={() => setAvailabilityFilter('TODOS')}
-                      className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
-                        availabilityFilter === 'TODOS'
-                          ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
-                          : 'bg-[#faf8f5] border-[#dcd5c7] text-[#09090b]'
-                      }`}
+                      className="filter-chip justify-center"
                     >
                       Todos ({initialProdutos.length})
                     </button>
                     <button
                       type="button"
+                      aria-pressed={availabilityFilter === 'PRONTA_ENTREGA'}
                       onClick={() => setAvailabilityFilter('PRONTA_ENTREGA')}
-                      className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
-                        availabilityFilter === 'PRONTA_ENTREGA'
-                          ? 'bg-emerald-800 border-emerald-800 text-white shadow-xs'
-                          : 'bg-[#faf8f5] border-[#dcd5c7] text-emerald-900'
-                      }`}
+                      className="filter-chip justify-center"
                     >
                       Em estoque ({prontaEntregaCount})
                     </button>
                     <button
                       type="button"
+                      aria-pressed={availabilityFilter === 'ENCOMENDA'}
                       onClick={() => setAvailabilityFilter('ENCOMENDA')}
-                      className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
-                        availabilityFilter === 'ENCOMENDA'
-                          ? 'bg-[#7a5828] border-[#7a5828] text-white shadow-xs'
-                          : 'bg-[#faf8f5] border-[#dcd5c7] text-[#7a5828]'
-                      }`}
+                      className="filter-chip justify-center"
                     >
                       Encomenda ({encomendaCount})
                     </button>
@@ -1799,15 +1787,12 @@ export default function CatalogClient({
                   <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
                     Categorias
                   </span>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
+                      aria-pressed={activeCategory === 'todos'}
                       onClick={() => setActiveCategory('todos')}
-                      className={`py-1.5 px-3 rounded-full text-xs font-bold border transition-all ${
-                        activeCategory === 'todos'
-                          ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
-                          : 'bg-white border-[#dcd5c7] text-[#09090b]'
-                      }`}
+                      className="filter-chip"
                     >
                       Todas ({initialProdutos.length})
                     </button>
@@ -1815,24 +1800,18 @@ export default function CatalogClient({
                       <button
                         key={cat.id}
                         type="button"
+                        aria-pressed={activeCategory.toLowerCase() === cat.nome.toLowerCase()}
                         onClick={() => setActiveCategory(cat.nome)}
-                        className={`py-1.5 px-3 rounded-full text-xs font-bold border transition-all ${
-                          activeCategory.toLowerCase() === cat.nome.toLowerCase()
-                            ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
-                            : 'bg-white border-[#dcd5c7] text-[#09090b]'
-                        }`}
+                        className="filter-chip"
                       >
                         {getCategoryShortName(cat.nome)} ({getCategoryCount(cat.nome)})
                       </button>
                     ))}
                     <button
                       type="button"
+                      aria-pressed={activeCategory === 'promocoes'}
                       onClick={() => setActiveCategory('promocoes')}
-                      className={`py-1.5 px-3 rounded-full text-xs font-bold border flex items-center gap-1.5 transition-all ${
-                        activeCategory === 'promocoes'
-                          ? 'bg-[#7a5828] border-[#7a5828] text-white shadow-xs'
-                          : 'bg-[#fcf7ee] border-[#e8d7be] text-[#7a5828]'
-                      }`}
+                      className="filter-chip"
                     >
                       <Sparkles size={11} /> Ofertas
                     </button>
@@ -1844,7 +1823,7 @@ export default function CatalogClient({
                   <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
                     Gênero
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {(['Todos', ...PRODUCT_GENDERS] as const).map(gender => {
                       const count = gender === 'Todos' ? initialProdutos.length : genderCounts[gender];
                       return (
@@ -1853,11 +1832,7 @@ export default function CatalogClient({
                           type="button"
                           aria-pressed={selectedGender === gender}
                           onClick={() => { setSelectedGender(gender); setVisibleCount(12); }}
-                          className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
-                            selectedGender === gender
-                              ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
-                              : 'bg-white border-[#dcd5c7] text-[#09090b]'
-                          }`}
+                          className="filter-chip"
                         >
                           {gender} ({count})
                         </button>
@@ -1871,15 +1846,12 @@ export default function CatalogClient({
                   <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
                     Marcas
                   </span>
-                  <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                  <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
                     <button
                       type="button"
+                      aria-pressed={selectedBrand === 'todas'}
                       onClick={() => setSelectedBrand('todas')}
-                      className={`py-1.5 px-3 rounded-full text-xs font-bold border transition-all ${
-                        selectedBrand === 'todas'
-                          ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
-                          : 'bg-white border-[#dcd5c7] text-[#09090b]'
-                      }`}
+                      className="filter-chip"
                     >
                       Todas as marcas
                     </button>
@@ -1887,12 +1859,9 @@ export default function CatalogClient({
                       <button
                         key={b}
                         type="button"
+                        aria-pressed={selectedBrand.toLowerCase() === b.toLowerCase()}
                         onClick={() => setSelectedBrand(b)}
-                        className={`py-1.5 px-3 rounded-full text-xs font-bold border transition-all ${
-                          selectedBrand.toLowerCase() === b.toLowerCase()
-                            ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
-                            : 'bg-white border-[#dcd5c7] text-[#09090b]'
-                        }`}
+                        className="filter-chip"
                       >
                         {b}
                       </button>
@@ -1905,7 +1874,7 @@ export default function CatalogClient({
                   <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
                     Faixa de Preço
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {[
                       { value: 'todos', label: 'Todos os preços' },
                       { value: 'ate-100', label: 'Até R$ 100' },
@@ -1915,12 +1884,9 @@ export default function CatalogClient({
                       <button
                         key={opt.value}
                         type="button"
+                        aria-pressed={priceRange === opt.value}
                         onClick={() => setPriceRange(opt.value)}
-                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
-                          priceRange === opt.value
-                            ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
-                            : 'bg-white border-[#dcd5c7] text-[#09090b]'
-                        }`}
+                        className="filter-chip"
                       >
                         {opt.label}
                       </button>
@@ -1933,7 +1899,7 @@ export default function CatalogClient({
                   <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
                     Ordenar Produtos
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {[
                       { value: 'mais-vendidos', label: 'Mais vendidos' },
                       { value: 'novidades', label: 'Novidades' },
@@ -1943,12 +1909,9 @@ export default function CatalogClient({
                       <button
                         key={opt.value}
                         type="button"
+                        aria-pressed={sortBy === opt.value}
                         onClick={() => setSortBy(opt.value as typeof sortBy)}
-                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
-                          sortBy === opt.value
-                            ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
-                            : 'bg-white border-[#dcd5c7] text-[#09090b]'
-                        }`}
+                        className="filter-chip"
                       >
                         {opt.label}
                       </button>
@@ -1958,29 +1921,26 @@ export default function CatalogClient({
 
                 {/* Somente Ofertas */}
                 <div className="pt-2 border-t border-[#dcd5c7]">
-                  <label className="flex items-center gap-3 cursor-pointer py-1">
-                    <input
-                      type="checkbox"
-                      checked={onlyPromos}
-                      onChange={e => setOnlyPromos(e.target.checked)}
-                      className="w-5 h-5 accent-[#7a5828] rounded cursor-pointer"
-                    />
-                    <span className="text-xs font-bold text-[#09090b]">
-                      Exibir somente produtos em oferta ou com desconto
-                    </span>
-                  </label>
+                  <button
+                    type="button"
+                    aria-pressed={onlyPromos}
+                    onClick={() => setOnlyPromos(value => !value)}
+                    className="filter-chip"
+                  >
+                    <Sparkles size={14} /> Somente ofertas
+                  </button>
                 </div>
               </div>
 
               {/* Fixed Footer */}
-              <div className="p-4 px-5 border-t border-[#dcd5c7] bg-[#fbf9f5] safe-bottom shrink-0">
+              <div className="p-4 px-5 border-t border-[#dcd5c7] bg-white safe-bottom shrink-0">
                 <button
                   type="button"
                   onClick={() => {
                     setIsMobileFiltersOpen(false);
                     scrollToCatalog();
                   }}
-                  className="w-full bg-[#09090b] hover:bg-black text-white py-3.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-98 transition-all"
+                  className="button-primary w-full active:scale-98"
                 >
                   <span>Aplicar filtros · {filteredProdutos.length} {filteredProdutos.length === 1 ? 'produto' : 'produtos'}</span>
                   <ArrowRight size={16} />
