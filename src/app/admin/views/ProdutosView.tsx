@@ -14,6 +14,7 @@ import {
   toggleAtivo, toggleDisponibilidade, actionSearchPerfume 
 } from '../../actions';
 import type { PerfumeSearchResult } from '@/services/perfumeApi';
+import { normalizeProductGender, PRODUCT_GENDERS } from '@/lib/product-gender';
 
 type Props = {
   data: ERPData;
@@ -498,7 +499,7 @@ function ProductFormModal({
   const [categoriaId, setCategoriaId] = useState(String(productToEdit?.categoriaId || (categorias[0]?.id || 1)));
   const [subcategoria, setSubcategoria] = useState(productToEdit?.subcategoria || '');
   const [volume, setVolume] = useState(productToEdit?.volume || '');
-  const [genero, setGenero] = useState(productToEdit?.genero || 'Compartilhável');
+  const [genero, setGenero] = useState(normalizeProductGender(productToEdit?.genero) || '');
   const [precoCusto, setPrecoCusto] = useState<number>(productToEdit?.precoCusto || 0);
   const [precoVista, setPrecoVista] = useState<number>(productToEdit?.precoVista || 0);
   const [precoOriginal, setPrecoOriginal] = useState<number>(productToEdit?.precoOriginal || 0);
@@ -537,7 +538,8 @@ function ProductFormModal({
     if ((res as any).volume) setVolume((res as any).volume);
     if (res.concentration) setConcentracao(res.concentration);
     if (res.release_year) setAnoLancamento(String(res.release_year));
-    if (res.gender) setGenero(res.gender);
+    const selectedGender = normalizeProductGender(res.gender);
+    if (selectedGender) setGenero(selectedGender);
     if (res.family) setFamiliaOlfativa(res.family);
     if (res.top_notes && res.top_notes.length > 0) setNotasSaida(res.top_notes.join(', '));
     if (res.middle_notes && res.middle_notes.length > 0) setNotasCoracao(res.middle_notes.join(', '));
@@ -734,9 +736,8 @@ function ProductFormModal({
             <div>
               <label className="block text-[11px] font-bold text-[#52525b] uppercase tracking-wider mb-1">Gênero</label>
               <select value={genero} onChange={e => setGenero(e.target.value)} className="w-full px-3 py-2 bg-[#fcfbf9] text-xs font-bold text-[#09090b] rounded-xl border border-[#dcd5c7] outline-none">
-                <option value="Compartilhável">Compartilhável / Unissex</option>
-                <option value="Feminino">Feminino</option>
-                <option value="Masculino">Masculino</option>
+                <option value="">Não informado</option>
+                {PRODUCT_GENDERS.map(option => <option key={option} value={option}>{option}</option>)}
               </select>
             </div>
             </div>

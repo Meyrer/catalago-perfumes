@@ -9,6 +9,7 @@ import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { useDialog } from './useDialog';
 import FragranceSearch from '@/components/FragranceSearch';
 import CustomOrderModal from '@/components/CustomOrderModal';
+import { normalizeProductGender, PRODUCT_GENDERS, type ProductGender } from '@/lib/product-gender';
 
 type Foto = { id: number; url: string };
 type Categoria = { id: number; nome: string; imagemUrl?: string | null };
@@ -134,6 +135,7 @@ export default function CatalogClient({
   // Navigation & Filter States
   const [activeCategory, setActiveCategory] = useState<string>('todos');
   const [selectedBrand, setSelectedBrand] = useState<string>('todas');
+  const [selectedGender, setSelectedGender] = useState<ProductGender | 'Todos'>('Todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [availabilityFilter, setAvailabilityFilter] = useState<'TODOS' | 'PRONTA_ENTREGA' | 'ENCOMENDA'>('TODOS');
   const [onlyPromos, setOnlyPromos] = useState(false);
@@ -159,8 +161,15 @@ export default function CatalogClient({
     if (priceRange !== 'todos') count++;
     if (availabilityFilter !== 'TODOS') count++;
     if (onlyPromos) count++;
+    if (selectedGender !== 'Todos') count++;
     return count;
-  }, [activeCategory, selectedBrand, priceRange, availabilityFilter, onlyPromos]);
+  }, [activeCategory, selectedBrand, priceRange, availabilityFilter, onlyPromos, selectedGender]);
+
+  const genderCounts = useMemo(() => ({
+    Masculino: initialProdutos.filter(product => normalizeProductGender(product.genero) === 'Masculino').length,
+    Feminino: initialProdutos.filter(product => normalizeProductGender(product.genero) === 'Feminino').length,
+    Unissex: initialProdutos.filter(product => normalizeProductGender(product.genero) === 'Unissex').length,
+  }), [initialProdutos]);
 
   // Curated Featured Products for Hero Showcase
   const heroFeaturedProducts = useMemo(() => {
@@ -206,7 +215,7 @@ export default function CatalogClient({
 
   const clearFilters = () => {
     setActiveCategory('todos'); setSelectedBrand('todas'); setSearchTerm('');
-    setAvailabilityFilter('TODOS'); setOnlyPromos(false); setPriceRange('todos'); setVisibleCount(12);
+    setAvailabilityFilter('TODOS'); setOnlyPromos(false); setPriceRange('todos'); setSelectedGender('Todos'); setVisibleCount(12);
   };
   const scrollToCatalog = () => requestAnimationFrame(() => document.getElementById('produtos')?.scrollIntoView({ behavior: 'smooth' }));
 
@@ -236,7 +245,7 @@ export default function CatalogClient({
   };
   const dialogRef = useDialog(Boolean(selectedProduct || isCartOpen || isFavoritesOpen || isMobileFiltersOpen), closeDialog);
   const chooseProduct = (product: Produto) => { setActiveImageIndex(0); setSelectedProduct(product); };
-  const hasFilters = Boolean(searchTerm.trim() || activeCategory !== 'todos' || selectedBrand !== 'todas' || availabilityFilter !== 'TODOS' || onlyPromos || priceRange !== 'todos');
+  const hasFilters = Boolean(searchTerm.trim() || activeCategory !== 'todos' || selectedBrand !== 'todas' || availabilityFilter !== 'TODOS' || onlyPromos || priceRange !== 'todos' || selectedGender !== 'Todos');
 
   // Header scroll state
   const [isScrolled, setIsScrolled] = useState(false);
@@ -549,6 +558,10 @@ export default function CatalogClient({
       result = result.filter(p => p.marca.toLowerCase() === selectedBrand.toLowerCase());
     }
 
+    if (selectedGender !== 'Todos') {
+      result = result.filter(p => normalizeProductGender(p.genero) === selectedGender);
+    }
+
     // Search query
     if (searchTerm.trim()) {
       const q = searchTerm.trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -581,7 +594,7 @@ export default function CatalogClient({
     }
 
     return result;
-  }, [initialProdutos, availabilityFilter, activeCategory, selectedBrand, searchTerm, onlyPromos, sortBy, priceRange]);
+  }, [initialProdutos, availabilityFilter, activeCategory, selectedBrand, selectedGender, searchTerm, onlyPromos, sortBy, priceRange]);
 
   // Related products for detail modal
   const relatedProducts = useMemo(() => {
@@ -1101,6 +1114,13 @@ export default function CatalogClient({
               <option value="acima-200">Acima de R$ 200</option>
             </select>
           </label>
+          <label>
+            Gênero
+            <select value={selectedGender} onChange={e => { setSelectedGender(e.target.value as ProductGender | 'Todos'); setVisibleCount(12); }}>
+              <option value="Todos">Todos</option>
+              {PRODUCT_GENDERS.map(gender => <option key={gender} value={gender}>{gender} ({genderCounts[gender]})</option>)}
+            </select>
+          </label>
           <label className="promo-check">
             <input type="checkbox" checked={onlyPromos} onChange={e => setOnlyPromos(e.target.checked)} /> Somente ofertas
           </label>
@@ -1112,6 +1132,7 @@ export default function CatalogClient({
               {searchTerm.trim() ? 'Busca: “' + searchTerm.trim() + '”' : 'Filtros aplicados'}
               {activeCategory !== 'todos' ? ' · ' + activeCategory : ''}
               {selectedBrand !== 'todas' ? ' · ' + selectedBrand : ''}
+              {selectedGender !== 'Todos' ? ' · ' + selectedGender : ''}
               {availabilityFilter !== 'TODOS' ? ' · ' + (availabilityFilter === 'PRONTA_ENTREGA' ? 'Pronta entrega' : 'Sob encomenda') : ''}
               {priceRange !== 'todos' ? ' · Faixa de preço selecionada' : ''}
               {onlyPromos ? ' · Somente ofertas' : ''}
@@ -1809,6 +1830,33 @@ export default function CatalogClient({
                     >
                       <Sparkles size={11} /> Ofertas
                     </button>
+                  </div>
+                </div>
+
+                {/* Gênero */}
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a5828] block mb-2">
+                    Gênero
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['Todos', ...PRODUCT_GENDERS] as const).map(gender => {
+                      const count = gender === 'Todos' ? initialProdutos.length : genderCounts[gender];
+                      return (
+                        <button
+                          key={gender}
+                          type="button"
+                          aria-pressed={selectedGender === gender}
+                          onClick={() => { setSelectedGender(gender); setVisibleCount(12); }}
+                          className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-center ${
+                            selectedGender === gender
+                              ? 'bg-[#09090b] border-[#09090b] text-white shadow-xs'
+                              : 'bg-white border-[#dcd5c7] text-[#09090b]'
+                          }`}
+                        >
+                          {gender} ({count})
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
