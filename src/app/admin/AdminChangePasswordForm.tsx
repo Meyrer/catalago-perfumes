@@ -27,9 +27,9 @@ export default function AdminChangePasswordForm({ user }: Props) {
     if (/[0-9]/.test(pass)) s += 1;
     if (/[^A-Za-z0-9]/.test(pass)) s += 1;
 
-    if (s <= 2) return { score: 1, label: "Fraca (adicione números ou símbolos)", color: "bg-red-500" };
-    if (s <= 3) return { score: 2, label: "Média (boa)", color: "bg-amber-500" };
-    return { score: 3, label: "Forte (excelente proteção)", color: "bg-emerald-500" };
+    if (s <= 2) return { score: 1, label: "Fraca (adicione números ou símbolos)", color: "bg-brand-chocolate" };
+    if (s <= 3) return { score: 2, label: "Média (boa)", color: "bg-brand-chocolate" };
+    return { score: 3, label: "Forte (excelente proteção)", color: "bg-brand-chocolate" };
   };
 
   const strength = calculateStrength(newPassword);
@@ -83,31 +83,31 @@ export default function AdminChangePasswordForm({ user }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfbf9] flex flex-col justify-center items-center p-4 sm:p-6 text-[#09090b]">
+    <div className="min-h-screen bg-brand-cream flex flex-col justify-center items-center p-4 sm:p-6 text-brand-chocolate">
       {/* Container Principal */}
-      <div className="w-full max-w-md bg-white rounded-3xl border border-[#dcd5c7] shadow-xl p-6 sm:p-8 relative overflow-hidden">
+      <div className="w-full max-w-md bg-brand-card rounded-3xl border border-brand-line shadow-xl p-6 sm:p-8 relative overflow-hidden">
         
         {/* Barra superior decorativa */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#7a5828] via-[#a37941] to-[#7a5828]" />
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-caramel via-brand-caramel to-brand-caramel" />
 
         {/* Header do Card */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200/80 text-[#7a5828] text-[11px] font-bold uppercase tracking-wider mb-3">
-            <ShieldAlert size={14} className="text-amber-600" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-nude border border-brand-line/80 text-brand-muted text-[11px] font-bold uppercase tracking-wider mb-3">
+            <ShieldAlert size={14} className="text-brand-chocolate" />
             Primeiro Acesso Obrigatório
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#09090b] tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-brand-chocolate tracking-tight">
             Olá, {user.name}!
           </h1>
-          <p className="text-xs text-[#52525b] mt-1.5 leading-relaxed font-medium">
+          <p className="text-xs text-brand-muted mt-1.5 leading-relaxed font-medium">
             Por motivos de segurança, crie sua <strong>nova senha pessoal</strong> antes de acessar o painel administrativo.
           </p>
         </div>
 
         {/* Alerta de Erro */}
         {error && (
-          <div className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2.5">
+          <div className="mb-5 p-3.5 rounded-xl bg-brand-rose-beige border border-brand-terracotta text-brand-chocolate text-xs font-semibold flex items-start gap-2.5">
             <AlertCircle size={16} className="shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
@@ -115,7 +115,7 @@ export default function AdminChangePasswordForm({ user }: Props) {
 
         {/* Alerta de Sucesso */}
         {success && (
-          <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2.5">
+          <div className="mb-5 p-3.5 rounded-xl bg-brand-nude border border-brand-line text-brand-chocolate text-xs font-semibold flex items-center gap-2.5">
             <CheckCircle2 size={16} className="shrink-0" />
             <span>Senha alterada com sucesso! Entrando no painel...</span>
           </div>
@@ -126,21 +126,21 @@ export default function AdminChangePasswordForm({ user }: Props) {
           
           {/* Usuário Ativo */}
           <div>
-            <label className="block text-[11px] font-bold text-[#52525b] uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1.5">
               Conta de Acesso
             </label>
-            <div className="w-full bg-[#f4efe6] px-3.5 py-2.5 rounded-xl border border-[#dcd5c7] text-xs font-bold text-[#09090b]">
+            <div className="w-full bg-brand-nude px-3.5 py-2.5 rounded-xl border border-brand-line text-xs font-bold text-brand-chocolate">
               {user.name} (@{user.username})
             </div>
           </div>
 
           {/* Nova Senha */}
           <div>
-            <label className="block text-[11px] font-bold text-[#52525b] uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1.5">
               Nova Senha Pessoal
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#52525b]">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-brand-muted">
                 <Lock size={15} />
               </div>
               <input
@@ -150,12 +150,12 @@ export default function AdminChangePasswordForm({ user }: Props) {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Digite sua nova senha"
-                className="w-full pl-10 pr-10 py-2.5 bg-[#f4efe6] focus:bg-white text-xs text-[#09090b] font-medium rounded-xl border border-[#dcd5c7] focus:border-[#7a5828] outline-none transition-all"
+                className="w-full pl-10 pr-10 py-2.5 bg-brand-nude focus:bg-brand-card text-xs text-brand-chocolate font-medium rounded-xl border border-brand-line focus:border-brand-caramel outline-none transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#52525b] hover:text-[#09090b] cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-brand-muted hover:text-brand-chocolate cursor-pointer"
                 title={showPassword ? "Ocultar senha" : "Exibir senha"}
               >
                 {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -166,11 +166,11 @@ export default function AdminChangePasswordForm({ user }: Props) {
             {newPassword.length > 0 && (
               <div className="mt-2 space-y-1">
                 <div className="flex gap-1">
-                  <div className={`h-1 flex-1 rounded-full ${strength.score >= 1 ? strength.color : 'bg-[#e5ded4]'}`} />
-                  <div className={`h-1 flex-1 rounded-full ${strength.score >= 2 ? strength.color : 'bg-[#e5ded4]'}`} />
-                  <div className={`h-1 flex-1 rounded-full ${strength.score >= 3 ? strength.color : 'bg-[#e5ded4]'}`} />
+                  <div className={`h-1 flex-1 rounded-full ${strength.score >= 1 ? strength.color : 'bg-brand-nude'}`} />
+                  <div className={`h-1 flex-1 rounded-full ${strength.score >= 2 ? strength.color : 'bg-brand-nude'}`} />
+                  <div className={`h-1 flex-1 rounded-full ${strength.score >= 3 ? strength.color : 'bg-brand-nude'}`} />
                 </div>
-                <p className="text-[10px] text-[#52525b] font-medium">
+                <p className="text-[10px] text-brand-muted font-medium">
                   Força: {strength.label}
                 </p>
               </div>
@@ -179,11 +179,11 @@ export default function AdminChangePasswordForm({ user }: Props) {
 
           {/* Confirmar Nova Senha */}
           <div>
-            <label className="block text-[11px] font-bold text-[#52525b] uppercase tracking-wider mb-1.5">
+            <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1.5">
               Confirmar Nova Senha
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#52525b]">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-brand-muted">
                 <Lock size={15} />
               </div>
               <input
@@ -193,24 +193,24 @@ export default function AdminChangePasswordForm({ user }: Props) {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repita a nova senha"
-                className="w-full pl-10 pr-10 py-2.5 bg-[#f4efe6] focus:bg-white text-xs text-[#09090b] font-medium rounded-xl border border-[#dcd5c7] focus:border-[#7a5828] outline-none transition-all"
+                className="w-full pl-10 pr-10 py-2.5 bg-brand-nude focus:bg-brand-card text-xs text-brand-chocolate font-medium rounded-xl border border-brand-line focus:border-brand-caramel outline-none transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm(!showConfirm)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#52525b] hover:text-[#09090b] cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-brand-muted hover:text-brand-chocolate cursor-pointer"
                 title={showConfirm ? "Ocultar senha" : "Exibir senha"}
               >
                 {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
             {confirmPassword && newPassword !== confirmPassword && (
-              <p className="text-[10px] text-red-600 mt-1 font-semibold">
+              <p className="text-[10px] text-brand-chocolate mt-1 font-semibold">
                 As senhas não conferem.
               </p>
             )}
             {confirmPassword && newPassword === confirmPassword && (
-              <p className="text-[10px] text-emerald-700 mt-1 font-semibold flex items-center gap-1">
+              <p className="text-[10px] text-brand-chocolate mt-1 font-semibold flex items-center gap-1">
                 <CheckCircle2 size={12} /> Senhas conferem!
               </p>
             )}
@@ -220,16 +220,16 @@ export default function AdminChangePasswordForm({ user }: Props) {
           <button
             type="submit"
             disabled={isLoading || success}
-            className="w-full mt-2 py-3 px-4 rounded-xl bg-[#09090b] hover:bg-[#27272a] text-white text-xs font-bold tracking-wide transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full mt-2 py-3 px-4 rounded-xl bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold tracking-wide transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
           >
             {isLoading ? (
               <>
-                <Loader2 size={16} className="animate-spin text-[#a37941]" />
+                <Loader2 size={16} className="animate-spin text-brand-caramel" />
                 <span>Atualizando senha...</span>
               </>
             ) : success ? (
               <>
-                <CheckCircle2 size={16} className="text-emerald-400" />
+                <CheckCircle2 size={16} className="text-brand-rose-beige" />
                 <span>Senha Atualizada!</span>
               </>
             ) : (
@@ -242,15 +242,15 @@ export default function AdminChangePasswordForm({ user }: Props) {
         </form>
 
         {/* Rodapé do Card */}
-        <div className="mt-6 pt-4 border-t border-[#dcd5c7] text-center flex items-center justify-between text-xs">
+        <div className="mt-6 pt-4 border-t border-brand-line text-center flex items-center justify-between text-xs">
           <button
             onClick={handleLogout}
             disabled={isLoading}
-            className="text-[#52525b] hover:text-red-700 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="text-brand-muted hover:text-brand-chocolate font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <LogOut size={13} /> Sair / Trocar de Usuário
           </button>
-          <span className="text-[10px] text-[#71717a]">
+          <span className="text-[10px] text-brand-muted">
             Perfumio Admin v2.0
           </span>
         </div>

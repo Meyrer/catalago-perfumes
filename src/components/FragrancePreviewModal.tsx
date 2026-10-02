@@ -64,23 +64,23 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 bg-brand-deep/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200">
       <div 
         role="dialog"
         aria-modal="true"
-        className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border-2 border-[#dcd5c7] overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
+        className="bg-brand-card rounded-3xl w-full max-w-lg shadow-2xl border-2 border-brand-line overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-[#dcd5c7] flex items-center justify-between bg-[#fdfbf7]">
+        <div className="p-4 sm:p-5 border-b border-brand-line flex items-center justify-between bg-brand-card">
           <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-[#7a5828]" />
-            <h3 className="font-serif text-base font-bold text-[#09090b]">
+            <Sparkles size={16} className="text-brand-muted" />
+            <h3 className="font-serif text-base font-bold text-brand-chocolate">
               Prévia de Fragrância Externa
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-[#09090b] hover:text-black hover:bg-[#faf8f5] transition-colors cursor-pointer"
+            className="p-1.5 rounded-full text-brand-chocolate hover:text-brand-deep hover:bg-brand-nude transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -98,8 +98,8 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
                 }
               }}
               title={fragrance.imageUrl ? "Clique para ampliar a foto" : undefined}
-              className={`w-24 h-28 sm:w-28 sm:h-32 rounded-2xl bg-[#faf8f5] border border-[#f0ece4] p-2 flex items-center justify-center shrink-0 relative overflow-hidden group ${
-                fragrance.imageUrl ? "cursor-zoom-in hover:border-[#09090b] shadow-2xs transition-all" : ""
+              className={`w-24 h-28 sm:w-28 sm:h-32 rounded-2xl bg-brand-nude border border-brand-nude p-2 flex items-center justify-center shrink-0 relative overflow-hidden group ${
+                fragrance.imageUrl ? "cursor-zoom-in hover:border-brand-chocolate shadow-2xs transition-all" : ""
               }`}
             >
               {fragrance.imageUrl ? (
@@ -109,47 +109,47 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
                     alt={fragrance.name}
                     className="w-full h-full object-contain group-hover:scale-105 transition-transform"
                   />
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                  <div className="absolute inset-0 bg-brand-deep/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-brand-cream">
                     <ZoomIn size={18} />
                   </div>
                 </>
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-[#a1a1aa] text-center p-2">
-                  <Sparkles size={24} className="mb-1 text-[#d4d4d8]" />
+                <div className="w-full h-full flex flex-col items-center justify-center text-brand-muted text-center p-2">
+                  <Sparkles size={24} className="mb-1 text-brand-line" />
                   <span className="text-[10px]">Sem foto</span>
                 </div>
               )}
             </div>
 
             <div className="flex-1 min-w-0">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#a3835a] block">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-brand-muted block">
                 {fragrance.brand || 'Marca não informada'}
               </span>
-              <h4 className="font-serif text-lg font-medium text-[#18181b] leading-tight mt-0.5">
+              <h4 className="font-serif text-lg font-medium text-brand-deep leading-tight mt-0.5">
                 {fragrance.name}
               </h4>
 
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {fragrance.concentration && (
-                  <span className="text-[10px] bg-[#f5efe6] text-[#7a572a] px-2 py-0.5 rounded-full font-medium">
+                  <span className="text-[10px] bg-brand-nude text-brand-muted px-2 py-0.5 rounded-full font-medium">
                     {fragrance.concentration}
                   </span>
                 )}
                 {fragrance.year && (
-                  <span className="text-[10px] bg-[#f4f4f5] text-[#52525b] px-2 py-0.5 rounded-full font-medium">
+                  <span className="text-[10px] bg-brand-nude text-brand-muted px-2 py-0.5 rounded-full font-medium">
                     Ano: {fragrance.year}
                   </span>
                 )}
                 {fragrance.volume && (
-                  <span className="text-[10px] bg-[#f4f4f5] text-[#52525b] px-2 py-0.5 rounded-full font-medium">
+                  <span className="text-[10px] bg-brand-nude text-brand-muted px-2 py-0.5 rounded-full font-medium">
                     {fragrance.volume}
                   </span>
                 )}
               </div>
 
               {fragrance.family && (
-                <p className="text-xs text-[#71717a] mt-2 font-medium">
-                  Família: <span className="text-[#18181b]">{fragrance.family}</span>
+                <p className="text-xs text-brand-muted mt-2 font-medium">
+                  Família: <span className="text-brand-deep">{fragrance.family}</span>
                 </p>
               )}
             </div>
@@ -157,28 +157,28 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
 
           {/* Pirâmide se houver */}
           {(fragrance.topNotes?.length || fragrance.middleNotes?.length || fragrance.baseNotes?.length) ? (
-            <div className="p-3.5 bg-[#fcfaf7] border border-[#dcd5c7] rounded-2xl space-y-2 text-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#7a5828] block">
+            <div className="p-3.5 bg-brand-card border border-brand-line rounded-2xl space-y-2 text-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">
                 Notas Olfativas Documentadas
               </span>
               {fragrance.topNotes && fragrance.topNotes.length > 0 && (
-                <p className="text-[#27272a] font-medium">
-                  <strong className="text-[#09090b]">Saída:</strong> {fragrance.topNotes.join(', ')}
+                <p className="text-brand-muted font-medium">
+                  <strong className="text-brand-chocolate">Saída:</strong> {fragrance.topNotes.join(', ')}
                 </p>
               )}
               {fragrance.middleNotes && fragrance.middleNotes.length > 0 && (
-                <p className="text-[#27272a] font-medium">
-                  <strong className="text-[#09090b]">Coração:</strong> {fragrance.middleNotes.join(', ')}
+                <p className="text-brand-muted font-medium">
+                  <strong className="text-brand-chocolate">Coração:</strong> {fragrance.middleNotes.join(', ')}
                 </p>
               )}
               {fragrance.baseNotes && fragrance.baseNotes.length > 0 && (
-                <p className="text-[#27272a] font-medium">
-                  <strong className="text-[#09090b]">Fundo:</strong> {fragrance.baseNotes.join(', ')}
+                <p className="text-brand-muted font-medium">
+                  <strong className="text-brand-chocolate">Fundo:</strong> {fragrance.baseNotes.join(', ')}
                 </p>
               )}
             </div>
           ) : (
-            <div className="p-3 bg-[#faf8f5] border border-[#dcd5c7] rounded-xl text-xs text-[#27272a] font-medium">
+            <div className="p-3 bg-brand-nude border border-brand-line rounded-xl text-xs text-brand-muted font-medium">
               ℹ️ A fonte desta fragrância não documenta pirâmide olfativa. Os campos permanecerão vazios no cadastro para preservar a autenticidade técnica.
             </div>
           )}
@@ -186,12 +186,12 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
           {/* Acordes */}
           {fragrance.accords && fragrance.accords.length > 0 && (
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#27272a] block mb-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block mb-1.5">
                 Acordes Principais
               </span>
               <div className="flex flex-wrap gap-1">
                 {fragrance.accords.map((a, i) => (
-                  <span key={i} className="text-[10px] bg-[#f4f4f5] text-[#09090b] px-2 py-0.5 rounded-md font-semibold border border-[#dcd5c7]">
+                  <span key={i} className="text-[10px] bg-brand-nude text-brand-chocolate px-2 py-0.5 rounded-md font-semibold border border-brand-line">
                     {a}
                   </span>
                 ))}
@@ -200,17 +200,17 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
           )}
 
           {/* Rastreabilidade & Status */}
-          <div className="pt-3 border-t border-[#dcd5c7] flex flex-col gap-2 text-xs">
-            <div className="flex items-center justify-between text-[#27272a]">
+          <div className="pt-3 border-t border-brand-line flex flex-col gap-2 text-xs">
+            <div className="flex items-center justify-between text-brand-muted">
               <span>Fonte dos Dados:</span>
-              <span className="font-bold text-[#09090b] uppercase">
+              <span className="font-bold text-brand-chocolate uppercase">
                 {fragrance.source === 'openbeautyfacts' ? 'Open Beauty Facts' : 'Catálogo Local / Manual'}
               </span>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-[#27272a]">Status de Verificação:</span>
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-300">
+              <span className="text-brand-muted">Status de Verificação:</span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-chocolate bg-brand-nude px-2 py-0.5 rounded-full border border-brand-line">
                 <ShieldAlert size={12} /> Não verificado (unverified)
               </span>
             </div>
@@ -220,7 +220,7 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
                 href={fragrance.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[11px] text-[#7a5828] font-bold hover:underline flex items-center gap-1 self-start mt-1"
+                className="text-[11px] text-brand-muted font-bold hover:underline flex items-center gap-1 self-start mt-1"
               >
                 Ver registro original na fonte <ExternalLink size={11} />
               </a>
@@ -228,27 +228,27 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+            <div className="p-3 bg-brand-rose-beige border border-brand-terracotta rounded-xl flex items-center gap-2 text-xs text-brand-deep">
               <AlertCircle size={15} className="shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-800">
-              <Check size={15} className="shrink-0 text-emerald-600" />
+            <div className="p-3 bg-brand-nude border border-brand-line rounded-xl flex items-center gap-2 text-xs text-brand-chocolate">
+              <Check size={15} className="shrink-0 text-brand-chocolate" />
               <span>Fragrância adicionada ao catálogo com sucesso!</span>
             </div>
           )}
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 sm:p-5 border-t border-[#dcd5c7] bg-[#fdfbf7] flex items-center justify-end gap-3">
+        <div className="p-4 sm:p-5 border-t border-brand-line bg-brand-card flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
             disabled={isImporting}
-            className="px-4 py-2.5 rounded-xl border border-[#dcd5c7] text-[#09090b] hover:bg-white text-xs font-bold transition-colors cursor-pointer"
+            className="px-4 py-2.5 rounded-xl border border-brand-line text-brand-chocolate hover:bg-brand-card text-xs font-bold transition-colors cursor-pointer"
           >
             Cancelar
           </button>
@@ -256,7 +256,7 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
             type="button"
             onClick={handleImport}
             disabled={isImporting || success}
-            className="px-5 py-2.5 rounded-xl bg-[#09090b] hover:bg-[#27272a] text-white text-xs font-bold transition-colors flex items-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold transition-colors flex items-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
           >
             {isImporting ? (
               <>
@@ -265,7 +265,7 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
               </>
             ) : success ? (
               <>
-                <Check size={14} className="text-emerald-400" />
+                <Check size={14} className="text-brand-caramel" />
                 Adicionado
               </>
             ) : (
@@ -281,7 +281,7 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
       {/* Lightbox / Zoom da Foto */}
       {isZoomOpen && fragrance.imageUrl && (
         <div 
-          className="fixed inset-0 z-60 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
+          className="fixed inset-0 z-60 bg-brand-deep/85 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
           onClick={() => {
             setIsZoomOpen(false);
             setZoomScale(1);
@@ -292,8 +292,8 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
             className="w-full max-w-xl flex items-center justify-between pb-3 z-30"
             onClick={(e) => e.stopPropagation()}
           >
-            <span className="text-white/80 text-xs font-semibold flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-full border border-white/15">
-              <Sparkles size={13} className="text-[#c5a880]" />
+            <span className="text-brand-cream/80 text-xs font-semibold flex items-center gap-1.5 bg-brand-card/10 px-3 py-1.5 rounded-full border border-brand-cream/15">
+              <Sparkles size={13} className="text-brand-rose-beige" />
               {fragrance.brand || 'Fragrância'}
             </span>
 
@@ -301,7 +301,7 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
               <button
                 type="button"
                 onClick={() => setZoomScale((prev) => (prev > 1 ? 1 : 2))}
-                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 bg-brand-card/10 hover:bg-brand-card/20 border border-brand-cream/20 text-brand-cream text-xs font-bold px-3 py-1.5 rounded-full transition-colors cursor-pointer"
               >
                 {zoomScale > 1 ? <ZoomOut size={14} /> : <ZoomIn size={14} />}
                 <span>{zoomScale > 1 ? "Zoom 1x" : "Zoom 2x"}</span>
@@ -313,7 +313,7 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
                   setIsZoomOpen(false);
                   setZoomScale(1);
                 }}
-                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white text-white hover:text-black border border-white/20 flex items-center justify-center transition-all cursor-pointer"
+                className="w-9 h-9 rounded-full bg-brand-card/10 hover:bg-brand-card text-brand-cream hover:text-brand-deep border border-brand-cream/20 flex items-center justify-center transition-all cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -322,7 +322,7 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
 
           {/* Image */}
           <div 
-            className="relative w-full max-w-xl max-h-[62vh] min-h-[320px] bg-[#121214]/90 border border-white/15 rounded-3xl p-6 sm:p-8 flex items-center justify-center overflow-hidden shadow-2xl cursor-pointer select-none"
+            className="relative w-full max-w-xl max-h-[62vh] min-h-[320px] bg-brand-deep/90 border border-brand-cream/15 rounded-3xl p-6 sm:p-8 flex items-center justify-center overflow-hidden shadow-2xl cursor-pointer select-none"
             onClick={(e) => {
               e.stopPropagation();
               setZoomScale((prev) => (prev > 1 ? 1 : 2));
@@ -343,19 +343,19 @@ export default function FragrancePreviewModal({ fragrance, onClose, onSuccessImp
 
           {/* Info */}
           <div 
-            className="w-full max-w-xl bg-[#1c1c1f] border border-white/15 rounded-2xl p-4 mt-3 flex items-center justify-between gap-3 shadow-2xl z-30"
+            className="w-full max-w-xl bg-brand-deep border border-brand-cream/15 rounded-2xl p-4 mt-3 flex items-center justify-between gap-3 shadow-2xl z-30"
             onClick={(e) => e.stopPropagation()}
           >
             <div>
-              <span className="text-[10px] uppercase font-extrabold text-[#c5a880] block">
+              <span className="text-[10px] uppercase font-extrabold text-brand-rose-beige block">
                 {fragrance.brand}
               </span>
-              <h4 className="font-serif text-sm sm:text-base font-bold text-white truncate">
+              <h4 className="font-serif text-sm sm:text-base font-bold text-brand-cream truncate">
                 {fragrance.name}
               </h4>
             </div>
             {fragrance.concentration && (
-              <span className="text-[11px] font-semibold bg-white/10 text-white px-2.5 py-1 rounded-lg">
+              <span className="text-[11px] font-semibold bg-brand-card/10 text-brand-cream px-2.5 py-1 rounded-lg">
                 {fragrance.concentration}
               </span>
             )}

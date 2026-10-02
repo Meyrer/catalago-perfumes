@@ -185,16 +185,16 @@ export default function DashboardView({ data, onNavigate }: Props) {
     <div className="space-y-6">
       
       {/* BOAS-VINDAS E STATUS GERAL */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#dcd5c7] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-brand-card rounded-3xl p-5 sm:p-6 border border-brand-line shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold uppercase tracking-wider mb-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-nude border border-brand-line text-brand-chocolate text-[11px] font-bold uppercase tracking-wider mb-2">
+            <span className="w-2 h-2 rounded-full bg-brand-chocolate animate-pulse" />
             Loja Operacional & Sincronizada
           </div>
-          <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#09090b]">
+          <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand-chocolate">
             Visão Geral da Perfumio
           </h2>
-          <p className="text-xs text-[#52525b] mt-0.5">
+          <p className="text-xs text-brand-muted mt-0.5">
             Métricas em tempo real de faturamento, estoque, vendas e pedidos sob encomenda.
           </p>
         </div>
@@ -203,23 +203,23 @@ export default function DashboardView({ data, onNavigate }: Props) {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => onNavigate('vendas')}
-            className="px-4 py-2 bg-[#09090b] hover:bg-[#27272a] text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+            className="px-4 py-2 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold rounded-xl flex items-center gap-2 shadow-xs transition-all cursor-pointer"
           >
-            <ShoppingBag size={15} className="text-[#a37941]" />
+            <ShoppingBag size={15} className="text-brand-caramel" />
             <span>Registrar Venda</span>
           </button>
           <button
             onClick={() => onNavigate('estoque')}
-            className="px-4 py-2 bg-[#f4efe6] hover:bg-[#eae3d5] text-[#09090b] text-xs font-bold rounded-xl border border-[#dcd5c7] flex items-center gap-2 transition-all cursor-pointer"
+            className="px-4 py-2 bg-brand-nude hover:bg-brand-nude text-brand-chocolate text-xs font-bold rounded-xl border border-brand-line flex items-center gap-2 transition-all cursor-pointer"
           >
-            <Boxes size={15} className="text-[#7a5828]" />
+            <Boxes size={15} className="text-brand-muted" />
             <span>Ajustar Estoque</span>
           </button>
           <button
             onClick={() => onNavigate('encomendas')}
-            className="px-4 py-2 bg-[#f4efe6] hover:bg-[#eae3d5] text-[#09090b] text-xs font-bold rounded-xl border border-[#dcd5c7] flex items-center gap-2 transition-all cursor-pointer"
+            className="px-4 py-2 bg-brand-nude hover:bg-brand-nude text-brand-chocolate text-xs font-bold rounded-xl border border-brand-line flex items-center gap-2 transition-all cursor-pointer"
           >
-            <Clock size={15} className="text-[#7a5828]" />
+            <Clock size={15} className="text-brand-muted" />
             <span>Encomendas ({encomendasAtivasCount})</span>
           </button>
         </div>
@@ -229,161 +229,161 @@ export default function DashboardView({ data, onNavigate }: Props) {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-3.5">
         
         {/* Faturamento Hoje */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#dcd5c7] shadow-xs">
-          <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider block mb-1">
+        <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs">
+          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
             Faturamento Hoje
           </span>
-          <p className="text-lg sm:text-xl font-bold text-[#09090b]">
+          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {faturamentoHoje.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
-          <span className="text-[10px] font-semibold text-emerald-700 flex items-center gap-0.5 mt-1">
+          <span className="text-[10px] font-semibold text-brand-chocolate flex items-center gap-0.5 mt-1">
             <ArrowUpRight size={12} /> Vendas de hoje
           </span>
         </div>
 
         {/* Faturamento no Mês */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#dcd5c7] shadow-xs">
-          <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider block mb-1">
+        <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs">
+          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
             Faturamento no Mês
           </span>
-          <p className="text-lg sm:text-xl font-bold text-[#09090b]">
+          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {faturamentoMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
-          <span className="text-[10px] text-[#52525b] block mt-1">
+          <span className="text-[10px] text-brand-muted block mt-1">
             {vendasMesCount} pedido(s) confirmados
           </span>
         </div>
 
         {/* Lucro Bruto no Mês */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-emerald-300 bg-emerald-50/20 shadow-xs">
-          <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block mb-1">
+        <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line bg-brand-nude/20 shadow-xs">
+          <span className="text-[10px] font-bold text-brand-chocolate uppercase tracking-wider block mb-1">
             Lucro Bruto (Mês)
           </span>
-          <p className="text-lg sm:text-xl font-bold text-emerald-950">
+          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             +{lucroMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
-          <span className="text-[10px] font-bold text-emerald-800 flex items-center gap-0.5 mt-1">
+          <span className="text-[10px] font-bold text-brand-chocolate flex items-center gap-0.5 mt-1">
             Margem: {margemLucroMes}%
           </span>
         </div>
 
         {/* Ticket Médio */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#dcd5c7] shadow-xs">
-          <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider block mb-1">
+        <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs">
+          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
             Ticket Médio
           </span>
-          <p className="text-lg sm:text-xl font-bold text-[#09090b]">
+          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {ticketMedioMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
-          <span className="text-[10px] text-[#52525b] block mt-1">
+          <span className="text-[10px] text-brand-muted block mt-1">
             Média por pedido
           </span>
         </div>
 
         {/* Total Investido em Estoque */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#dcd5c7] shadow-xs">
-          <span className="text-[10px] font-bold text-[#7a5828] uppercase tracking-wider block mb-1">
+        <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs">
+          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
             Investimento em Estoque
           </span>
-          <p className="text-lg sm:text-xl font-bold text-[#5c401c]">
+          <p className="text-lg sm:text-xl font-bold text-brand-deep">
             {valorTotalCustoEstoque.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
-          <span className="text-[10px] text-[#52525b] block mt-1">
+          <span className="text-[10px] text-brand-muted block mt-1">
             Custo total de aquisição
           </span>
         </div>
 
         {/* Potencial de Venda */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#dcd5c7] shadow-xs">
-          <span className="text-[10px] font-bold text-[#7a5828] uppercase tracking-wider block mb-1">
+        <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs">
+          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
             Potencial de Venda
           </span>
-          <p className="text-lg sm:text-xl font-bold text-[#5c401c]">
+          <p className="text-lg sm:text-xl font-bold text-brand-deep">
             {valorPotencialVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
-          <span className="text-[10px] text-emerald-700 font-bold block mt-1">
+          <span className="text-[10px] text-brand-chocolate font-bold block mt-1">
             +{lucroPotencialEstoque.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} proj.
           </span>
         </div>
 
         {/* Qtd Itens em Estoque Físico */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#dcd5c7] shadow-xs">
-          <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider block mb-1">
+        <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs">
+          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
             Itens em Estoque
           </span>
-          <p className="text-lg sm:text-xl font-bold text-[#09090b]">
+          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {totalItensEstoque} un.
           </p>
-          <span className="text-[10px] text-[#52525b] block mt-1">
+          <span className="text-[10px] text-brand-muted block mt-1">
             {produtos.length} modelos cadastrados
           </span>
         </div>
 
         {/* Sob Encomenda */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-amber-300 bg-amber-50/20 shadow-xs cursor-pointer hover:bg-amber-50/40 transition-colors" onClick={() => onNavigate('encomendas')}>
-          <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block mb-1 flex items-center justify-between">
+        <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line bg-brand-nude/20 shadow-xs cursor-pointer hover:bg-brand-nude/40 transition-colors" onClick={() => onNavigate('encomendas')}>
+          <span className="text-[10px] font-bold text-brand-chocolate uppercase tracking-wider block mb-1 flex items-center justify-between">
             <span>Sob Encomenda</span>
             <ChevronRight size={12} />
           </span>
-          <p className="text-lg sm:text-xl font-bold text-amber-950">
+          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {encomendasAtivasCount} ativas
           </p>
-          <span className="text-[10px] text-amber-800 font-medium block mt-1">
+          <span className="text-[10px] text-brand-chocolate font-medium block mt-1">
             {produtosSobEncomendaCount} itens no catálogo
           </span>
         </div>
 
         {/* Estoque Baixo */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-amber-300 bg-amber-50/30 shadow-xs cursor-pointer hover:bg-amber-50/50 transition-colors" onClick={() => onNavigate('estoque')}>
-          <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block mb-1 flex items-center justify-between">
+        <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line bg-brand-nude/30 shadow-xs cursor-pointer hover:bg-brand-nude/50 transition-colors" onClick={() => onNavigate('estoque')}>
+          <span className="text-[10px] font-bold text-brand-chocolate uppercase tracking-wider block mb-1 flex items-center justify-between">
             <span>Estoque Baixo</span>
-            <AlertTriangle size={13} className="text-amber-600" />
+            <AlertTriangle size={13} className="text-brand-chocolate" />
           </span>
-          <p className="text-lg sm:text-xl font-bold text-amber-950">
+          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {produtosEstoqueBaixo.length} modelos
           </p>
-          <span className="text-[10px] text-amber-800 font-medium block mt-1">
+          <span className="text-[10px] text-brand-chocolate font-medium block mt-1">
             Necessitam reposição
           </span>
         </div>
 
         {/* Sem Estoque / Zerado */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-red-200 bg-red-50/30 shadow-xs cursor-pointer hover:bg-red-50/50 transition-colors" onClick={() => onNavigate('estoque')}>
-          <span className="text-[10px] font-bold text-red-800 uppercase tracking-wider block mb-1 flex items-center justify-between">
+        <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-terracotta bg-brand-rose-beige/30 shadow-xs cursor-pointer hover:bg-brand-rose-beige/50 transition-colors" onClick={() => onNavigate('estoque')}>
+          <span className="text-[10px] font-bold text-brand-chocolate uppercase tracking-wider block mb-1 flex items-center justify-between">
             <span>Estoque Zerado</span>
-            <span className="w-2 h-2 rounded-full bg-red-500" />
+            <span className="w-2 h-2 rounded-full bg-brand-chocolate" />
           </span>
-          <p className="text-lg sm:text-xl font-bold text-red-900">
+          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {produtosSemEstoque.length} produtos
           </p>
-          <span className="text-[10px] text-red-700 font-medium block mt-1">
+          <span className="text-[10px] text-brand-chocolate font-medium block mt-1">
             Esgotados no momento
           </span>
         </div>
 
         {/* Pedidos Pendentes */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#dcd5c7] shadow-xs cursor-pointer hover:bg-[#fcfbf9] transition-colors" onClick={() => onNavigate('vendas')}>
-          <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider block mb-1 flex items-center justify-between">
+        <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs cursor-pointer hover:bg-brand-cream transition-colors" onClick={() => onNavigate('vendas')}>
+          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1 flex items-center justify-between">
             <span>Pedidos Pendentes</span>
-            <Clock size={13} className="text-[#a37941]" />
+            <Clock size={13} className="text-brand-caramel" />
           </span>
-          <p className="text-lg sm:text-xl font-bold text-[#09090b]">
+          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {pedidosPendentesCount}
           </p>
-          <span className="text-[10px] text-[#52525b] block mt-1">
+          <span className="text-[10px] text-brand-muted block mt-1">
             Aguardando ou preparando
           </span>
         </div>
 
         {/* Vendas no Mês */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#dcd5c7] shadow-xs cursor-pointer hover:bg-[#fcfbf9] transition-colors" onClick={() => onNavigate('vendas')}>
-          <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider block mb-1">
+        <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs cursor-pointer hover:bg-brand-cream transition-colors" onClick={() => onNavigate('vendas')}>
+          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
             Vendas Concluídas
           </span>
-          <p className="text-lg sm:text-xl font-bold text-[#09090b]">
+          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {vendasPagas.length}
           </p>
-          <span className="text-[10px] text-emerald-700 font-bold block mt-1">
+          <span className="text-[10px] text-brand-chocolate font-bold block mt-1">
             Total histórico pago
           </span>
         </div>
@@ -393,24 +393,24 @@ export default function DashboardView({ data, onNavigate }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* GRÁFICO DE EVOLUÇÃO DE VENDAS (2 Colunas) */}
-        <div className="lg:col-span-2 bg-white rounded-3xl p-5 sm:p-6 border border-[#dcd5c7] shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-2 bg-brand-card rounded-3xl p-5 sm:p-6 border border-brand-line shadow-xs flex flex-col justify-between">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
             <div>
-              <h3 className="text-base sm:text-lg font-serif font-bold text-[#09090b] flex items-center gap-2">
-                <TrendingUp size={18} className="text-[#7a5828]" />
+              <h3 className="text-base sm:text-lg font-serif font-bold text-brand-chocolate flex items-center gap-2">
+                <TrendingUp size={18} className="text-brand-muted" />
                 Evolução de Faturamento & Lucro
               </h3>
-              <p className="text-xs text-[#52525b]">
+              <p className="text-xs text-brand-muted">
                 Desempenho diário de vendas e margem bruta capturada
               </p>
             </div>
 
             {/* Toggle de Período */}
-            <div className="flex items-center gap-1 bg-[#f4efe6] p-1 rounded-xl border border-[#dcd5c7] self-start sm:self-auto">
+            <div className="flex items-center gap-1 bg-brand-nude p-1 rounded-xl border border-brand-line self-start sm:self-auto">
               <button
                 onClick={() => setSalesTimeframe('7d')}
                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  salesTimeframe === '7d' ? 'bg-[#09090b] text-white shadow-xs' : 'text-[#52525b] hover:text-[#09090b]'
+                  salesTimeframe === '7d' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-muted hover:text-brand-chocolate'
                 }`}
               >
                 7 dias
@@ -418,7 +418,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
               <button
                 onClick={() => setSalesTimeframe('30d')}
                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  salesTimeframe === '30d' ? 'bg-[#09090b] text-white shadow-xs' : 'text-[#52525b] hover:text-[#09090b]'
+                  salesTimeframe === '30d' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-muted hover:text-brand-chocolate'
                 }`}
               >
                 30 dias
@@ -426,7 +426,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
               <button
                 onClick={() => setSalesTimeframe('90d')}
                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  salesTimeframe === '90d' ? 'bg-[#09090b] text-white shadow-xs' : 'text-[#52525b] hover:text-[#09090b]'
+                  salesTimeframe === '90d' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-muted hover:text-brand-chocolate'
                 }`}
               >
                 90 dias
@@ -442,8 +442,8 @@ export default function DashboardView({ data, onNavigate }: Props) {
             >
               <defs>
                 <linearGradient id="salesGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#7a5828" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#7a5828" stopOpacity="0.01" />
+                  <stop offset="0%" stopColor="var(--brand-caramel)" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="var(--brand-caramel)" stopOpacity="0.01" />
                 </linearGradient>
               </defs>
 
@@ -458,7 +458,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
                       y1={y} 
                       x2={svgWidth - paddingX} 
                       y2={y} 
-                      stroke="#ebe5dc" 
+                      stroke="var(--brand-line)"
                       strokeDasharray="4 4" 
                     />
                     <text 
@@ -466,7 +466,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
                       y={y + 3} 
                       textAnchor="end" 
                       fontSize="9" 
-                      fill="#8c8c8e" 
+                      fill="var(--brand-muted)"
                       fontWeight="bold"
                     >
                       {Math.round(val)}
@@ -485,7 +485,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
                 <polyline 
                   points={pointsString} 
                   fill="none" 
-                  stroke="#7a5828" 
+                  stroke="var(--brand-caramel)"
                   strokeWidth="2.5" 
                   strokeLinecap="round" 
                   strokeLinejoin="round" 
@@ -503,10 +503,10 @@ export default function DashboardView({ data, onNavigate }: Props) {
                       cx={x} 
                       cy={y} 
                       r="3.5" 
-                      fill="#ffffff" 
-                      stroke="#7a5828" 
+                      fill="var(--brand-cream)"
+                      stroke="var(--brand-caramel)"
                       strokeWidth="2" 
-                      className="transition-all group-hover:r-5 group-hover:fill-[#7a5828]"
+                      className="transition-all group-hover:r-5 group-hover:fill-brand-caramel"
                     />
                     {/* Tooltip simples no hover do ponto */}
                     {pt.valor > 0 && (
@@ -516,7 +516,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
                         textAnchor="middle"
                         fontSize="9"
                         fontWeight="bold"
-                        fill="#09090b"
+                        fill="var(--brand-chocolate)"
                         className="opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         R$ {Math.round(pt.valor)}
@@ -539,7 +539,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
                       y={svgHeight - 4} 
                       textAnchor="middle" 
                       fontSize="9" 
-                      fill="#71717a" 
+                      fill="var(--brand-muted)"
                       fontWeight="bold"
                     >
                       {pt.label}
@@ -549,48 +549,48 @@ export default function DashboardView({ data, onNavigate }: Props) {
             </svg>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-[#dcd5c7] flex items-center justify-between text-xs text-[#52525b]">
+          <div className="mt-4 pt-4 border-t border-brand-line flex items-center justify-between text-xs text-brand-muted">
             <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5 font-semibold text-[#09090b]">
-                <span className="w-3 h-1 bg-[#7a5828] rounded-full" /> Faturamento Real (R$)
+              <span className="flex items-center gap-1.5 font-semibold text-brand-chocolate">
+                <span className="w-3 h-1 bg-brand-chocolate rounded-full" /> Faturamento Real (R$)
               </span>
-              <span className="flex items-center gap-1.5 font-semibold text-emerald-800">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Vendas com Lucro Médio de {margemLucroMes}%
+              <span className="flex items-center gap-1.5 font-semibold text-brand-chocolate">
+                <span className="w-2.5 h-2.5 rounded-full bg-brand-chocolate" /> Vendas com Lucro Médio de {margemLucroMes}%
               </span>
             </div>
-            <span className="font-bold text-[#7a5828]">
+            <span className="font-bold text-brand-muted">
               Total no período: {salesChartData.reduce((acc, p) => acc + p.valor, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </span>
           </div>
         </div>
 
         {/* DISTRIBUIÇÃO POR CATEGORIA (1 Coluna) */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#dcd5c7] shadow-xs flex flex-col justify-between">
+        <div className="bg-brand-card rounded-3xl p-5 sm:p-6 border border-brand-line shadow-xs flex flex-col justify-between">
           <div>
-            <h3 className="text-base sm:text-lg font-serif font-bold text-[#09090b] mb-1">
+            <h3 className="text-base sm:text-lg font-serif font-bold text-brand-chocolate mb-1">
               Vendas por Categoria
             </h3>
-            <p className="text-xs text-[#52525b] mb-5">
+            <p className="text-xs text-brand-muted mb-5">
               Participação de cada linha de produtos nas vendas
             </p>
 
             <div className="space-y-4">
               {categoriasMaisVendidas.length === 0 ? (
-                <p className="text-xs text-[#71717a] py-6 text-center">Nenhuma venda registrada ainda.</p>
+                <p className="text-xs text-brand-muted py-6 text-center">Nenhuma venda registrada ainda.</p>
               ) : (
                 categoriasMaisVendidas.map((cat, idx) => (
                   <div key={idx} className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-[#09090b]">{cat.nome}</span>
+                      <span className="font-bold text-brand-chocolate">{cat.nome}</span>
                       <div className="text-right font-medium">
-                        <span className="text-[#52525b]">{cat.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                        <span className="text-xs font-bold text-[#7a5828] ml-1.5">({cat.percent}%)</span>
+                        <span className="text-brand-muted">{cat.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        <span className="text-xs font-bold text-brand-muted ml-1.5">({cat.percent}%)</span>
                       </div>
                     </div>
                     {/* Barra de Progresso */}
-                    <div className="w-full h-2 bg-[#f4efe6] rounded-full overflow-hidden border border-[#dcd5c7]/60">
+                    <div className="w-full h-2 bg-brand-nude rounded-full overflow-hidden border border-brand-line/60">
                       <div 
-                        className="h-full bg-gradient-to-r from-[#7a5828] to-[#a37941] rounded-full transition-all duration-500"
+                        className="h-full bg-gradient-to-r from-brand-caramel to-brand-caramel rounded-full transition-all duration-500"
                         style={{ width: `${Math.min(100, Math.max(5, cat.percent))}%` }}
                       />
                     </div>
@@ -602,7 +602,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
 
           <button
             onClick={() => onNavigate('categorias')}
-            className="w-full mt-6 py-2.5 px-4 rounded-xl bg-[#f4efe6] hover:bg-[#eae3d5] text-[#09090b] text-xs font-bold border border-[#dcd5c7] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            className="w-full mt-6 py-2.5 px-4 rounded-xl bg-brand-nude hover:bg-brand-nude text-brand-chocolate text-xs font-bold border border-brand-line transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span>Gerenciar Categorias</span>
             <ChevronRight size={14} />
@@ -614,35 +614,35 @@ export default function DashboardView({ data, onNavigate }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* TOP PRODUTOS MAIS VENDIDOS */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#dcd5c7] shadow-xs">
+        <div className="bg-brand-card rounded-3xl p-5 sm:p-6 border border-brand-line shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-base sm:text-lg font-serif font-bold text-[#09090b]">
+              <h3 className="text-base sm:text-lg font-serif font-bold text-brand-chocolate">
                 Produtos Mais Vendidos
               </h3>
-              <p className="text-xs text-[#52525b]">
+              <p className="text-xs text-brand-muted">
                 Ranking dos campeões de venda da boutique
               </p>
             </div>
             <button
               onClick={() => onNavigate('relatorios')}
-              className="text-xs font-bold text-[#7a5828] hover:underline cursor-pointer"
+              className="text-xs font-bold text-brand-muted hover:underline cursor-pointer"
             >
               Ver Relatório Completo
             </button>
           </div>
 
           {topProdutosMaisVendidos.length === 0 ? (
-            <p className="text-xs text-[#71717a] py-8 text-center">Nenhum produto vendido até o momento.</p>
+            <p className="text-xs text-brand-muted py-8 text-center">Nenhum produto vendido até o momento.</p>
           ) : (
-            <div className="divide-y divide-[#ebe5dc]">
+            <div className="divide-y divide-brand-nude">
               {topProdutosMaisVendidos.map((item, idx) => (
                 <div key={idx} className="py-3 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <span className="w-6 text-center text-xs font-bold text-[#7a5828]">
+                    <span className="w-6 text-center text-xs font-bold text-brand-muted">
                       #{idx + 1}
                     </span>
-                    <div className="w-10 h-10 rounded-xl bg-[#fcfbf9] border border-[#dcd5c7] overflow-hidden shrink-0 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-brand-cream border border-brand-line overflow-hidden shrink-0 flex items-center justify-center">
                       {item.produto.fotos && item.produto.fotos[0] ? (
                           <img
                           src={item.produto.fotos[0].url} 
@@ -652,24 +652,24 @@ export default function DashboardView({ data, onNavigate }: Props) {
                           className="w-full h-full object-contain p-0.5" 
                         />
                       ) : (
-                        <Package size={18} className="text-[#8c8c8e]" />
+                        <Package size={18} className="text-brand-muted" />
                       )}
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-[#09090b] leading-tight">
+                      <p className="text-xs font-bold text-brand-chocolate leading-tight">
                         {item.produto.nome}
                       </p>
-                      <p className="text-[11px] text-[#52525b]">
+                      <p className="text-[11px] text-brand-muted">
                         {item.produto.marca} {item.produto.volume ? `• ${item.produto.volume}` : ''}
                       </p>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <span className="text-xs font-bold text-[#09090b] block">
+                    <span className="text-xs font-bold text-brand-chocolate block">
                       {item.qtd} un. vendidas
                     </span>
-                    <span className="text-[11px] text-emerald-700 font-bold block">
+                    <span className="text-[11px] text-brand-chocolate font-bold block">
                       {item.totalVendas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
                   </div>
@@ -680,21 +680,21 @@ export default function DashboardView({ data, onNavigate }: Props) {
         </div>
 
         {/* ALERTAS CRÍTICOS DE ESTOQUE */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#dcd5c7] shadow-xs flex flex-col justify-between">
+        <div className="bg-brand-card rounded-3xl p-5 sm:p-6 border border-brand-line shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-base sm:text-lg font-serif font-bold text-[#09090b] flex items-center gap-2">
-                  <AlertTriangle size={18} className="text-amber-600" />
+                <h3 className="text-base sm:text-lg font-serif font-bold text-brand-chocolate flex items-center gap-2">
+                  <AlertTriangle size={18} className="text-brand-chocolate" />
                   Alertas de Estoque
                 </h3>
-                <p className="text-xs text-[#52525b]">
+                <p className="text-xs text-brand-muted">
                   Produtos que necessitam de atenção imediata ou pedido ao fornecedor
                 </p>
               </div>
               <button
                 onClick={() => onNavigate('estoque')}
-                className="text-xs font-bold text-[#7a5828] hover:underline cursor-pointer"
+                className="text-xs font-bold text-brand-muted hover:underline cursor-pointer"
               >
                 Gerenciar Estoque
               </button>
@@ -703,26 +703,26 @@ export default function DashboardView({ data, onNavigate }: Props) {
             <div className="space-y-2.5">
               {produtosEstoqueBaixo.length === 0 && produtosSemEstoque.length === 0 ? (
                 <div className="py-8 text-center">
-                  <CheckCircle2 size={32} className="mx-auto text-emerald-500 mb-2" />
-                  <p className="text-xs font-bold text-[#09090b]">Estoque Saudável!</p>
-                  <p className="text-[11px] text-[#52525b]">Todos os produtos de pronta entrega possuem quantidades adequadas.</p>
+                  <CheckCircle2 size={32} className="mx-auto text-brand-rose-beige mb-2" />
+                  <p className="text-xs font-bold text-brand-chocolate">Estoque Saudável!</p>
+                  <p className="text-[11px] text-brand-muted">Todos os produtos de pronta entrega possuem quantidades adequadas.</p>
                 </div>
               ) : (
                 <>
                   {produtosSemEstoque.slice(0, 3).map((p) => (
-                    <div key={p.id} className="p-3 rounded-2xl bg-red-50/50 border border-red-200 flex items-center justify-between">
+                    <div key={p.id} className="p-3 rounded-2xl bg-brand-rose-beige/50 border border-brand-terracotta flex items-center justify-between">
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <span className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[9px] font-bold uppercase">
+                          <span className="px-1.5 py-0.5 rounded bg-brand-chocolate text-brand-cream text-[9px] font-bold uppercase">
                             Zerado
                           </span>
-                          <span className="text-xs font-bold text-[#09090b]">{p.nome}</span>
+                          <span className="text-xs font-bold text-brand-chocolate">{p.nome}</span>
                         </div>
-                        <p className="text-[11px] text-[#52525b] mt-0.5">{p.marca}</p>
+                        <p className="text-[11px] text-brand-muted mt-0.5">{p.marca}</p>
                       </div>
                       <button
                         onClick={() => onNavigate('estoque')}
-                        className="px-3 py-1 bg-white border border-red-300 text-red-700 text-xs font-bold rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                        className="px-3 py-1 bg-brand-card border border-brand-terracotta text-brand-chocolate text-xs font-bold rounded-lg hover:bg-brand-rose-beige transition-colors cursor-pointer"
                       >
                         Repor
                       </button>
@@ -730,19 +730,19 @@ export default function DashboardView({ data, onNavigate }: Props) {
                   ))}
 
                   {produtosEstoqueBaixo.slice(0, 3).map((p) => (
-                    <div key={p.id} className="p-3 rounded-2xl bg-amber-50/40 border border-amber-200 flex items-center justify-between">
+                    <div key={p.id} className="p-3 rounded-2xl bg-brand-nude/40 border border-brand-line flex items-center justify-between">
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <span className="px-1.5 py-0.5 rounded bg-amber-500 text-white text-[9px] font-bold uppercase">
+                          <span className="px-1.5 py-0.5 rounded bg-brand-chocolate text-brand-cream text-[9px] font-bold uppercase">
                             Baixo: {p.quantidade} un.
                           </span>
-                          <span className="text-xs font-bold text-[#09090b]">{p.nome}</span>
+                          <span className="text-xs font-bold text-brand-chocolate">{p.nome}</span>
                         </div>
-                        <p className="text-[11px] text-[#52525b] mt-0.5">{p.marca} (mínimo recomendado: {p.estoqueMinimo || 2} un.)</p>
+                        <p className="text-[11px] text-brand-muted mt-0.5">{p.marca} (mínimo recomendado: {p.estoqueMinimo || 2} un.)</p>
                       </div>
                       <button
                         onClick={() => onNavigate('estoque')}
-                        className="px-3 py-1 bg-white border border-amber-300 text-amber-900 text-xs font-bold rounded-lg hover:bg-amber-50 transition-colors cursor-pointer"
+                        className="px-3 py-1 bg-brand-card border border-brand-line text-brand-chocolate text-xs font-bold rounded-lg hover:bg-brand-nude transition-colors cursor-pointer"
                       >
                         Ajustar
                       </button>
@@ -753,11 +753,11 @@ export default function DashboardView({ data, onNavigate }: Props) {
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-[#ebe5dc] flex items-center justify-between text-xs text-[#52525b]">
+          <div className="mt-4 pt-3 border-t border-brand-nude flex items-center justify-between text-xs text-brand-muted">
             <span>{produtosEstoqueBaixo.length + produtosSemEstoque.length} produtos exigem reposição</span>
             <button
               onClick={() => onNavigate('compras')}
-              className="text-xs font-bold text-[#09090b] hover:text-[#7a5828] transition-colors cursor-pointer"
+              className="text-xs font-bold text-brand-chocolate hover:text-brand-muted transition-colors cursor-pointer"
             >
               Criar Pedido de Compra &rarr;
             </button>

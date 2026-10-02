@@ -93,23 +93,23 @@ export default function EstoqueView({ data }: Props) {
     <div className="space-y-6">
       
       {/* HEADER DA VISÃO DE ESTOQUE */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-[#dcd5c7] shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-brand-card p-5 sm:p-6 rounded-3xl border border-brand-line shadow-xs">
         <div>
-          <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#09090b] flex items-center gap-2.5">
-            <Boxes size={22} className="text-[#7a5828]" />
+          <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand-chocolate flex items-center gap-2.5">
+            <Boxes size={22} className="text-brand-muted" />
             Gestão & Controle de Estoque
           </h2>
-          <p className="text-xs text-[#52525b] mt-0.5">
+          <p className="text-xs text-brand-muted mt-0.5">
             Controle de saldo físico, reservas, estoque mínimo, valor investido e histórico de movimentações.
           </p>
         </div>
 
         {/* Sub-Abas: Saldo Atual vs Histórico Completo */}
-        <div className="flex items-center gap-1.5 bg-[#f4efe6] p-1 rounded-2xl border border-[#dcd5c7]">
+        <div className="flex items-center gap-1.5 bg-brand-nude p-1 rounded-2xl border border-brand-line">
           <button
             onClick={() => setActiveSubTab('saldo')}
             className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-              activeSubTab === 'saldo' ? 'bg-[#09090b] text-white shadow-xs' : 'text-[#52525b] hover:text-[#09090b]'
+              activeSubTab === 'saldo' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-muted hover:text-brand-chocolate'
             }`}
           >
             Saldo de Estoque ({produtos.length})
@@ -117,7 +117,7 @@ export default function EstoqueView({ data }: Props) {
           <button
             onClick={() => setActiveSubTab('historico')}
             className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'historico' ? 'bg-[#09090b] text-white shadow-xs' : 'text-[#52525b] hover:text-[#09090b]'
+              activeSubTab === 'historico' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-muted hover:text-brand-chocolate'
             }`}
           >
             <History size={14} /> Histórico de Movimentações ({movimentacoes.length})
@@ -127,50 +127,50 @@ export default function EstoqueView({ data }: Props) {
 
       {/* CARDS RESUMO DO ESTOQUE */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 rounded-2xl border border-[#dcd5c7] shadow-xs">
-          <span className="text-[10px] font-bold text-[#52525b] uppercase tracking-wider block mb-1">
+        <div className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs">
+          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
             Total Físico em Estoque
           </span>
-          <p className="text-xl sm:text-2xl font-bold text-[#09090b]">
-            {totalFisico} <span className="text-xs font-medium text-[#52525b]">unidades</span>
+          <p className="text-xl sm:text-2xl font-bold text-brand-chocolate">
+            {totalFisico} <span className="text-xs font-medium text-brand-muted">unidades</span>
           </p>
-          <span className="text-[11px] text-[#7a5828] font-semibold block mt-1">
+          <span className="text-[11px] text-brand-muted font-semibold block mt-1">
             {totalReservado} un. reservadas
           </span>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-[#dcd5c7] shadow-xs">
-          <span className="text-[10px] font-bold text-[#7a5828] uppercase tracking-wider block mb-1">
+        <div className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs">
+          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
             Valor Total Investido (Custo)
           </span>
-          <p className="text-xl sm:text-2xl font-bold text-[#5c401c]">
+          <p className="text-xl sm:text-2xl font-bold text-brand-deep">
             {totalCusto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
-          <span className="text-[11px] text-[#52525b] block mt-1">
+          <span className="text-[11px] text-brand-muted block mt-1">
             Custo médio por unidade: R$ {totalFisico > 0 ? (totalCusto / totalFisico).toFixed(2).replace('.', ',') : '0,00'}
           </span>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-[#dcd5c7] shadow-xs">
-          <span className="text-[10px] font-bold text-[#7a5828] uppercase tracking-wider block mb-1">
+        <div className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs">
+          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
             Valor Potencial de Venda
           </span>
-          <p className="text-xl sm:text-2xl font-bold text-[#5c401c]">
+          <p className="text-xl sm:text-2xl font-bold text-brand-deep">
             {totalVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
-          <span className="text-[11px] text-emerald-700 font-bold block mt-1">
+          <span className="text-[11px] text-brand-chocolate font-bold block mt-1">
             +{(totalVenda - totalCusto).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} lucro projetado
           </span>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-amber-300 bg-amber-50/30 shadow-xs">
-          <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block mb-1">
+        <div className="bg-brand-card p-4 rounded-2xl border border-brand-line bg-brand-nude/30 shadow-xs">
+          <span className="text-[10px] font-bold text-brand-chocolate uppercase tracking-wider block mb-1">
             Alertas de Reposição
           </span>
-          <p className="text-xl sm:text-2xl font-bold text-amber-950">
-            {produtos.filter(p => p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade <= (p.estoqueMinimo || 2)).length} <span className="text-xs font-medium text-amber-800">itens</span>
+          <p className="text-xl sm:text-2xl font-bold text-brand-chocolate">
+            {produtos.filter(p => p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade <= (p.estoqueMinimo || 2)).length} <span className="text-xs font-medium text-brand-chocolate">itens</span>
           </p>
-          <span className="text-[11px] text-amber-900 font-medium block mt-1">
+          <span className="text-[11px] text-brand-chocolate font-medium block mt-1">
             Estoque baixo ou zerado
           </span>
         </div>
@@ -182,24 +182,24 @@ export default function EstoqueView({ data }: Props) {
       {activeSubTab === 'saldo' && (
         <div className="space-y-4">
           {/* BARRA DE FILTROS E BUSCA */}
-          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#dcd5c7] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="flex-1 relative">
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#71717a]" />
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-muted" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar por nome, marca ou SKU..."
-                className="w-full pl-10 pr-4 py-2.5 bg-[#f4efe6] focus:bg-white text-xs text-[#09090b] rounded-xl border border-[#dcd5c7] focus:border-[#7a5828] outline-none transition-all font-medium"
+                className="w-full pl-10 pr-4 py-2.5 bg-brand-nude focus:bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line focus:border-brand-caramel outline-none transition-all font-medium"
               />
             </div>
 
             {/* Pílulas de Filtro */}
-            <div className="flex items-center gap-1 bg-[#f4efe6] p-1 rounded-xl border border-[#dcd5c7] overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1 bg-brand-nude p-1 rounded-xl border border-brand-line overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setFilterType('ALL')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                  filterType === 'ALL' ? 'bg-[#09090b] text-white shadow-xs' : 'text-[#52525b] hover:text-[#09090b]'
+                  filterType === 'ALL' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-muted hover:text-brand-chocolate'
                 }`}
               >
                 Todos ({produtos.length})
@@ -207,7 +207,7 @@ export default function EstoqueView({ data }: Props) {
               <button
                 onClick={() => setFilterType('BAIXO')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                  filterType === 'BAIXO' ? 'bg-amber-600 text-white shadow-xs' : 'text-amber-800 hover:text-amber-950'
+                  filterType === 'BAIXO' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-chocolate hover:text-brand-chocolate'
                 }`}
               >
                 Estoque Baixo
@@ -215,7 +215,7 @@ export default function EstoqueView({ data }: Props) {
               <button
                 onClick={() => setFilterType('ZERADO')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                  filterType === 'ZERADO' ? 'bg-red-600 text-white shadow-xs' : 'text-red-700 hover:text-red-950'
+                  filterType === 'ZERADO' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-chocolate hover:text-brand-chocolate'
                 }`}
               >
                 Sem Estoque
@@ -223,7 +223,7 @@ export default function EstoqueView({ data }: Props) {
               <button
                 onClick={() => setFilterType('PRONTA_ENTREGA')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                  filterType === 'PRONTA_ENTREGA' ? 'bg-emerald-700 text-white shadow-xs' : 'text-emerald-800 hover:text-emerald-950'
+                  filterType === 'PRONTA_ENTREGA' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-chocolate hover:text-brand-chocolate'
                 }`}
               >
                 Pronta Entrega
@@ -231,7 +231,7 @@ export default function EstoqueView({ data }: Props) {
               <button
                 onClick={() => setFilterType('ENCOMENDA')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                  filterType === 'ENCOMENDA' ? 'bg-[#7a5828] text-white shadow-xs' : 'text-[#7a5828] hover:text-[#5c401c]'
+                  filterType === 'ENCOMENDA' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-muted hover:text-brand-deep'
                 }`}
               >
                 Encomenda
@@ -240,11 +240,11 @@ export default function EstoqueView({ data }: Props) {
           </div>
 
           {/* TABELA DE ESTOQUE DENSE */}
-          <div className="bg-white rounded-2xl border border-[#dcd5c7] shadow-xs overflow-hidden">
+          <div className="bg-brand-card rounded-2xl border border-brand-line shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-[#fcfbf9] border-b border-[#dcd5c7] text-[10px] font-bold text-[#52525b] uppercase tracking-wider">
+                  <tr className="bg-brand-cream border-b border-brand-line text-[10px] font-bold text-brand-muted uppercase tracking-wider">
                     <th className="py-3 px-4">Produto & Marca</th>
                     <th className="py-3 px-3">SKU</th>
                     <th className="py-3 px-3 text-center">Físico</th>
@@ -258,10 +258,10 @@ export default function EstoqueView({ data }: Props) {
                     <th className="py-3 px-4 text-right">Movimentação</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#ebe5dc] text-xs">
+                <tbody className="divide-y divide-brand-nude text-xs">
                   {filteredProdutos.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="text-center py-10 text-xs text-[#71717a]">
+                      <td colSpan={11} className="text-center py-10 text-xs text-brand-muted">
                         Nenhum produto encontrado com os filtros selecionados.
                       </td>
                     </tr>
@@ -274,20 +274,20 @@ export default function EstoqueView({ data }: Props) {
                       const totalPotVenda = (p.precoVista || 0) * (p.quantidade || 0);
 
                       return (
-                        <tr key={p.id} className="hover:bg-[#fcfbf9] transition-colors">
+                        <tr key={p.id} className="hover:bg-brand-cream transition-colors">
                           {/* Produto e Marca */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-9 h-9 rounded-xl bg-[#fcfbf9] border border-[#dcd5c7] overflow-hidden shrink-0 flex items-center justify-center">
+                              <div className="w-9 h-9 rounded-xl bg-brand-cream border border-brand-line overflow-hidden shrink-0 flex items-center justify-center">
                                 {p.fotos && p.fotos[0] ? (
                                   <img src={p.fotos[0].url} alt={p.nome} width={36} height={36} className="w-full h-full object-contain p-0.5" />
                                 ) : (
-                                  <Package size={16} className="text-[#8c8c8e]" />
+                                  <Package size={16} className="text-brand-muted" />
                                 )}
                               </div>
                               <div>
-                                <p className="font-bold text-[#09090b] leading-tight line-clamp-1">{p.nome}</p>
-                                <p className="text-[10px] text-[#52525b] font-medium">
+                                <p className="font-bold text-brand-chocolate leading-tight line-clamp-1">{p.nome}</p>
+                                <p className="text-[10px] text-brand-muted font-medium">
                                   {p.marca} {p.volume ? `• ${p.volume}` : ''}
                                 </p>
                               </div>
@@ -295,17 +295,17 @@ export default function EstoqueView({ data }: Props) {
                           </td>
 
                           {/* SKU */}
-                          <td className="py-3 px-3 font-mono text-[10px] text-[#52525b]">
+                          <td className="py-3 px-3 font-mono text-[10px] text-brand-muted">
                             {p.sku || '—'}
                           </td>
 
                           {/* Quantidade Físico */}
-                          <td className="py-3 px-3 text-center font-bold text-[#09090b]">
+                          <td className="py-3 px-3 text-center font-bold text-brand-chocolate">
                             {p.quantidade} un.
                           </td>
 
                           {/* Reservado */}
-                          <td className="py-3 px-3 text-center text-[#52525b] font-medium">
+                          <td className="py-3 px-3 text-center text-brand-muted font-medium">
                             {p.quantidadeReservada || 0}
                           </td>
 
@@ -313,51 +313,51 @@ export default function EstoqueView({ data }: Props) {
                           <td className="py-3 px-3 text-center">
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               isZerado 
-                                ? 'bg-red-100 text-red-800' 
+                                ? 'bg-brand-rose-beige text-brand-chocolate'
                                 : isBaixo 
-                                ? 'bg-amber-100 text-amber-900' 
-                                : 'bg-emerald-100 text-emerald-900'
+                                ? 'bg-brand-nude text-brand-chocolate'
+                                : 'bg-brand-nude text-brand-chocolate'
                             }`}>
                               {disponivel} un.
                             </span>
                           </td>
 
                           {/* Mínimo */}
-                          <td className="py-3 px-3 text-center text-[#71717a]">
+                          <td className="py-3 px-3 text-center text-brand-muted">
                             {p.estoqueMinimo || 2}
                           </td>
 
                           {/* Custo Unitário */}
-                          <td className="py-3 px-3 text-right font-medium text-[#52525b]">
+                          <td className="py-3 px-3 text-right font-medium text-brand-muted">
                             {(p.precoCusto || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </td>
 
                           {/* Investimento Total */}
-                          <td className="py-3 px-3 text-right font-bold text-[#5c401c]">
+                          <td className="py-3 px-3 text-right font-bold text-brand-deep">
                             {totalInv.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </td>
 
                           {/* Potencial Venda */}
-                          <td className="py-3 px-3 text-right font-bold text-[#09090b]">
+                          <td className="py-3 px-3 text-right font-bold text-brand-chocolate">
                             {totalPotVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </td>
 
                           {/* Status */}
                           <td className="py-3 px-3 text-center">
                             {isZerado ? (
-                              <span className="px-2 py-0.5 rounded-md bg-[#f4efe6] border border-[#dcd5c7] text-[#7a5828] text-[10px] font-bold">
+                              <span className="px-2 py-0.5 rounded-md bg-brand-nude border border-brand-line text-brand-muted text-[10px] font-bold">
                                 Sob Encomenda
                               </span>
                             ) : isBaixo ? (
-                              <span className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold">
+                              <span className="px-2 py-0.5 rounded-md bg-brand-nude border border-brand-line text-brand-chocolate text-[10px] font-bold">
                                 Estoque Baixo
                               </span>
                             ) : p.tipoDisponibilidade === 'ENCOMENDA' ? (
-                              <span className="px-2 py-0.5 rounded-md bg-[#f4efe6] border border-[#dcd5c7] text-[#7a5828] text-[10px] font-bold">
+                              <span className="px-2 py-0.5 rounded-md bg-brand-nude border border-brand-line text-brand-muted text-[10px] font-bold">
                                 Encomenda
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
+                              <span className="px-2 py-0.5 rounded-md bg-brand-nude border border-brand-line text-brand-chocolate text-[10px] font-bold">
                                 Normal
                               </span>
                             )}
@@ -368,21 +368,21 @@ export default function EstoqueView({ data }: Props) {
                             <div className="inline-flex items-center gap-1">
                               <button
                                 onClick={() => handleOpenMoveModal(p, 'ENTRADA')}
-                                className="p-1.5 rounded-lg bg-[#f4efe6] hover:bg-[#eae3d5] text-[#09090b] border border-[#dcd5c7] transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg bg-brand-nude hover:bg-brand-nude text-brand-chocolate border border-brand-line transition-colors cursor-pointer"
                                 title="Entrada rápida de estoque"
                               >
-                                <ArrowUpRight size={13} className="text-emerald-700" />
+                                <ArrowUpRight size={13} className="text-brand-chocolate" />
                               </button>
                               <button
                                 onClick={() => handleOpenMoveModal(p, 'SAIDA')}
-                                className="p-1.5 rounded-lg bg-[#f4efe6] hover:bg-[#eae3d5] text-[#09090b] border border-[#dcd5c7] transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg bg-brand-nude hover:bg-brand-nude text-brand-chocolate border border-brand-line transition-colors cursor-pointer"
                                 title="Saída / Perda de estoque"
                               >
-                                <ArrowDownRight size={13} className="text-red-700" />
+                                <ArrowDownRight size={13} className="text-brand-chocolate" />
                               </button>
                               <button
                                 onClick={() => handleOpenMoveModal(p, 'AJUSTE')}
-                                className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#09090b] hover:bg-[#27272a] text-white transition-colors cursor-pointer"
+                                className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-brand-chocolate hover:bg-brand-deep text-brand-cream transition-colors cursor-pointer"
                               >
                                 Ajustar
                               </button>
@@ -403,13 +403,13 @@ export default function EstoqueView({ data }: Props) {
       {/* ABA: HISTÓRICO DE MOVIMENTAÇÕES (AUDITORIA) */}
       {/* ========================================================= */}
       {activeSubTab === 'historico' && (
-        <div className="bg-white rounded-2xl border border-[#dcd5c7] shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-[#dcd5c7] flex items-center justify-between">
+        <div className="bg-brand-card rounded-2xl border border-brand-line shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-brand-line flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-[#09090b]">Registro Geral de Auditoria de Estoque</h3>
-              <p className="text-[11px] text-[#52525b]">Todas as entradas, saídas, vendas e ajustes manuais registrados no sistema.</p>
+              <h3 className="text-sm font-bold text-brand-chocolate">Registro Geral de Auditoria de Estoque</h3>
+              <p className="text-[11px] text-brand-muted">Todas as entradas, saídas, vendas e ajustes manuais registrados no sistema.</p>
             </div>
-            <span className="text-xs font-bold text-[#7a5828]">
+            <span className="text-xs font-bold text-brand-muted">
               {movimentacoes.length} registros
             </span>
           </div>
@@ -417,7 +417,7 @@ export default function EstoqueView({ data }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#fcfbf9] border-b border-[#dcd5c7] text-[10px] font-bold text-[#52525b] uppercase tracking-wider">
+                <tr className="bg-brand-cream border-b border-brand-line text-[10px] font-bold text-brand-muted uppercase tracking-wider">
                   <th className="py-3 px-4">Data & Hora</th>
                   <th className="py-3 px-3">Produto</th>
                   <th className="py-3 px-3 text-center">Tipo</th>
@@ -427,10 +427,10 @@ export default function EstoqueView({ data }: Props) {
                   <th className="py-3 px-3">Responsável</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#ebe5dc] text-xs">
+              <tbody className="divide-y divide-brand-nude text-xs">
                 {movimentacoes.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-10 text-xs text-[#71717a]">
+                    <td colSpan={7} className="text-center py-10 text-xs text-brand-muted">
                       Nenhuma movimentação de estoque registrada.
                     </td>
                   </tr>
@@ -444,34 +444,34 @@ export default function EstoqueView({ data }: Props) {
                     const isPositivo = m.tipo === 'ENTRADA' || m.tipo === 'DEVOLUCAO';
 
                     return (
-                      <tr key={m.id} className="hover:bg-[#fcfbf9] transition-colors">
-                        <td className="py-3 px-4 text-[11px] font-mono text-[#52525b]">
+                      <tr key={m.id} className="hover:bg-brand-cream transition-colors">
+                        <td className="py-3 px-4 text-[11px] font-mono text-brand-muted">
                           {dataFormatada}
                         </td>
-                        <td className="py-3 px-3 font-bold text-[#09090b]">
+                        <td className="py-3 px-3 font-bold text-brand-chocolate">
                           {m.produto?.nome || `Produto #${m.produtoId}`}
                         </td>
                         <td className="py-3 px-3 text-center">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            m.tipo === 'ENTRADA' ? 'bg-emerald-100 text-emerald-900' :
-                            m.tipo === 'SAIDA' ? 'bg-red-100 text-red-900' :
-                            m.tipo === 'VENDA' ? 'bg-blue-100 text-blue-900' :
-                            m.tipo === 'PERDA' ? 'bg-gray-200 text-gray-800' :
-                            'bg-amber-100 text-amber-900'
+                            m.tipo === 'ENTRADA' ? 'bg-brand-nude text-brand-chocolate' :
+                            m.tipo === 'SAIDA' ? 'bg-brand-rose-beige text-brand-chocolate' :
+                            m.tipo === 'VENDA' ? 'bg-brand-nude text-brand-chocolate' :
+                            m.tipo === 'PERDA' ? 'bg-brand-nude text-brand-chocolate' :
+                            'bg-brand-nude text-brand-chocolate'
                           }`}>
                             {m.tipo}
                           </span>
                         </td>
-                        <td className={`py-3 px-3 text-center font-bold ${isPositivo ? 'text-emerald-700' : 'text-red-700'}`}>
+                        <td className={`py-3 px-3 text-center font-bold ${isPositivo ? 'text-brand-chocolate' : 'text-brand-chocolate'}`}>
                           {m.quantidade > 0 ? `+${m.quantidade}` : m.quantidade} un.
                         </td>
-                        <td className="py-3 px-3 text-center text-[#52525b] font-mono text-[11px]">
-                          {m.quantidadeAnterior} &rarr; <strong className="text-[#09090b]">{m.quantidadeNova}</strong>
+                        <td className="py-3 px-3 text-center text-brand-muted font-mono text-[11px]">
+                          {m.quantidadeAnterior} &rarr; <strong className="text-brand-chocolate">{m.quantidadeNova}</strong>
                         </td>
-                        <td className="py-3 px-4 text-[#52525b]">
+                        <td className="py-3 px-4 text-brand-muted">
                           {m.motivo || '—'}
                         </td>
-                        <td className="py-3 px-3 font-semibold text-[#7a5828]">
+                        <td className="py-3 px-3 font-semibold text-brand-muted">
                           👤 {m.usuarioResponsavel || 'Sistema'}
                         </td>
                       </tr>
@@ -488,43 +488,43 @@ export default function EstoqueView({ data }: Props) {
       {/* MODAL DE MOVIMENTAÇÃO RÁPIDA DE ESTOQUE */}
       {/* ========================================================= */}
       {movingProduct && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl border border-[#dcd5c7] shadow-2xl p-6 relative overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#7a5828] to-[#a37941]" />
+        <div className="fixed inset-0 bg-brand-deep/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-brand-card w-full max-w-md rounded-3xl border border-brand-line shadow-2xl p-6 relative overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-caramel to-brand-caramel" />
 
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-serif font-bold text-[#09090b]">
+                <h3 className="text-lg font-serif font-bold text-brand-chocolate">
                   Movimentar Estoque
                 </h3>
-                <p className="text-xs text-[#52525b] font-medium">
+                <p className="text-xs text-brand-muted font-medium">
                   {movingProduct.nome} ({movingProduct.marca})
                 </p>
               </div>
               <button
                 onClick={() => setMovingProduct(null)}
-                className="p-1 rounded-full text-[#52525b] hover:text-[#09090b] hover:bg-[#f4efe6] transition-colors cursor-pointer"
+                className="p-1 rounded-full text-brand-muted hover:text-brand-chocolate hover:bg-brand-nude transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
             {feedbackMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold">
+              <div className="mb-4 p-3 rounded-xl bg-brand-nude border border-brand-line text-brand-chocolate text-xs font-semibold">
                 {feedbackMsg}
               </div>
             )}
 
             <form onSubmit={handleExecuteMovimentacao} className="space-y-4">
               {/* Saldo Atual */}
-              <div className="p-3 rounded-xl bg-[#f4efe6] border border-[#dcd5c7] flex items-center justify-between text-xs">
-                <span className="font-medium text-[#52525b]">Saldo Físico Atual:</span>
-                <span className="font-bold text-[#09090b] text-sm">{movingProduct.quantidade} unidades</span>
+              <div className="p-3 rounded-xl bg-brand-nude border border-brand-line flex items-center justify-between text-xs">
+                <span className="font-medium text-brand-muted">Saldo Físico Atual:</span>
+                <span className="font-bold text-brand-chocolate text-sm">{movingProduct.quantidade} unidades</span>
               </div>
 
               {/* Tipo de Movimentação */}
               <div>
-                <label className="block text-[11px] font-bold text-[#52525b] uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1.5">
                   Tipo de Movimentação
                 </label>
                 <div className="grid grid-cols-3 gap-1.5">
@@ -545,8 +545,8 @@ export default function EstoqueView({ data }: Props) {
                       }}
                       className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                         movTipo === t.key
-                          ? 'bg-[#09090b] text-white border-[#09090b] shadow-xs'
-                          : 'bg-[#f4efe6] text-[#52525b] border-[#dcd5c7] hover:bg-[#eae3d5]'
+                          ? 'bg-brand-chocolate text-brand-cream border-brand-chocolate shadow-xs'
+                          : 'bg-brand-nude text-brand-muted border-brand-line hover:bg-brand-nude'
                       }`}
                     >
                       {t.label}
@@ -557,7 +557,7 @@ export default function EstoqueView({ data }: Props) {
 
               {/* Quantidade */}
               <div>
-                <label className="block text-[11px] font-bold text-[#52525b] uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1.5">
                   {movTipo === 'AJUSTE' ? 'Nova Quantidade Real em Estoque' : 'Quantidade a Movimentar'}
                 </label>
                 <input
@@ -566,13 +566,13 @@ export default function EstoqueView({ data }: Props) {
                   required
                   value={movQtd}
                   onChange={(e) => setMovQtd(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full px-3.5 py-2.5 bg-[#f4efe6] focus:bg-white text-sm font-bold text-[#09090b] rounded-xl border border-[#dcd5c7] focus:border-[#7a5828] outline-none"
+                  className="w-full px-3.5 py-2.5 bg-brand-nude focus:bg-brand-card text-sm font-bold text-brand-chocolate rounded-xl border border-brand-line focus:border-brand-caramel outline-none"
                 />
               </div>
 
               {/* Motivo */}
               <div>
-                <label className="block text-[11px] font-bold text-[#52525b] uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1.5">
                   Motivo / Observação
                 </label>
                 <input
@@ -581,13 +581,13 @@ export default function EstoqueView({ data }: Props) {
                   value={movMotivo}
                   onChange={(e) => setMovMotivo(e.target.value)}
                   placeholder="Ex: Chegada de lote, provador de mostruário, ajuste de contagem..."
-                  className="w-full px-3.5 py-2.5 bg-[#f4efe6] focus:bg-white text-xs font-medium text-[#09090b] rounded-xl border border-[#dcd5c7] focus:border-[#7a5828] outline-none"
+                  className="w-full px-3.5 py-2.5 bg-brand-nude focus:bg-brand-card text-xs font-medium text-brand-chocolate rounded-xl border border-brand-line focus:border-brand-caramel outline-none"
                 />
               </div>
 
               {/* Usuário Responsável */}
-              <p className="text-[11px] text-[#52525b]">
-                Registrado por: <strong className="text-[#09090b]">{user?.name || 'Administrador'}</strong>
+              <p className="text-[11px] text-brand-muted">
+                Registrado por: <strong className="text-brand-chocolate">{user?.name || 'Administrador'}</strong>
               </p>
 
               {/* Botões */}
@@ -596,18 +596,18 @@ export default function EstoqueView({ data }: Props) {
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => setMovingProduct(null)}
-                  className="px-4 py-2.5 rounded-xl border border-[#dcd5c7] text-xs font-bold text-[#52525b] hover:bg-[#f4efe6] transition-colors cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl border border-brand-line text-xs font-bold text-brand-muted hover:bg-brand-nude transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 rounded-xl bg-[#09090b] hover:bg-[#27272a] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 size={14} className="animate-spin text-[#a37941]" />
+                      <Loader2 size={14} className="animate-spin text-brand-caramel" />
                       <span>Salvando...</span>
                     </>
                   ) : (

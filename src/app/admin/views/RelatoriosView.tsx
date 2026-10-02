@@ -114,22 +114,22 @@ export default function RelatoriosView({ data }: Props) {
     <div className="space-y-6">
       
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-[#dcd5c7] shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-brand-card p-5 sm:p-6 rounded-3xl border border-brand-line shadow-xs">
         <div>
-          <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#09090b] flex items-center gap-2.5">
-            <BarChart3 size={22} className="text-[#7a5828]" />
+          <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand-chocolate flex items-center gap-2.5">
+            <BarChart3 size={22} className="text-brand-muted" />
             Relatórios Estratégicos & Curva ABC
           </h2>
-          <p className="text-xs text-[#52525b] mt-0.5">
+          <p className="text-xs text-brand-muted mt-0.5">
             Análise aprofundada de produtos mais rentáveis, marcas líderes, margens e estoque parado.
           </p>
         </div>
 
         <button
           onClick={handleExportCSV}
-          className="px-4 py-2.5 bg-[#09090b] hover:bg-[#27272a] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer self-start sm:self-auto"
+          className="px-4 py-2.5 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer self-start sm:self-auto"
         >
-          <Download size={15} className="text-[#a37941]" />
+          <Download size={15} className="text-brand-caramel" />
           <span>Exportar Relatório CSV</span>
         </button>
       </div>
@@ -148,8 +148,8 @@ export default function RelatoriosView({ data }: Props) {
             onClick={() => setActiveReport(r.key as typeof activeReport)}
             className={`px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
               activeReport === r.key
-                ? 'bg-[#09090b] text-white border-[#09090b] shadow-xs'
-                : 'bg-white text-[#52525b] border-[#dcd5c7] hover:bg-[#f4efe6] hover:text-[#09090b]'
+                ? 'bg-brand-chocolate text-brand-cream border-brand-chocolate shadow-xs'
+                : 'bg-brand-card text-brand-muted border-brand-line hover:bg-brand-nude hover:text-brand-chocolate'
             }`}
           >
             {r.label}
@@ -158,14 +158,14 @@ export default function RelatoriosView({ data }: Props) {
       </div>
 
       {/* CONTEÚDO DO RELATÓRIO ATIVO */}
-      <div className="bg-white rounded-2xl border border-[#dcd5c7] shadow-xs overflow-hidden">
+      <div className="bg-brand-card rounded-2xl border border-brand-line shadow-xs overflow-hidden">
         
         {/* RELATÓRIO: MAIS VENDIDOS OU MAIOR LUCRO */}
         {(activeReport === 'mais_vendidos' || activeReport === 'maior_lucro') && (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#fcfbf9] border-b border-[#dcd5c7] text-[10px] font-bold text-[#52525b] uppercase tracking-wider">
+                <tr className="bg-brand-cream border-b border-brand-line text-[10px] font-bold text-brand-muted uppercase tracking-wider">
                   <th className="py-3 px-4">Posição / Produto</th>
                   <th className="py-3 px-3">Marca</th>
                   <th className="py-3 px-3 text-center">Qtd Vendida</th>
@@ -175,26 +175,26 @@ export default function RelatoriosView({ data }: Props) {
                   <th className="py-3 px-4 text-center">Saldo em Estoque</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#ebe5dc] text-xs">
+              <tbody className="divide-y divide-brand-nude text-xs">
                 {(activeReport === 'mais_vendidos' ? maisVendidos : maiorLucro).map((sp, idx) => (
-                  <tr key={sp.produto.id} className="hover:bg-[#fcfbf9] transition-colors">
+                  <tr key={sp.produto.id} className="hover:bg-brand-cream transition-colors">
                     <td className="py-3 px-4">
-                      <span className="font-bold text-[#7a5828] mr-2">#{idx + 1}</span>
-                      <strong className="text-[#09090b]">{sp.produto.nome}</strong>
+                      <span className="font-bold text-brand-muted mr-2">#{idx + 1}</span>
+                      <strong className="text-brand-chocolate">{sp.produto.nome}</strong>
                     </td>
-                    <td className="py-3 px-3 text-[#52525b] font-medium">{sp.produto.marca}</td>
-                    <td className="py-3 px-3 text-center font-bold text-[#09090b]">{sp.qtdVendida} un.</td>
-                    <td className="py-3 px-3 text-right text-[#52525b]">
+                    <td className="py-3 px-3 text-brand-muted font-medium">{sp.produto.marca}</td>
+                    <td className="py-3 px-3 text-center font-bold text-brand-chocolate">{sp.qtdVendida} un.</td>
+                    <td className="py-3 px-3 text-right text-brand-muted">
                       {(sp.produto.precoVista || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </td>
-                    <td className="py-3 px-3 text-right font-bold text-[#09090b]">
+                    <td className="py-3 px-3 text-right font-bold text-brand-chocolate">
                       {sp.faturamento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </td>
-                    <td className="py-3 px-3 text-right font-bold text-emerald-700">
+                    <td className="py-3 px-3 text-right font-bold text-brand-chocolate">
                       +{sp.lucroReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <span className="px-2 py-0.5 rounded-full bg-[#f4efe6] text-[10px] font-bold text-[#09090b]">
+                      <span className="px-2 py-0.5 rounded-full bg-brand-nude text-[10px] font-bold text-brand-chocolate">
                         {sp.produto.quantidade} un. físico
                       </span>
                     </td>
@@ -210,7 +210,7 @@ export default function RelatoriosView({ data }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#fcfbf9] border-b border-[#dcd5c7] text-[10px] font-bold text-[#52525b] uppercase tracking-wider">
+                <tr className="bg-brand-cream border-b border-brand-line text-[10px] font-bold text-brand-muted uppercase tracking-wider">
                   <th className="py-3 px-4">Produto & Marca</th>
                   <th className="py-3 px-3 text-right">Custo de Aquisição</th>
                   <th className="py-3 px-3 text-right">Preço de Venda</th>
@@ -220,7 +220,7 @@ export default function RelatoriosView({ data }: Props) {
                   <th className="py-3 px-4 text-center">Disponibilidade</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#ebe5dc] text-xs">
+              <tbody className="divide-y divide-brand-nude text-xs">
                 {maiorMargem.map((p) => {
                   const custo = p.precoCusto || 0;
                   const venda = p.precoVista || 0;
@@ -229,28 +229,28 @@ export default function RelatoriosView({ data }: Props) {
                   const markup = custo > 0 ? (venda / custo).toFixed(2) : '—';
 
                   return (
-                    <tr key={p.id} className="hover:bg-[#fcfbf9] transition-colors">
-                      <td className="py-3 px-4 font-bold text-[#09090b]">
-                        {p.nome} <span className="text-[#52525b] font-normal">({p.marca})</span>
+                    <tr key={p.id} className="hover:bg-brand-cream transition-colors">
+                      <td className="py-3 px-4 font-bold text-brand-chocolate">
+                        {p.nome} <span className="text-brand-muted font-normal">({p.marca})</span>
                       </td>
-                      <td className="py-3 px-3 text-right text-[#52525b]">
+                      <td className="py-3 px-3 text-right text-brand-muted">
                         {custo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </td>
-                      <td className="py-3 px-3 text-right font-bold text-[#09090b]">
+                      <td className="py-3 px-3 text-right font-bold text-brand-chocolate">
                         {venda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </td>
-                      <td className="py-3 px-3 text-right font-bold text-emerald-700">
+                      <td className="py-3 px-3 text-right font-bold text-brand-chocolate">
                         +{lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </td>
                       <td className="py-3 px-3 text-center">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-900 font-bold text-[11px]">
+                        <span className="px-2.5 py-0.5 rounded-full bg-brand-nude border border-brand-line text-brand-chocolate font-bold text-[11px]">
                           {margem}%
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-center font-mono text-[#52525b]">
+                      <td className="py-3 px-3 text-center font-mono text-brand-muted">
                         {markup}x
                       </td>
-                      <td className="py-3 px-4 text-center text-[#52525b]">
+                      <td className="py-3 px-4 text-center text-brand-muted">
                         {p.tipoDisponibilidade === 'PRONTA_ENTREGA' ? 'Pronta Entrega' : 'Encomenda'}
                       </td>
                     </tr>
@@ -266,7 +266,7 @@ export default function RelatoriosView({ data }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#fcfbf9] border-b border-[#dcd5c7] text-[10px] font-bold text-[#52525b] uppercase tracking-wider">
+                <tr className="bg-brand-cream border-b border-brand-line text-[10px] font-bold text-brand-muted uppercase tracking-wider">
                   <th className="py-3 px-4">Posição / Grife</th>
                   <th className="py-3 px-3 text-center">Unidades Vendidas</th>
                   <th className="py-3 px-3 text-right">Faturamento Total</th>
@@ -274,28 +274,28 @@ export default function RelatoriosView({ data }: Props) {
                   <th className="py-3 px-4 text-right">Ticket Médio por Unidade</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#ebe5dc] text-xs">
+              <tbody className="divide-y divide-brand-nude text-xs">
                 {marcasRanking.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-10 text-xs text-[#71717a]">
+                    <td colSpan={5} className="text-center py-10 text-xs text-brand-muted">
                       Nenhuma venda registrada ainda para calcular ranking de marcas.
                     </td>
                   </tr>
                 ) : (
                   marcasRanking.map((m, idx) => (
-                    <tr key={m.marca} className="hover:bg-[#fcfbf9] transition-colors">
+                    <tr key={m.marca} className="hover:bg-brand-cream transition-colors">
                       <td className="py-3 px-4">
-                        <span className="font-bold text-[#7a5828] mr-2">#{idx + 1}</span>
-                        <strong className="text-[#09090b]">{m.marca}</strong>
+                        <span className="font-bold text-brand-muted mr-2">#{idx + 1}</span>
+                        <strong className="text-brand-chocolate">{m.marca}</strong>
                       </td>
-                      <td className="py-3 px-3 text-center font-bold text-[#09090b]">{m.qtd} un.</td>
-                      <td className="py-3 px-3 text-right font-bold text-[#09090b]">
+                      <td className="py-3 px-3 text-center font-bold text-brand-chocolate">{m.qtd} un.</td>
+                      <td className="py-3 px-3 text-right font-bold text-brand-chocolate">
                         {m.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </td>
-                      <td className="py-3 px-3 text-right font-bold text-emerald-700">
+                      <td className="py-3 px-3 text-right font-bold text-brand-chocolate">
                         +{m.lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </td>
-                      <td className="py-3 px-4 text-right text-[#52525b]">
+                      <td className="py-3 px-4 text-right text-brand-muted">
                         {(m.total / m.qtd).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </td>
                     </tr>
@@ -311,7 +311,7 @@ export default function RelatoriosView({ data }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#fcfbf9] border-b border-[#dcd5c7] text-[10px] font-bold text-[#52525b] uppercase tracking-wider">
+                <tr className="bg-brand-cream border-b border-brand-line text-[10px] font-bold text-brand-muted uppercase tracking-wider">
                   <th className="py-3 px-4">Produto & Marca</th>
                   <th className="py-3 px-3 text-center">Estoque Parado</th>
                   <th className="py-3 px-3 text-right">Custo Parado (R$)</th>
@@ -319,10 +319,10 @@ export default function RelatoriosView({ data }: Props) {
                   <th className="py-3 px-4">Sugestão Comercial</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#ebe5dc] text-xs">
+              <tbody className="divide-y divide-brand-nude text-xs">
                 {estoqueParado.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-10 text-xs text-emerald-800 font-bold">
+                    <td colSpan={5} className="text-center py-10 text-xs text-brand-chocolate font-bold">
                       Excelente! Não há produtos de pronta entrega estagnados sem vendas.
                     </td>
                   </tr>
@@ -332,21 +332,21 @@ export default function RelatoriosView({ data }: Props) {
                     const vendaPot = (sp.produto.precoVista || 0) * sp.produto.quantidade;
 
                     return (
-                      <tr key={sp.produto.id} className="hover:bg-[#fcfbf9] transition-colors">
+                      <tr key={sp.produto.id} className="hover:bg-brand-cream transition-colors">
                         <td className="py-3 px-4">
-                          <strong className="text-[#09090b]">{sp.produto.nome}</strong>
-                          <span className="text-[11px] text-[#52525b] block">{sp.produto.marca}</span>
+                          <strong className="text-brand-chocolate">{sp.produto.nome}</strong>
+                          <span className="text-[11px] text-brand-muted block">{sp.produto.marca}</span>
                         </td>
-                        <td className="py-3 px-3 text-center font-bold text-amber-900">
+                        <td className="py-3 px-3 text-center font-bold text-brand-chocolate">
                           {sp.produto.quantidade} un.
                         </td>
-                        <td className="py-3 px-3 text-right font-bold text-[#5c401c]">
+                        <td className="py-3 px-3 text-right font-bold text-brand-deep">
                           {custoParado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </td>
-                        <td className="py-3 px-3 text-right font-bold text-[#09090b]">
+                        <td className="py-3 px-3 text-right font-bold text-brand-chocolate">
                           {vendaPot.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </td>
-                        <td className="py-3 px-4 text-[#7a5828] font-medium text-[11px]">
+                        <td className="py-3 px-4 text-brand-muted font-medium text-[11px]">
                           Criar campanha no WhatsApp ou incluir como brinde / combo promocional
                         </td>
                       </tr>
