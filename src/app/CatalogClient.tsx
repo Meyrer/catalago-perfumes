@@ -722,16 +722,15 @@ export default function CatalogClient({
             {/* SEARCH BAR (DESKTOP) */}
             <div className="hidden md:flex flex-1 max-w-xl relative">
               <FragranceSearch
+                placeholder="Buscar perfume, marca ou produto..."
                 query={searchTerm}
+                products={initialProdutos}
                 onQueryChange={setSearchTerm}
                 onSelectLocalProduct={(id) => {
                   const p = initialProdutos.find(prod => prod.id === id);
                   if (p) chooseProduct(p);
                 }}
-                onManualCreate={() => openCustomOrderModal()}
-                onSuccessImport={() => {
-                  setToast({ message: 'Fragrância adicionada ao catálogo!', show: true });
-                }}
+                onManualCreate={(q) => openCustomOrderModal(q || searchTerm)}
               />
             </div>
 
@@ -793,15 +792,13 @@ export default function CatalogClient({
             <FragranceSearch
               placeholder="Buscar perfume, marca ou produto..."
               query={searchTerm}
+              products={initialProdutos}
               onQueryChange={setSearchTerm}
               onSelectLocalProduct={(id) => {
                 const p = initialProdutos.find(prod => prod.id === id);
                 if (p) chooseProduct(p);
               }}
-              onManualCreate={() => openCustomOrderModal()}
-              onSuccessImport={() => {
-                setToast({ message: 'Fragrância adicionada ao catálogo!', show: true });
-              }}
+              onManualCreate={(q) => openCustomOrderModal(q || searchTerm)}
             />
           </div>
 

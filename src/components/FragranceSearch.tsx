@@ -1,44 +1,55 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, X, Loader2, Sparkles, CheckCircle2, PlusCircle, AlertCircle } from 'lucide-react';
-import { FragranceSearchResult, FragranceSearchResponse } from '@/services/fragrance-search/types';
-import FragrancePreviewModal from './FragrancePreviewModal';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Search, X, Sparkles, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+
+export interface RegisteredProduct {
+  id: number;
+  nome: string;
+  marca: string;
+  descricao?: string;
+  precoVista: number;
+  volume?: string | null;
+  caracteristicas?: string | null;
+  tipoDisponibilidade?: string;
+  quantidade?: number;
+  categoria?: { nome: string };
+  fotos?: { url: string }[];
+}
 
 interface Props {
   placeholder?: string;
   className?: string;
   query?: string;
+  products?: RegisteredProduct[];
   onQueryChange?: (query: string) => void;
   onSelectLocalProduct?: (productId: number) => void;
-  onManualCreate?: () => void;
-  onSuccessImport?: (importedProduct: any) => void;
+  onManualCreate?: (query?: string) => void;
   autoFocus?: boolean;
 }
 
+function isProdutoEmEstoque(p: RegisteredProduct): boolean {
+  return p.tipoDisponibilidade === 'PRONTA_ENTREGA' && (p.quantidade ?? 1) > 0;
+}
+
 export default function FragranceSearch({
-  placeholder = 'Buscar fragrância por nome, marca ou versão...',
+  placeholder = 'Buscar perfume, marca ou produto...',
   className = '',
   query: controlledQuery,
+  products = [],
   onQueryChange,
   onSelectLocalProduct,
   onManualCreate,
-  onSuccessImport,
   autoFocus = false,
 }: Props) {
   const [internalQuery, setInternalQuery] = useState('');
   const query = controlledQuery ?? internalQuery;
   const setQuery = onQueryChange ?? setInternalQuery;
-  const [results, setResults] = useState<FragranceSearchResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [error, setError] = useState<string | null>(null);
-  const [previewFragrance, setPreviewFragrance] = useState<FragranceSearchResult | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fecha o dropdown ao clicar fora
   useEffect(() => {
@@ -55,74 +66,57 @@ export default function FragranceSearch({
     };
   }, []);
 
-  // Debounced search com cancelamento de requisição anterior (AbortController)
-  useEffect(() => {
-    const cleanQuery = query.trim();
+  // Busca estrita e inteligente apenas nos produtos cadastrados
+  const matchingProducts = useMemo(() => {
+    const clean = query.trim();
+    if (clean.length < 2 || !products || products.length === 0) return [];
 
-    if (cleanQuery.length < 3 || containerRef.current?.offsetParent === null) {
-      setResults([]);
-      setIsLoading(false);
-      setError(null);
-      return;
-    }
+    const q = clean.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const tokens = q.split(/\s+/).filter(Boolean);
 
-    setIsLoading(true);
-    setError(null);
+    const scored = products
+      .map(p => {
+        const nomeNorm = (p.nome || '').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const marcaNorm = (p.marca || '').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const catNorm = (p.categoria?.nome || '').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const caracNorm = (p.caracteristicas || '').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const fullText = `${nomeNorm} ${marcaNorm} ${catNorm} ${caracNorm}`;
 
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+        // Todos os termos digitados devem estar presentes em algum campo do produto cadastrado
+        const allTokensMatch = tokens.every(token => fullText.includes(token));
+        if (!allTokensMatch) return null;
 
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
+        // Cálculo de pontuação de relevância
+        let score = 0;
+        if (nomeNorm === q) score += 100;
+        else if (nomeNorm.startsWith(q)) score += 60;
+        else if (nomeNorm.includes(q)) score += 40;
 
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/fragrances/search?q=${encodeURIComponent(cleanQuery)}`, {
-          signal: controller.signal,
-        });
+        if (marcaNorm === q) score += 50;
+        else if (marcaNorm.startsWith(q)) score += 30;
+        else if (marcaNorm.includes(q)) score += 20;
 
-        if (!res.ok) {
-          throw new Error('Falha na resposta do servidor');
-        }
+        if (isProdutoEmEstoque(p)) score += 5; // Leve prioridade para itens em pronta entrega
 
-        const data: FragranceSearchResponse = await res.json();
-        setResults(data.results || []);
-        setIsOpen(true);
-        setActiveIndex(-1);
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          console.error('[FragranceSearch] Erro ao buscar:', err);
-          setError('Não foi possível carregar as sugestões.');
-          setResults([]);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    }, 350); // 350ms debounce
+        return { product: p, score };
+      })
+      .filter((item): item is { product: RegisteredProduct; score: number } => item !== null);
 
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query]);
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, 8).map(s => s.product);
+  }, [query, products]);
 
-  const handleSelectItem = useCallback((item: FragranceSearchResult) => {
+  const handleSelectItem = (product: RegisteredProduct) => {
     setIsOpen(false);
-    if (item.isLocal && item.id) {
-      if (onSelectLocalProduct) {
-        onSelectLocalProduct(item.id);
-      }
-    } else {
-      // Abre modal de prévia antes de importar
-      setPreviewFragrance(item);
+    if (onSelectLocalProduct) {
+      onSelectLocalProduct(product.id);
     }
-  }, [onSelectLocalProduct]);
+  };
 
   // Navegação por teclado (ArrowDown, ArrowUp, Enter, Escape)
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!isOpen || results.length === 0) {
-      if (e.key === 'ArrowDown' && results.length > 0) {
+    if (!isOpen || matchingProducts.length === 0) {
+      if (e.key === 'ArrowDown' && matchingProducts.length > 0) {
         setIsOpen(true);
       }
       return;
@@ -131,16 +125,21 @@ export default function FragranceSearch({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setActiveIndex((prev) => (prev < results.length - 1 ? prev + 1 : 0));
+        setActiveIndex((prev) => (prev < matchingProducts.length - 1 ? prev + 1 : 0));
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setActiveIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
+        setActiveIndex((prev) => (prev > 0 ? prev - 1 : matchingProducts.length - 1));
         break;
       case 'Enter':
         e.preventDefault();
-        if (activeIndex >= 0 && activeIndex < results.length) {
-          handleSelectItem(results[activeIndex]);
+        if (activeIndex >= 0 && activeIndex < matchingProducts.length) {
+          handleSelectItem(matchingProducts[activeIndex]);
+        } else {
+          setIsOpen(false);
+          requestAnimationFrame(() => {
+            document.getElementById('produtos')?.scrollIntoView({ behavior: 'smooth' });
+          });
         }
         break;
       case 'Escape':
@@ -152,7 +151,6 @@ export default function FragranceSearch({
 
   const handleClear = () => {
     setQuery('');
-    setResults([]);
     setIsOpen(false);
     inputRef.current?.focus();
   };
@@ -170,9 +168,13 @@ export default function FragranceSearch({
           ref={inputRef}
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setIsOpen(true);
+            setActiveIndex(-1);
+          }}
           onFocus={() => {
-            if (results.length > 0) setIsOpen(true);
+            if (query.trim().length >= 2) setIsOpen(true);
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
@@ -181,11 +183,7 @@ export default function FragranceSearch({
         />
 
         <div className="absolute right-3 flex items-center gap-1.5">
-          {isLoading && (
-            <Loader2 size={15} className="animate-spin text-brand-muted" />
-          )}
-
-          {query && !isLoading && (
+          {query && (
             <button
               type="button"
               onClick={handleClear}
@@ -198,22 +196,25 @@ export default function FragranceSearch({
         </div>
       </div>
 
-      {/* Dropdown de Resultados Inteligentes */}
-      {isOpen && query.trim().length >= 3 && (
+      {/* Dropdown de Sugestões: Apenas produtos cadastrados */}
+      {isOpen && query.trim().length >= 2 && (
         <div className="absolute left-0 right-0 top-full mt-2 bg-brand-card rounded-2xl border-2 border-brand-line shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
           <div className="p-2 sm:p-2.5 max-h-[70vh] sm:max-h-[420px] overflow-y-auto divide-y divide-brand-line">
-            {results.length > 0 ? (
+            {matchingProducts.length > 0 ? (
               <div className="space-y-1">
                 <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-muted flex items-center justify-between">
-                  <span>Fragrâncias Encontradas</span>
-                  <span className="font-bold text-brand-muted">{results.length} resultados</span>
+                  <span>Produtos no Catálogo</span>
+                  <span className="font-bold text-brand-muted">{matchingProducts.length} encontrados</span>
                 </div>
 
-                {results.map((item, index) => {
+                {matchingProducts.map((item, index) => {
                   const isSelected = index === activeIndex;
+                  const inStock = isProdutoEmEstoque(item);
+                  const fotoUrl = item.fotos && item.fotos[0]?.url;
+
                   return (
                     <button
-                      key={`${item.source}-${item.externalId || item.id || index}`}
+                      key={item.id}
                       type="button"
                       onClick={() => handleSelectItem(item)}
                       onMouseEnter={() => setActiveIndex(index)}
@@ -223,12 +224,12 @@ export default function FragranceSearch({
                           : 'hover:bg-brand-nude border border-transparent'
                       }`}
                     >
-                      {/* Miniatura do Perfume */}
-                      <div className="w-11 h-12 rounded-lg bg-brand-card border border-brand-line shrink-0 p-1 flex items-center justify-center overflow-hidden">
-                        {item.imageUrl ? (
+                      {/* Miniatura do Perfume Cadastrado */}
+                      <div className="w-11 h-12 rounded-lg bg-brand-cream border border-brand-line shrink-0 p-1 flex items-center justify-center overflow-hidden">
+                        {fotoUrl ? (
                           <img
-                            src={item.imageUrl}
-                            alt={item.name}
+                            src={fotoUrl}
+                            alt={item.nome}
                             className="w-full h-full object-contain"
                             onError={(e) => {
                               (e.currentTarget as HTMLElement).style.display = 'none';
@@ -243,101 +244,91 @@ export default function FragranceSearch({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] uppercase font-bold tracking-wider text-brand-muted truncate">
-                            {item.brand || 'Importado'}
+                            {item.marca}
                           </span>
-                          {item.year && (
-                            <>
-                              <span className="text-brand-line text-[10px] font-bold">•</span>
-                              <span className="text-[10px] text-brand-muted font-semibold">
-                                {item.year}
-                              </span>
-                            </>
-                          )}
-                          {item.concentration && (
+                          {item.volume && (
                             <>
                               <span className="text-brand-line text-[10px] font-bold">•</span>
                               <span className="text-[10px] text-brand-muted font-semibold truncate">
-                                {item.concentration}
+                                {item.volume}
+                              </span>
+                            </>
+                          )}
+                          {item.categoria?.nome && (
+                            <>
+                              <span className="text-brand-line text-[10px] font-bold">•</span>
+                              <span className="text-[10px] text-brand-muted font-semibold truncate">
+                                {item.categoria.nome}
                               </span>
                             </>
                           )}
                         </div>
 
                         <h5 className="font-serif text-xs sm:text-sm font-bold text-brand-chocolate truncate mt-0.5">
-                          {item.name}
+                          {item.nome}
                         </h5>
-
-                        {item.family && (
-                          <p className="text-[10px] text-brand-muted font-medium truncate">
-                            {item.family}
-                          </p>
-                        )}
                       </div>
 
-                      {/* Badge de Status / Preço */}
+                      {/* Preço e Badge de Disponibilidade Real */}
                       <div className="shrink-0 flex flex-col items-end gap-1">
-                        {item.isLocal ? (
-                          <>
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-brand-chocolate bg-brand-nude px-2 py-0.5 rounded-full border border-brand-line">
-                              <CheckCircle2 size={11} className="text-brand-chocolate" />
-                              Já cadastrado
-                            </span>
-                            {item.priceFormatted && (
-                              <span className="text-[11px] font-extrabold text-brand-chocolate">
-                                {item.priceFormatted}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-brand-muted bg-brand-card px-2 py-0.5 rounded-full border border-brand-line">
-                            <PlusCircle size={11} />
-                            Importar
-                          </span>
-                        )}
+                        <span className="text-[11px] sm:text-xs font-extrabold text-brand-chocolate">
+                          {item.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                        <span
+                          className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                            inStock
+                              ? 'text-emerald-800 bg-emerald-50 border-emerald-200'
+                              : 'text-amber-800 bg-amber-50 border-amber-200'
+                          }`}
+                        >
+                          {inStock ? <CheckCircle2 size={10} /> : <Clock size={10} />}
+                          {inStock ? 'Em estoque' : 'Encomenda'}
+                        </span>
                       </div>
                     </button>
                   );
                 })}
+
+                {/* Atalho sob encomenda quando houver resultados */}
+                {onManualCreate && (
+                  <div className="pt-2 mt-1 border-t border-brand-line text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false);
+                        onManualCreate(query);
+                      }}
+                      className="text-[11px] font-semibold text-brand-muted hover:text-brand-chocolate inline-flex items-center gap-1 cursor-pointer transition-colors py-1"
+                    >
+                      <Sparkles size={12} className="text-brand-caramel" />
+                      Procurando outro produto? Peça sob encomenda
+                    </button>
+                  </div>
+                )}
               </div>
-            ) : !isLoading ? (
+            ) : (
               <div className="py-6 px-4 text-center space-y-2.5">
                 <AlertCircle size={22} className="mx-auto text-brand-muted" />
                 <p className="text-xs text-brand-muted font-medium">
-                  Nenhuma fragrância encontrada para <strong className="text-brand-deep">"{query}"</strong>.
+                  Nenhum produto cadastrado para <strong className="text-brand-deep">&ldquo;{query}&rdquo;</strong>.
                 </p>
                 {onManualCreate && (
                   <button
                     type="button"
                     onClick={() => {
                       setIsOpen(false);
-                      onManualCreate();
+                      onManualCreate(query);
                     }}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-muted hover:text-brand-chocolate hover:underline"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-chocolate hover:text-brand-deep underline cursor-pointer mt-1"
                   >
-                    <PlusCircle size={14} /> Cadastrar manualmente no catálogo
+                    <Sparkles size={13} className="text-brand-caramel" />
+                    Pedir perfume sob encomenda pelo WhatsApp
                   </button>
                 )}
-              </div>
-            ) : null}
-
-            {error && (
-              <div className="p-3 text-center text-xs text-brand-deep bg-brand-rose-beige rounded-xl mt-1">
-                {error}
               </div>
             )}
           </div>
         </div>
-      )}
-
-      {/* Modal de Prévia antes de Importar */}
-      {previewFragrance && (
-        <FragrancePreviewModal
-          fragrance={previewFragrance}
-          onClose={() => setPreviewFragrance(null)}
-          onSuccessImport={(newProduct) => {
-            if (onSuccessImport) onSuccessImport(newProduct);
-          }}
-        />
       )}
     </div>
   );
