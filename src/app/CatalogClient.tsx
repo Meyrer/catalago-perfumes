@@ -73,6 +73,59 @@ function hasVisibleDiscount(produto: Produto): produto is Produto & { precoOrigi
     (produto.precoOriginal - produto.precoVista) / produto.precoOriginal >= 0.05;
 }
 
+interface CatalogFilterCriteria {
+  availabilityFilter?: 'TODOS' | 'PRONTA_ENTREGA' | 'ENCOMENDA';
+  activeCategory?: string;
+  selectedBrand?: string;
+  selectedGender?: ProductGender | 'Todos';
+  searchTerm?: string;
+  onlyPromos?: boolean;
+  priceRange?: string;
+}
+
+function testProductFilter(p: Produto, filters: CatalogFilterCriteria): boolean {
+  if (filters.availabilityFilter === 'PRONTA_ENTREGA' && !isProdutoProntaEntrega(p)) return false;
+  if (filters.availabilityFilter === 'ENCOMENDA' && isProdutoProntaEntrega(p)) return false;
+
+  if (filters.activeCategory && filters.activeCategory !== 'todos' && filters.activeCategory !== 'promocoes') {
+    if (p.categoria?.nome?.trim().toLowerCase() !== filters.activeCategory.trim().toLowerCase()) return false;
+  } else if (filters.activeCategory === 'promocoes') {
+    if (!hasVisibleDiscount(p) && p.badge !== 'OFERTA') return false;
+  }
+
+  if (filters.selectedBrand && filters.selectedBrand !== 'todas') {
+    if (p.marca?.trim().toLowerCase() !== filters.selectedBrand.trim().toLowerCase()) return false;
+  }
+
+  if (filters.selectedGender && filters.selectedGender !== 'Todos') {
+    if (normalizeProductGender(p.genero) !== filters.selectedGender) return false;
+  }
+
+  if (filters.searchTerm && filters.searchTerm.trim()) {
+    const q = filters.searchTerm.trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const matches = (value?: string | null) =>
+      value ? value.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(q) : false;
+    if (
+      !matches(p.nome) &&
+      !matches(p.marca) &&
+      !matches(p.categoria?.nome) &&
+      !matches(p.caracteristicas)
+    ) {
+      return false;
+    }
+  }
+
+  if (filters.onlyPromos) {
+    if (!hasVisibleDiscount(p) && p.badge !== 'OFERTA') return false;
+  }
+
+  if (filters.priceRange === 'ate-100' && p.precoVista > 100) return false;
+  if (filters.priceRange === '100-200' && (p.precoVista <= 100 || p.precoVista > 200)) return false;
+  if (filters.priceRange === 'acima-200' && p.precoVista <= 200) return false;
+
+  return true;
+}
+
 function renderGuiaRendimento(selectedProduct: Produto) {
   const isMini = Boolean(selectedProduct.categoria?.nome?.toLowerCase().includes('mini') || (selectedProduct.volume && selectedProduct.volume.includes('25ml')));
   const isPerf = Boolean(selectedProduct.categoria?.nome?.toLowerCase().includes('perfume') || (selectedProduct.volume && (selectedProduct.volume.includes('80ml') || selectedProduct.volume.includes('90ml') || selectedProduct.volume.includes('100ml'))));
@@ -165,11 +218,6 @@ export default function CatalogClient({
     return count;
   }, [activeCategory, selectedBrand, priceRange, availabilityFilter, onlyPromos, selectedGender]);
 
-  const genderCounts = useMemo(() => ({
-    Masculino: initialProdutos.filter(product => normalizeProductGender(product.genero) === 'Masculino').length,
-    Feminino: initialProdutos.filter(product => normalizeProductGender(product.genero) === 'Feminino').length,
-    Unissex: initialProdutos.filter(product => normalizeProductGender(product.genero) === 'Unissex').length,
-  }), [initialProdutos]);
 
   // Curated Featured Products for Hero Showcase
   const heroFeaturedProducts = useMemo(() => {
@@ -355,10 +403,8 @@ export default function CatalogClient({
   };
 
   const getCategoryCount = (catNome: string) => {
-    return initialProdutos.filter(p => 
-      p.categoria?.nome?.toLowerCase().includes(catNome.toLowerCase()) || 
-      catNome.toLowerCase().includes(p.categoria?.nome?.toLowerCase())
-    ).length;
+    const target = catNome.trim().toLowerCase();
+    return initialProdutos.filter(p => p.categoria?.nome?.trim().toLowerCase() === target).length;
   };
 
   // Ordenação inteligente das categorias: Mini Brands e Body Splash primeiro, omitindo categorias vazias
@@ -526,62 +572,77 @@ export default function CatalogClient({
     return Array.from(new Set(initialProdutos.map(p => p.marca))).sort();
   }, [initialProdutos]);
 
-  // Counts for availability switcher
-  const prontaEntregaCount = useMemo(() => {
-    return initialProdutos.filter(p => isProdutoProntaEntrega(p)).length;
-  }, [initialProdutos]);
+  // Contagens dinâmicas de disponibilidade considerando os demais filtros ativos
+  const availabilityCounts = useMemo(() => {
+    const base = initialProdutos.filter(p => testProductFilter(p, {
+      activeCategory,
+      selectedBrand,
+      selectedGender,
+      searchTerm,
+      onlyPromos,
+      priceRange,
+    }));
+    const pronta = base.filter(p => isProdutoProntaEntrega(p)).length;
+    return {
+      TODOS: base.length,
+      PRONTA_ENTREGA: pronta,
+      ENCOMENDA: base.length - pronta,
+    };
+  }, [initialProdutos, activeCategory, selectedBrand, selectedGender, searchTerm, onlyPromos, priceRange]);
 
-  const encomendaCount = useMemo(() => {
-    return initialProdutos.filter(p => !isProdutoProntaEntrega(p)).length;
-  }, [initialProdutos]);
+  // Contagens dinâmicas de gênero considerando os demais filtros ativos
+  const genderCounts = useMemo(() => {
+    const base = initialProdutos.filter(p => testProductFilter(p, {
+      availabilityFilter,
+      activeCategory,
+      selectedBrand,
+      searchTerm,
+      onlyPromos,
+      priceRange,
+    }));
+    return {
+      Todos: base.length,
+      Masculino: base.filter(product => normalizeProductGender(product.genero) === 'Masculino').length,
+      Feminino: base.filter(product => normalizeProductGender(product.genero) === 'Feminino').length,
+      Unissex: base.filter(product => normalizeProductGender(product.genero) === 'Unissex').length,
+    };
+  }, [initialProdutos, availabilityFilter, activeCategory, selectedBrand, searchTerm, onlyPromos, priceRange]);
+
+  // Contagens dinâmicas de categoria (para o modal/drawer mobile)
+  const categoryCounts = useMemo(() => {
+    const base = initialProdutos.filter(p => testProductFilter(p, {
+      availabilityFilter,
+      selectedBrand,
+      selectedGender,
+      searchTerm,
+      onlyPromos,
+      priceRange,
+    }));
+    const map: Record<string, number> = {
+      total: base.length,
+      promocoes: base.filter(p => hasVisibleDiscount(p) || p.badge === 'OFERTA').length,
+    };
+    for (const p of base) {
+      const catKey = p.categoria?.nome?.trim().toLowerCase();
+      if (catKey) {
+        map[catKey] = (map[catKey] || 0) + 1;
+      }
+    }
+    return map;
+  }, [initialProdutos, availabilityFilter, selectedBrand, selectedGender, searchTerm, onlyPromos, priceRange]);
 
   // Main filtered products logic
   const filteredProdutos = useMemo(() => {
-    let result = [...initialProdutos];
+    const result = initialProdutos.filter(p => testProductFilter(p, {
+      availabilityFilter,
+      activeCategory,
+      selectedBrand,
+      selectedGender,
+      searchTerm,
+      onlyPromos,
+      priceRange,
+    }));
 
-    // Availability Filter (Pronta Entrega vs Encomenda)
-    if (availabilityFilter === 'PRONTA_ENTREGA') {
-      result = result.filter(p => isProdutoProntaEntrega(p));
-    } else if (availabilityFilter === 'ENCOMENDA') {
-      result = result.filter(p => !isProdutoProntaEntrega(p));
-    }
-
-    // Category filter
-    if (activeCategory !== 'todos' && activeCategory !== 'promocoes') {
-      result = result.filter(p => p.categoria.nome.toLowerCase() === activeCategory.toLowerCase());
-    } else if (activeCategory === 'promocoes') {
-      result = result.filter(p => hasVisibleDiscount(p) || p.badge === 'OFERTA');
-    }
-
-    // Brand filter
-    if (selectedBrand !== 'todas') {
-      result = result.filter(p => p.marca.toLowerCase() === selectedBrand.toLowerCase());
-    }
-
-    if (selectedGender !== 'Todos') {
-      result = result.filter(p => normalizeProductGender(p.genero) === selectedGender);
-    }
-
-    // Search query
-    if (searchTerm.trim()) {
-      const q = searchTerm.trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const matches = (value: string) => value.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(q);
-      result = result.filter(p => 
-        matches(p.nome) ||
-        matches(p.marca) ||
-        matches(p.categoria.nome) ||
-        (p.caracteristicas && matches(p.caracteristicas))
-      );
-    }
-
-    // Promo filter
-    if (onlyPromos) {
-      result = result.filter(p => hasVisibleDiscount(p) || p.badge === 'OFERTA');
-    }
-
-    if (priceRange === 'ate-100') result = result.filter(p => p.precoVista <= 100);
-    if (priceRange === '100-200') result = result.filter(p => p.precoVista > 100 && p.precoVista <= 200);
-    if (priceRange === 'acima-200') result = result.filter(p => p.precoVista > 200);
     // Sort
     if (sortBy === 'menor-preco') {
       result.sort((a, b) => a.precoVista - b.precoVista);
@@ -1052,11 +1113,11 @@ export default function CatalogClient({
                 }}
               >
                 {value === 'TODOS' ? (
-                  <>Todos <span className="availability-count">({initialProdutos.length})</span></>
+                  <>Todos <span className="availability-count">({availabilityCounts.TODOS})</span></>
                 ) : value === 'PRONTA_ENTREGA' ? (
-                  <>Em estoque <span className="availability-count">({prontaEntregaCount})</span></>
+                  <>Em estoque <span className="availability-count">({availabilityCounts.PRONTA_ENTREGA})</span></>
                 ) : (
-                  <>Encomenda <span className="availability-count">({encomendaCount})</span></>
+                  <>Encomenda <span className="availability-count">({availabilityCounts.ENCOMENDA})</span></>
                 )}
               </button>
             ))}
@@ -1115,8 +1176,12 @@ export default function CatalogClient({
           <label>
             Gênero
             <select className="filter-select" value={selectedGender} onChange={e => { setSelectedGender(e.target.value as ProductGender | 'Todos'); setVisibleCount(12); }}>
-              <option value="Todos">Todos</option>
-              {PRODUCT_GENDERS.map(gender => <option key={gender} value={gender}>{gender} ({genderCounts[gender]})</option>)}
+              <option value="Todos">Todos ({genderCounts.Todos})</option>
+              {PRODUCT_GENDERS.map(gender => (
+                <option key={gender} value={gender}>
+                  {gender} ({genderCounts[gender]})
+                </option>
+              ))}
             </select>
           </label>
           <button
@@ -1761,7 +1826,7 @@ export default function CatalogClient({
                       onClick={() => setAvailabilityFilter('TODOS')}
                       className="filter-chip justify-center"
                     >
-                      Todos ({initialProdutos.length})
+                      Todos ({availabilityCounts.TODOS})
                     </button>
                     <button
                       type="button"
@@ -1769,7 +1834,7 @@ export default function CatalogClient({
                       onClick={() => setAvailabilityFilter('PRONTA_ENTREGA')}
                       className="filter-chip justify-center"
                     >
-                      Em estoque ({prontaEntregaCount})
+                      Em estoque ({availabilityCounts.PRONTA_ENTREGA})
                     </button>
                     <button
                       type="button"
@@ -1777,7 +1842,7 @@ export default function CatalogClient({
                       onClick={() => setAvailabilityFilter('ENCOMENDA')}
                       className="filter-chip justify-center"
                     >
-                      Encomenda ({encomendaCount})
+                      Encomenda ({availabilityCounts.ENCOMENDA})
                     </button>
                   </div>
                 </div>
@@ -1794,26 +1859,29 @@ export default function CatalogClient({
                       onClick={() => setActiveCategory('todos')}
                       className="filter-chip"
                     >
-                      Todas ({initialProdutos.length})
+                      Todas ({categoryCounts.total})
                     </button>
-                    {sortedCategorias.map(cat => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        aria-pressed={activeCategory.toLowerCase() === cat.nome.toLowerCase()}
-                        onClick={() => setActiveCategory(cat.nome)}
-                        className="filter-chip"
-                      >
-                        {getCategoryShortName(cat.nome)} ({getCategoryCount(cat.nome)})
-                      </button>
-                    ))}
+                    {sortedCategorias.map(cat => {
+                      const cCount = categoryCounts[cat.nome.trim().toLowerCase()] || 0;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          aria-pressed={activeCategory.toLowerCase() === cat.nome.toLowerCase()}
+                          onClick={() => setActiveCategory(cat.nome)}
+                          className="filter-chip"
+                        >
+                          {getCategoryShortName(cat.nome)} ({cCount})
+                        </button>
+                      );
+                    })}
                     <button
                       type="button"
                       aria-pressed={activeCategory === 'promocoes'}
                       onClick={() => setActiveCategory('promocoes')}
                       className="filter-chip"
                     >
-                      <Sparkles size={11} /> Ofertas
+                      <Sparkles size={11} /> Ofertas ({categoryCounts.promocoes || 0})
                     </button>
                   </div>
                 </div>
@@ -1825,7 +1893,7 @@ export default function CatalogClient({
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {(['Todos', ...PRODUCT_GENDERS] as const).map(gender => {
-                      const count = gender === 'Todos' ? initialProdutos.length : genderCounts[gender];
+                      const count = gender === 'Todos' ? genderCounts.Todos : genderCounts[gender];
                       return (
                         <button
                           key={gender}
