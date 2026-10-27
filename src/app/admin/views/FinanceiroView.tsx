@@ -356,7 +356,7 @@ export default function FinanceiroView({ data }: Props) {
       {/* MODAL REGISTRAR DESPESA */}
       {isNewDespesaOpen && (
         <div className="fixed inset-0 bg-brand-deep/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-brand-card w-full max-w-md rounded-3xl border border-brand-line shadow-2xl p-6 relative overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-brand-card w-full max-w-md max-h-[calc(100dvh-2rem)] rounded-3xl border border-brand-line shadow-2xl p-6 relative overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-caramel to-brand-caramel" />
 
             <div className="flex items-center justify-between pb-3 border-b border-brand-line mb-4">
@@ -377,12 +377,12 @@ export default function FinanceiroView({ data }: Props) {
                   required
                   value={descDespesa}
                   onChange={e => setDescDespesa(e.target.value)}
-                  placeholder="Ex: Embalagens rígidas de presente, fita dourada..."
+                  placeholder="Ex: Embalagens para presente"
                   className="w-full px-3.5 py-2 bg-brand-cream text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1">Categoria</label>
                   <select

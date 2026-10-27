@@ -174,8 +174,8 @@ export default function AdminClient({ data }: AdminClientProps) {
           `}
         >
           {/* TOPO DA SIDEBAR: LOGO & BRAND */}
-          <div>
-            <div className="p-4 border-b border-brand-muted flex items-center justify-between">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="p-4 border-b border-brand-muted flex shrink-0 items-center justify-between">
               <div className="flex items-center gap-3 overflow-hidden">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-caramel via-brand-caramel to-brand-deep p-[1px] shrink-0 shadow-lg shadow-brand-deep/40">
                   <div className="w-full h-full bg-brand-deep rounded-[11px] flex items-center justify-center">
@@ -208,7 +208,7 @@ export default function AdminClient({ data }: AdminClientProps) {
             </div>
 
             {/* ITENS DE NAVEGAÇÃO */}
-            <nav className="p-3 space-y-6 overflow-y-auto max-h-[calc(100vh-170px)] scrollbar-thin scrollbar-thumb-brand-chocolate">
+            <nav className="min-h-0 flex-1 p-3 space-y-6 overflow-y-auto scrollbar-thin scrollbar-thumb-brand-chocolate">
               {navGroups.map((group, gIdx) => (
                 <div key={gIdx} className="space-y-1">
                   {!isSidebarCollapsed && (
@@ -247,12 +247,12 @@ export default function AdminClient({ data }: AdminClientProps) {
                         />
 
                         {!isSidebarCollapsed && (
-                          <span className="truncate flex-1 text-left">{item.label}</span>
+                          <span className="min-w-0 flex-1 whitespace-normal break-words text-left leading-snug">{item.label}</span>
                         )}
 
                         {/* Badges */}
                         {item.badge !== null && !isSidebarCollapsed && (
-                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${item.badgeColor || 'bg-brand-chocolate text-brand-rose-beige'}`}>
+                          <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.2 rounded-full ${item.badgeColor || 'bg-brand-chocolate text-brand-rose-beige'}`}>
                             {item.badge}
                           </span>
                         )}
@@ -270,7 +270,7 @@ export default function AdminClient({ data }: AdminClientProps) {
           </div>
 
           {/* RODAPÉ DA SIDEBAR: USUÁRIO E LOGOUT */}
-          <div className="p-3 border-t border-brand-rose-beige/25 bg-brand-chocolate/80">
+          <div className="shrink-0 p-3 border-t border-brand-rose-beige/25 bg-brand-chocolate/80">
             <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} gap-2`}>
               <div className="flex items-center gap-2.5 overflow-hidden">
                 <div className="w-8 h-8 rounded-lg bg-brand-deep border border-brand-rose-beige/30 text-brand-cream flex items-center justify-center font-bold text-xs shrink-0">
