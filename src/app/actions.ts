@@ -13,8 +13,9 @@ import { fromCents, roundMoney, toCents } from "@/lib/money";
 export async function loginAdminAction(formData: FormData) {
   const username = formData.get("username") as string;
   const password = formData.get("password") as string;
+  const rememberAccess = formData.get("rememberAccess") === "true";
 
-  const result = await loginAdmin(username, password);
+  const result = await loginAdmin(username, password, rememberAccess);
   if (result.success) {
     revalidatePath("/admin");
   }

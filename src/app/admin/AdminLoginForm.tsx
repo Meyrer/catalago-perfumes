@@ -11,6 +11,7 @@ export default function AdminLoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberAccess, setRememberAccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -32,12 +33,30 @@ export default function AdminLoginForm() {
       const formData = new FormData();
       formData.set("username", username.trim());
       formData.set("password", password);
+      formData.set("rememberAccess", String(rememberAccess));
 
       const res = await loginAdminAction(formData);
 
       if (!res.success) {
         setError(res.error || "Usuário ou senha incorretos.");
       } else {
+        if (rememberAccess && !res.user?.mustChangePassword && navigator.credentials) {
+          const PasswordCredential = (window as Window & {
+            PasswordCredential?: new (data: { id: string; password: string; name: string }) => Credential;
+          }).PasswordCredential;
+
+          if (PasswordCredential) {
+            try {
+              await navigator.credentials.store(new PasswordCredential({
+                id: username.trim(),
+                password,
+                name: res.user?.name || username.trim(),
+              }));
+            } catch {
+              // Salvar no gerenciador do navegador é opcional e não impede o login.
+            }
+          }
+        }
         window.location.reload();
       }
     } catch (err: unknown) {
@@ -146,6 +165,24 @@ export default function AdminLoginForm() {
             </div>
           </div>
 
+          <div>
+            <label className="flex items-center gap-2.5 text-sm font-semibold text-brand-chocolate cursor-pointer">
+              <input
+                type="checkbox"
+                name="rememberAccess"
+                value="true"
+                checked={rememberAccess}
+                onChange={(e) => setRememberAccess(e.target.checked)}
+                className="h-4 w-4 accent-brand-chocolate"
+                aria-describedby="remember-access-help"
+              />
+              Lembrar acesso e senha
+            </label>
+            <p id="remember-access-help" className="mt-1.5 text-[11px] text-brand-muted">
+              Mantém você conectado por 30 dias e solicita ao navegador salvar sua senha, quando compatível.
+            </p>
+          </div>
+
           <div className="pt-2">
             <button
               type="submit"
@@ -171,7 +208,7 @@ export default function AdminLoginForm() {
         <div className="mt-8 pt-5 border-t border-brand-line text-center">
           <p className="text-[11px] text-brand-muted font-medium flex items-center justify-center gap-1.5">
             <Lock size={12} className="text-brand-muted" />
-            Ambiente seguro com sessão criptografada (7 dias).
+            Sessão segura de {rememberAccess ? "30" : "7"} dias.
           </p>
         </div>
       </div>

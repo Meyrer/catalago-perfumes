@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 
 const COOKIE_NAME = "elegance_admin_session";
 const SESSION_DURATION_DAYS = 7;
+const REMEMBERED_SESSION_DURATION_DAYS = 30;
 
 function getSecretKey(): string {
   const secret = process.env.ADMIN_SESSION_SECRET;
@@ -57,8 +58,8 @@ function createSignature(payload: string): string {
 /**
  * Cria token assinado de sessão para o usuário
  */
-function createSessionToken(userId: number): string {
-  const expiresAt = Date.now() + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000;
+function createSessionToken(userId: number, durationDays: number): string {
+  const expiresAt = Date.now() + durationDays * 24 * 60 * 60 * 1000;
   const payload = JSON.stringify({ userId, expiresAt });
   const encodedPayload = Buffer.from(payload).toString("base64url");
   const signature = createSignature(encodedPayload);
@@ -125,7 +126,8 @@ export async function isAdminAuthenticated(): Promise<boolean> {
  */
 export async function loginAdmin(
   usernameInput: string,
-  passwordInput: string
+  passwordInput: string,
+  rememberAccess = false
 ): Promise<{ success: boolean; error?: string; user?: AdminSessionUser }> {
   const username = (usernameInput || "").trim().toLowerCase();
   const password = (passwordInput || "").trim();
@@ -150,14 +152,15 @@ export async function loginAdmin(
   }
 
   // Gera o token de sessão assinado
-  const token = createSessionToken(user.id);
+  const durationDays = rememberAccess ? REMEMBERED_SESSION_DURATION_DAYS : SESSION_DURATION_DAYS;
+  const token = createSessionToken(user.id, durationDays);
   const cookieStore = await cookies();
 
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: SESSION_DURATION_DAYS * 24 * 60 * 60,
+    maxAge: durationDays * 24 * 60 * 60,
     path: "/",
   });
 

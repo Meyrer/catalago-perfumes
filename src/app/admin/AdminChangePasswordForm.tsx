@@ -123,6 +123,7 @@ export default function AdminChangePasswordForm({ user }: Props) {
 
         {/* Formulário */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          <input type="hidden" name="username" autoComplete="username" value={user.username} />
           
           {/* Usuário Ativo */}
           <div>
@@ -145,6 +146,8 @@ export default function AdminChangePasswordForm({ user }: Props) {
               </div>
               <input
                 type={showPassword ? "text" : "password"}
+                name="newPassword"
+                autoComplete="new-password"
                 required
                 disabled={isLoading || success}
                 value={newPassword}
@@ -188,6 +191,8 @@ export default function AdminChangePasswordForm({ user }: Props) {
               </div>
               <input
                 type={showConfirm ? "text" : "password"}
+                name="confirmPassword"
+                autoComplete="new-password"
                 required
                 disabled={isLoading || success}
                 value={confirmPassword}
