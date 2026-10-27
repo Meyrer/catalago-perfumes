@@ -620,8 +620,8 @@ export async function createVendaAction(data: {
     const p = produtosMap.get(item.produtoId);
     if (!p) throw new Error(`Produto #${item.produtoId} não encontrado.`);
     
-    // Se for venda confirmada/paga, valida estoque disponível
-    if ((status === 'PAGO' || status === 'ENVIADO' || status === 'PREPARANDO') && p.quantidade < item.quantidade) {
+    // Se a venda for ativa (não cancelada), valida estoque disponível
+    if (status !== 'CANCELADO' && p.quantidade < item.quantidade) {
       throw new Error(`Estoque insuficiente para "${p.nome}". Disponível: ${p.quantidade} un.`);
     }
 
@@ -673,8 +673,8 @@ export async function createVendaAction(data: {
     }
   });
 
-  // Se a venda comprometer o estoque, registra venda e baixa na mesma transação.
-  if (status === 'PAGO' || status === 'ENVIADO' || status === 'PREPARANDO') {
+  // Baixa imediata de estoque para qualquer venda ativa (inclusive Aguardando Pagamento, para reserva imediata)
+  if (status !== 'CANCELADO') {
     for (const item of itens) {
       const p = produtosMap.get(item.produtoId)!;
       const qtdAnterior = p.quantidade;
@@ -706,7 +706,7 @@ export async function createVendaAction(data: {
           quantidade: -item.quantidade,
           quantidadeAnterior: qtdAnterior,
           quantidadeNova: qtdNova,
-          motivo: `Venda #${numeroVenda}`,
+          motivo: `Venda #${numeroVenda} (${status === 'AGUARDANDO_PAGAMENTO' ? 'Aguardando Pagamento - Reserva' : status})`,
           usuarioResponsavel: session.name,
           vendaId: venda.id
         }
@@ -725,118 +725,187 @@ export async function createVendaAction(data: {
 export async function updateVendaStatusAction(vendaId: number, novoStatus: string) {
   const session = await requireAdminAuth();
   await prisma.$transaction(async (tx) => {
-  const venda = await tx.venda.findUnique({
-    where: { id: vendaId },
-    include: { itens: true }
-  });
+    const venda = await tx.venda.findUnique({
+      where: { id: vendaId },
+      include: { itens: true }
+    });
 
-  if (!venda) throw new Error("Venda não encontrada.");
+    if (!venda) throw new Error("Venda não encontrada.");
 
-  const statusAnterior = venda.status;
+    const statusAnterior = venda.status;
+    if (statusAnterior === novoStatus) return;
 
-  // Se a venda estava AGUARDANDO_PAGAMENTO e agora foi confirmada, deduz do estoque
-  if (
-    (novoStatus === 'PAGO' || novoStatus === 'ENVIADO' || novoStatus === 'PREPARANDO') &&
-    (statusAnterior === 'AGUARDANDO_PAGAMENTO')
-  ) {
-    for (const item of venda.itens) {
-      const p = await tx.produto.findUnique({ where: { id: item.produtoId } });
-      if (p) {
-        const qtdAnterior = p.quantidade;
-        if (qtdAnterior < item.quantidade) throw new Error(`Estoque insuficiente para "${p.nome}" ao confirmar a venda.`);
-        const qtdNova = qtdAnterior - item.quantidade;
+    // Verificar se esta venda já teve baixa de estoque registrada e se já foi devolvida
+    const movsVenda = await tx.estoqueMovimentacao.findMany({
+      where: { vendaId: venda.id, tipo: 'VENDA' }
+    });
+    const movsDevolucao = await tx.estoqueMovimentacao.findMany({
+      where: { vendaId: venda.id, tipo: 'DEVOLUCAO' }
+    });
 
-        const updateData: {
-          quantidade: number;
-          tipoDisponibilidade?: string;
-          previsaoEntrega?: string;
-        } = { quantidade: qtdNova };
+    const jaTeveBaixa = movsVenda.length > 0;
+    const jaTeveDevolucao = movsDevolucao.length > 0;
+    const estoqueAtualmenteDeduzido = jaTeveBaixa && !jaTeveDevolucao;
 
-        if (qtdNova <= 0) {
-          updateData.tipoDisponibilidade = 'ENCOMENDA';
-          updateData.previsaoEntrega = 'Sob Encomenda • Próximo lote previsto em 7 a 12 dias';
-        }
+    // 1. Se foi alterado para CANCELADO e o estoque estava deduzido, devolve os itens ao estoque
+    if (novoStatus === 'CANCELADO' && estoqueAtualmenteDeduzido) {
+      for (const item of venda.itens) {
+        const p = await tx.produto.findUnique({ where: { id: item.produtoId } });
+        if (p) {
+          const qtdAnterior = p.quantidade;
+          const qtdNova = qtdAnterior + item.quantidade;
 
-        const changed = await tx.produto.updateMany({
-          where: { id: item.produtoId, quantidade: qtdAnterior },
-          data: updateData
-        });
-        if (changed.count !== 1) throw new Error(`Estoque de "${p.nome}" foi alterado por outra operação. Tente novamente.`);
+          const updateData: {
+            quantidade: number;
+            tipoDisponibilidade?: string;
+            previsaoEntrega?: string;
+          } = { quantidade: qtdNova };
 
-        await tx.estoqueMovimentacao.create({
-          data: {
-            produtoId: item.produtoId,
-            tipo: 'VENDA',
-            quantidade: -item.quantidade,
-            quantidadeAnterior: qtdAnterior,
-            quantidadeNova: qtdNova,
-            motivo: `Confirmação de pagamento da venda #${venda.numero}`,
-            usuarioResponsavel: session.name,
-            vendaId: venda.id
+          if (qtdAnterior <= 0 && qtdNova > 0 && p.tipoDisponibilidade === 'ENCOMENDA') {
+            updateData.tipoDisponibilidade = 'PRONTA_ENTREGA';
+            updateData.previsaoEntrega = 'Disponível em estoque • Envio ou retirada imediata';
           }
-        });
+
+          const changed = await tx.produto.updateMany({
+            where: { id: item.produtoId, quantidade: qtdAnterior },
+            data: updateData
+          });
+          if (changed.count !== 1) throw new Error(`Estoque de "${p.nome}" foi alterado por outra operação. Tente novamente.`);
+
+          await tx.estoqueMovimentacao.create({
+            data: {
+              produtoId: item.produtoId,
+              tipo: 'DEVOLUCAO',
+              quantidade: item.quantidade,
+              quantidadeAnterior: qtdAnterior,
+              quantidadeNova: qtdNova,
+              motivo: `Devolução por cancelamento da venda #${venda.numero}`,
+              usuarioResponsavel: session.name,
+              vendaId: venda.id
+            }
+          });
+        }
       }
     }
-  }
 
-  // Se a venda foi cancelada e antes deduziu estoque, devolve os itens ao estoque
-  if (
-    novoStatus === 'CANCELADO' &&
-    (statusAnterior === 'PAGO' || statusAnterior === 'ENVIADO' || statusAnterior === 'PREPARANDO')
-  ) {
-    for (const item of venda.itens) {
-      const p = await tx.produto.findUnique({ where: { id: item.produtoId } });
-      if (p) {
-        const qtdAnterior = p.quantidade;
-        const qtdNova = qtdAnterior + item.quantidade;
-
-        const updateData: {
-          quantidade: number;
-          tipoDisponibilidade?: string;
-          previsaoEntrega?: string;
-        } = { quantidade: qtdNova };
-
-        if (qtdAnterior <= 0 && qtdNova > 0 && p.tipoDisponibilidade === 'ENCOMENDA') {
-          updateData.tipoDisponibilidade = 'PRONTA_ENTREGA';
-          updateData.previsaoEntrega = 'Disponível em estoque • Envio ou retirada imediata';
-        }
-
-        const changed = await tx.produto.updateMany({
-          where: { id: item.produtoId, quantidade: qtdAnterior },
-          data: updateData
-        });
-        if (changed.count !== 1) throw new Error(`Estoque de "${p.nome}" foi alterado por outra operação. Tente novamente.`);
-        await tx.estoqueMovimentacao.create({
-          data: {
-            produtoId: item.produtoId,
-            tipo: 'DEVOLUCAO',
-            quantidade: item.quantidade,
-            quantidadeAnterior: qtdAnterior,
-            quantidadeNova: qtdNova,
-            motivo: `Devolução por cancelamento da venda #${venda.numero}`,
-            usuarioResponsavel: session.name,
-            vendaId: venda.id
+    // 2. Se está saindo de CANCELADO (ou é uma venda legada que ainda não teve baixa) para qualquer status ativo, deduz do estoque
+    if (novoStatus !== 'CANCELADO' && !estoqueAtualmenteDeduzido) {
+      for (const item of venda.itens) {
+        const p = await tx.produto.findUnique({ where: { id: item.produtoId } });
+        if (p) {
+          const qtdAnterior = p.quantidade;
+          if (qtdAnterior < item.quantidade) {
+            throw new Error(`Estoque insuficiente para "${p.nome}". Disponível: ${qtdAnterior} un, necessário: ${item.quantidade} un.`);
           }
-        });
+          const qtdNova = qtdAnterior - item.quantidade;
+
+          const updateData: {
+            quantidade: number;
+            tipoDisponibilidade?: string;
+            previsaoEntrega?: string;
+          } = { quantidade: qtdNova };
+
+          if (qtdNova <= 0) {
+            updateData.tipoDisponibilidade = 'ENCOMENDA';
+            updateData.previsaoEntrega = 'Sob Encomenda • Próximo lote previsto em 7 a 12 dias';
+          }
+
+          const changed = await tx.produto.updateMany({
+            where: { id: item.produtoId, quantidade: qtdAnterior },
+            data: updateData
+          });
+          if (changed.count !== 1) throw new Error(`Estoque de "${p.nome}" foi alterado por outra operação. Tente novamente.`);
+
+          await tx.estoqueMovimentacao.create({
+            data: {
+              produtoId: item.produtoId,
+              tipo: 'VENDA',
+              quantidade: -item.quantidade,
+              quantidadeAnterior: qtdAnterior,
+              quantidadeNova: qtdNova,
+              motivo: `Baixa de estoque da venda #${venda.numero} (status: ${novoStatus})`,
+              usuarioResponsavel: session.name,
+              vendaId: venda.id
+            }
+          });
+        }
       }
     }
-  }
 
-  const statusUpdated = await tx.venda.updateMany({
-    where: { id: vendaId, status: statusAnterior },
-    data: { status: novoStatus }
-  });
-  if (statusUpdated.count !== 1) throw new Error("O status da venda foi alterado por outra operação. Atualize os dados e tente novamente.");
+    const statusUpdated = await tx.venda.updateMany({
+      where: { id: vendaId, status: statusAnterior },
+      data: { status: novoStatus }
+    });
+    if (statusUpdated.count !== 1) throw new Error("O status da venda foi alterado por outra operação. Atualize os dados e tente novamente.");
   });
 
   revalidatePath('/admin');
+  revalidatePath('/');
   return { success: true };
 }
 
 export async function deleteVendaAction(vendaId: number) {
-  await requireAdminAuth();
-  await prisma.venda.delete({ where: { id: vendaId } });
+  const session = await requireAdminAuth();
+  await prisma.$transaction(async (tx) => {
+    const venda = await tx.venda.findUnique({
+      where: { id: vendaId },
+      include: { itens: true }
+    });
+    if (!venda) throw new Error("Venda não encontrada.");
+
+    const movsVenda = await tx.estoqueMovimentacao.findMany({
+      where: { vendaId: venda.id, tipo: 'VENDA' }
+    });
+    const movsDevolucao = await tx.estoqueMovimentacao.findMany({
+      where: { vendaId: venda.id, tipo: 'DEVOLUCAO' }
+    });
+
+    const estoqueAtualmenteDeduzido = movsVenda.length > 0 && movsDevolucao.length === 0;
+
+    // Se tinha debitado do estoque e não foi cancelado, devolve os itens ao estoque antes de excluir
+    if (estoqueAtualmenteDeduzido && venda.status !== 'CANCELADO') {
+      for (const item of venda.itens) {
+        const p = await tx.produto.findUnique({ where: { id: item.produtoId } });
+        if (p) {
+          const qtdAnterior = p.quantidade;
+          const qtdNova = qtdAnterior + item.quantidade;
+
+          const updateData: {
+            quantidade: number;
+            tipoDisponibilidade?: string;
+            previsaoEntrega?: string;
+          } = { quantidade: qtdNova };
+
+          if (qtdAnterior <= 0 && qtdNova > 0 && p.tipoDisponibilidade === 'ENCOMENDA') {
+            updateData.tipoDisponibilidade = 'PRONTA_ENTREGA';
+            updateData.previsaoEntrega = 'Disponível em estoque • Envio ou retirada imediata';
+          }
+
+          await tx.produto.updateMany({
+            where: { id: item.produtoId, quantidade: qtdAnterior },
+            data: updateData
+          });
+
+          await tx.estoqueMovimentacao.create({
+            data: {
+              produtoId: item.produtoId,
+              tipo: 'DEVOLUCAO',
+              quantidade: item.quantidade,
+              quantidadeAnterior: qtdAnterior,
+              quantidadeNova: qtdNova,
+              motivo: `Devolução por exclusão da venda #${venda.numero}`,
+              usuarioResponsavel: session.name
+            }
+          });
+        }
+      }
+    }
+
+    await tx.venda.delete({ where: { id: vendaId } });
+  });
+
   revalidatePath('/admin');
+  revalidatePath('/');
 }
 
 // -------------------------------------------------------------

@@ -165,6 +165,13 @@ export default function VendasView({ data }: Props) {
             setIsNewVendaOpen(true);
             setCartItens([]);
             setFormError('');
+            setStatusVenda('PAGO');
+            setClienteId('');
+            setNomeAvulso('');
+            setContatoAvulso('');
+            setDesconto(0);
+            setFrete(0);
+            setObservacoes('');
           }}
           className="px-5 py-2.5 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer self-start sm:self-auto"
         >
@@ -477,7 +484,7 @@ export default function VendasView({ data }: Props) {
                       className="w-full px-3 py-1.5 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none"
                     >
                       <option value="PAGO">Pago (Baixa imediata)</option>
-                      <option value="AGUARDANDO_PAGAMENTO">Aguardando Pagamento</option>
+                      <option value="AGUARDANDO_PAGAMENTO">Aguardando Pagamento (Reserva imediata)</option>
                       <option value="PREPARANDO">Preparando Envio</option>
                     </select>
                   </div>
