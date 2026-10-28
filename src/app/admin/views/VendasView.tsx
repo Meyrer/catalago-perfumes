@@ -35,7 +35,8 @@ export default function VendasView({ data }: Props) {
   const [frete, setFrete] = useState<number>(0);
   const [observacoes, setObservacoes] = useState('');
   const [cartItens, setCartItens] = useState<Array<{ produtoId: number; quantidade: number; precoUnitario: number }>>([]);
-  const [selectedAddProdId, setSelectedAddProdId] = useState<string>('');
+  const [productSearch, setProductSearch] = useState('');
+  const [showAllProducts, setShowAllProducts] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
@@ -74,11 +75,20 @@ export default function VendasView({ data }: Props) {
     return { subtotal, custoTotal, valorTotal, lucroTotal, itensDetalhados };
   }, [cartItens, produtos, desconto, frete]);
 
-  const handleAddItemToCart = () => {
-    if (!selectedAddProdId) return;
-    const prodId = parseInt(selectedAddProdId);
+  const filteredProducts = useMemo(() => {
+    const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const terms = normalize(productSearch).trim().split(/\s+/).filter(Boolean);
+
+    return produtos.filter(p => {
+      if (!showAllProducts && p.quantidade <= 0) return false;
+      const name = normalize(`${p.nome} ${p.marca || ''}`);
+      return terms.every(term => name.includes(term));
+    });
+  }, [produtos, productSearch, showAllProducts]);
+
+  const handleAddItemToCart = (prodId: number) => {
     const prod = produtos.find(p => p.id === prodId);
-    if (!prod) return;
+    if (!prod || prod.quantidade <= 0) return;
 
     const existingIndex = cartItens.findIndex(it => it.produtoId === prodId);
     if (existingIndex >= 0) {
@@ -88,7 +98,6 @@ export default function VendasView({ data }: Props) {
     } else {
       setCartItens([...cartItens, { produtoId: prodId, quantidade: 1, precoUnitario: prod.precoVista || 0 }]);
     }
-    setSelectedAddProdId('');
   };
 
   const handleRemoveCartItem = (idx: number) => {
@@ -164,6 +173,8 @@ export default function VendasView({ data }: Props) {
           onClick={() => {
             setIsNewVendaOpen(true);
             setCartItens([]);
+            setProductSearch('');
+            setShowAllProducts(false);
             setFormError('');
             setStatusVenda('PAGO');
             setClienteId('');
@@ -396,26 +407,53 @@ export default function VendasView({ data }: Props) {
               <div className="p-4 rounded-2xl bg-brand-cream border border-brand-line space-y-3">
                 <span className="text-[11px] font-bold text-brand-muted uppercase tracking-wider block">2. Itens do Pedido</span>
                 
-                <div className="flex gap-2">
-                  <select
-                    value={selectedAddProdId}
-                    onChange={(e) => setSelectedAddProdId(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none"
-                  >
-                    <option value="">Selecione um perfume ou cosmético para adicionar...</option>
-                    {produtos.map(p => (
-                      <option key={p.id} value={String(p.id)} disabled={p.quantidade <= 0}>
-                        {p.nome} — {p.marca} (Estoque: {p.quantidade} un.) — R$ {p.precoVista?.toFixed(2)}
-                      </option>
+                <div className="space-y-2">
+                  <label htmlFor="venda-product-search" className="block text-[10px] font-bold text-brand-muted uppercase">Buscar perfume ou cosmético</label>
+                  <div className="relative">
+                    <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
+                    <input
+                      id="venda-product-search"
+                      type="search"
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                      placeholder="Digite o nome, número ou marca..."
+                      className="w-full min-w-0 pl-9 pr-3 py-2.5 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line focus:border-brand-caramel outline-none"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-brand-muted cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showAllProducts}
+                      onChange={(e) => setShowAllProducts(e.target.checked)}
+                      className="accent-brand-chocolate"
+                    />
+                    Mostrar todos (incluindo sem estoque)
+                  </label>
+                  <ul aria-label="Produtos encontrados" className="max-h-48 overflow-y-auto rounded-xl border border-brand-line bg-brand-card divide-y divide-brand-line">
+                    {filteredProducts.length === 0 ? (
+                      <li className="p-3 text-xs text-brand-muted text-center" role="status">
+                        {showAllProducts ? 'Nenhum produto encontrado.' : 'Nenhum produto em estoque encontrado.'}
+                      </li>
+                    ) : filteredProducts.map(p => (
+                      <li key={p.id} className="flex items-center gap-3 p-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-brand-chocolate break-words">{p.nome}</p>
+                          <p className="text-[10px] text-brand-muted break-words">{p.marca} · {p.quantidade > 0 ? `Estoque: ${p.quantidade} un.` : 'Sem estoque'}</p>
+                          <p className="text-xs font-bold text-brand-chocolate mt-1">{(p.precoVista || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={p.quantidade <= 0}
+                          onClick={() => handleAddItemToCart(p.id)}
+                          aria-label={`Adicionar ${p.nome}`}
+                          className="shrink-0 px-3 py-2 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold rounded-xl cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Adicionar
+                        </button>
+                      </li>
                     ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={handleAddItemToCart}
-                    className="px-4 py-2 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold rounded-xl cursor-pointer"
-                  >
-                    Adicionar
-                  </button>
+                  </ul>
                 </div>
 
                 {/* Lista de Itens no Carrinho */}
