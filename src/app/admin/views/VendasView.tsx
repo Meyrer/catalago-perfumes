@@ -349,31 +349,31 @@ export default function VendasView({ data }: Props) {
       {/* DRAWER / MODAL: REGISTRAR NOVA VENDA (PDV) */}
       {/* ========================================================================= */}
       {isNewVendaOpen && (
-        <div className="fixed inset-0 bg-brand-deep/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-          <div className="bg-brand-card w-full max-w-2xl rounded-3xl border border-brand-line shadow-2xl p-6 relative my-8 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-brand-deep/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5">
+          <div role="dialog" aria-modal="true" aria-labelledby="nova-venda-title" className="bg-brand-card w-full max-w-4xl rounded-3xl border border-brand-line shadow-2xl relative flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-caramel to-brand-caramel" />
 
-            <div className="flex items-center justify-between pb-3 border-b border-brand-line mb-4">
-              <div>
-                <h3 className="text-xl font-serif font-bold text-brand-chocolate">Registrar Venda / Pedido</h3>
+            <div className="flex shrink-0 items-center justify-between gap-3 p-4 sm:px-6 sm:py-5 border-b border-brand-line">
+              <div className="min-w-0">
+                <h3 id="nova-venda-title" className="text-xl font-serif font-bold text-brand-chocolate">Registrar Venda / Pedido</h3>
                 <p className="text-xs text-brand-muted">Venda direta com baixa automática de estoque</p>
               </div>
-              <button onClick={() => setIsNewVendaOpen(false)} className="p-1 text-brand-muted hover:text-brand-chocolate rounded-full hover:bg-brand-nude cursor-pointer">
+              <button aria-label="Fechar venda" onClick={() => setIsNewVendaOpen(false)} className="shrink-0 p-2 text-brand-muted hover:text-brand-chocolate rounded-full hover:bg-brand-nude cursor-pointer">
                 <X size={20} />
               </button>
             </div>
 
             {formError && (
-              <div className="mb-4 p-3 rounded-xl bg-brand-rose-beige border border-brand-terracotta text-brand-chocolate text-xs font-semibold">
+              <div role="alert" className="shrink-0 mx-4 sm:mx-6 mt-3 p-3 rounded-xl bg-brand-rose-beige border border-brand-terracotta text-brand-chocolate text-xs font-semibold">
                 {formError}
               </div>
             )}
 
-            <form onSubmit={handleCreateVenda} className="space-y-4">
+            <form id="nova-venda-form" onSubmit={handleCreateVenda} className="min-h-0 overflow-y-auto space-y-4 p-4 sm:p-6">
               {/* SELEÇÃO DE CLIENTE */}
               <div className="p-4 rounded-2xl bg-brand-cream border border-brand-line space-y-3">
                 <span className="text-[11px] font-bold text-brand-muted uppercase tracking-wider block">1. Identificação do Cliente</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   <div>
                     <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Cliente Cadastrado</label>
                     <select
@@ -430,7 +430,7 @@ export default function VendasView({ data }: Props) {
                     />
                     Mostrar todos (incluindo sem estoque)
                   </label>
-                  <ul aria-label="Produtos encontrados" className="max-h-48 overflow-y-auto rounded-xl border border-brand-line bg-brand-card divide-y divide-brand-line">
+                  <ul aria-label="Produtos encontrados" tabIndex={0} className="max-h-64 overflow-y-auto rounded-xl border border-brand-line bg-brand-card divide-y divide-brand-line">
                     {filteredProducts.length === 0 ? (
                       <li className="p-3 text-xs text-brand-muted text-center" role="status">
                         {showAllProducts ? 'Nenhum produto encontrado.' : 'Nenhum produto em estoque encontrado.'}
@@ -462,8 +462,8 @@ export default function VendasView({ data }: Props) {
                 ) : (
                   <div className="divide-y divide-brand-nude border border-brand-line rounded-xl bg-brand-card overflow-hidden">
                     {carrinhoCalculado.itensDetalhados.map((it, idx) => (
-                      <div key={idx} className="p-2.5 flex items-center justify-between text-xs gap-3">
-                        <div className="flex-1">
+                      <div key={idx} className="p-3 flex flex-wrap items-center justify-between text-xs gap-3">
+                        <div className="flex-1 min-w-[160px]">
                           <span className="font-bold text-brand-chocolate">{it.produto?.nome}</span>
                           <span className="text-[10px] text-brand-muted ml-1">({it.produto?.marca})</span>
                         </div>
@@ -498,7 +498,7 @@ export default function VendasView({ data }: Props) {
               <div className="p-4 rounded-2xl bg-brand-nude border border-brand-line space-y-3">
                 <span className="text-[11px] font-bold text-brand-muted uppercase tracking-wider block">3. Pagamento & Valores</span>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Forma de Pagamento</label>
                     <select
@@ -521,10 +521,13 @@ export default function VendasView({ data }: Props) {
                       onChange={(e) => setStatusVenda(e.target.value)}
                       className="w-full px-3 py-1.5 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none"
                     >
-                      <option value="PAGO">Pago (Baixa imediata)</option>
-                      <option value="AGUARDANDO_PAGAMENTO">Aguardando Pagamento (Reserva imediata)</option>
+                      <option value="PAGO">Pago</option>
+                      <option value="AGUARDANDO_PAGAMENTO">Aguardando pagamento</option>
                       <option value="PREPARANDO">Preparando Envio</option>
                     </select>
+                    <p className="mt-1 text-[11px] text-brand-muted">
+                      {statusVenda === 'AGUARDANDO_PAGAMENTO' ? 'Reserva de estoque imediata.' : 'Baixa de estoque imediata.'}
+                    </p>
                   </div>
 
                   <div>
@@ -553,10 +556,10 @@ export default function VendasView({ data }: Props) {
                 </div>
 
                 {/* Resumo Final da Venda */}
-                <div className="pt-2 border-t border-brand-line flex items-center justify-between">
-                  <div>
+                <div className="pt-3 border-t border-brand-line flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
                     <span className="text-[11px] text-brand-muted">Subtotal: R$ {carrinhoCalculado.subtotal.toFixed(2)}</span>
-                    <span className="text-[11px] text-brand-chocolate font-bold ml-3">Lucro: +R$ {carrinhoCalculado.lucroTotal.toFixed(2)}</span>
+                    <span className="text-[11px] text-brand-chocolate font-bold">Lucro: +R$ {carrinhoCalculado.lucroTotal.toFixed(2)}</span>
                   </div>
                   <div className="text-right">
                     <span className="text-xs text-brand-muted mr-2">Valor Total a Pagar:</span>
@@ -566,9 +569,10 @@ export default function VendasView({ data }: Props) {
                   </div>
                 </div>
               </div>
+            </form>
 
               {/* BOTÕES */}
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="shrink-0 flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2.5 p-4 sm:px-6 border-t border-brand-line bg-brand-card">
                 <button
                   type="button"
                   disabled={isSubmitting}
@@ -579,8 +583,9 @@ export default function VendasView({ data }: Props) {
                 </button>
                 <button
                   type="submit"
+                  form="nova-venda-form"
                   disabled={isSubmitting || cartItens.length === 0}
-                  className="px-6 py-2.5 rounded-xl bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <>
@@ -592,7 +597,6 @@ export default function VendasView({ data }: Props) {
                   )}
                 </button>
               </div>
-            </form>
           </div>
         </div>
       )}

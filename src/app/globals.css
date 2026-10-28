@@ -263,9 +263,40 @@ html { scroll-behavior: smooth; scroll-padding-top: 180px; }
 .catalog-drawer { padding-bottom: env(safe-area-inset-bottom); }.catalog-drawer .flex-1 { min-width: 0; }.catalog-drawer .text-xs { font-size: 13px; }
 .contact-float .animate-ping { display: none; }.contact-float button { box-shadow: none; border-radius: 8px; }
 .catalog-toast { width: max-content; max-width: calc(100% - 32px); }.catalog-toast > div { border-radius: 8px; font-size: 13px; }
-.admin-app .text-xs { font-size: 13px; }.admin-app button,.admin-app select,.admin-app input:not([type="hidden"]) { min-height: 44px; }
-.admin-app input,.admin-app textarea,.admin-app select { font-size: 14px; }.admin-app .rounded-3xl { border-radius: 12px; }.admin-app .shadow-sm { box-shadow: none; }
-.admin-app h1 { font-size: 28px; }.admin-app h3 { font-size: 20px; }.admin-app form label { line-height: 1.5; }
+/* Admin: legible controls, contained dialogs and consistent scrolling. */
+html:has(.admin-app) { scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--brand-caramel) var(--brand-cream); scroll-padding-top: 100px; }
+body:has(.admin-app .fixed.inset-0 > .bg-brand-card) { overflow: hidden; }
+.admin-app { font-size: 14px; line-height: 1.5; }
+.admin-app .text-xs { font-size: 13px; }
+.admin-app button { font-size: 13px; font-weight: 600; line-height: 1.4; min-height: 40px; white-space: normal; }
+.admin-app button > svg { flex-shrink: 0; }
+.admin-app :is(input, textarea, select) { font-size: 14px; line-height: 1.5; min-width: 0; max-width: 100%; }
+.admin-app :is(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select) { min-height: 42px; }
+.admin-app :is(input[type="checkbox"], input[type="radio"]) { width: 16px; height: 16px; min-height: 0; flex-shrink: 0; accent-color: var(--brand-chocolate); }
+.admin-app select { padding-right: 28px; }
+.admin-app :is(.grid > *, .flex-1, main) { min-width: 0; }
+.admin-app :is(h2, h3, h4, h5, p, td, th, label) { overflow-wrap: anywhere; }
+.admin-app form label { line-height: 1.5; }
+.admin-app :is(.truncate, .line-clamp-1, .line-clamp-2) { overflow: visible; text-overflow: clip; white-space: normal; -webkit-line-clamp: unset; overflow-wrap: anywhere; }
+.admin-app :is(th, td) { vertical-align: middle; }
+.admin-app th { white-space: nowrap; }
+.admin-app td select { min-width: 220px; }
+.admin-app :is(.overflow-x-auto, .overflow-y-auto) { overscroll-behavior: contain; }
+.admin-app, .admin-app * { scrollbar-width: thin; scrollbar-color: var(--brand-caramel) transparent; }
+.admin-app ::-webkit-scrollbar { width: 6px; height: 6px; }
+.admin-app ::-webkit-scrollbar-track { background: transparent; }
+.admin-app ::-webkit-scrollbar-thumb { background: var(--brand-caramel); border-radius: 999px; }
+.admin-app ::-webkit-scrollbar-button { display: none; }
+.admin-app aside, .admin-app aside * { scrollbar-color: var(--brand-terracotta) transparent; }
+.admin-app .fixed.inset-0:has(> .bg-brand-card) { overflow: hidden; padding: clamp(12px, 3vw, 24px); }
+.admin-app .fixed.inset-0 > .bg-brand-card { min-height: 0; max-height: calc(100dvh - 48px); margin-block: 0; }
+.admin-app .fixed.inset-0 > .bg-brand-card:not(.flex-col) { overflow-y: auto; }
+.admin-app .fixed.inset-0 > .bg-brand-card > .overflow-y-auto { min-height: 0; }
+@media (max-width: 639px) {
+  .admin-app :is(input, textarea, select) { font-size: 16px; }
+  .admin-app .fixed.inset-0 > .bg-brand-card { max-height: calc(100dvh - 24px); }
+  .admin-app .fixed.inset-0 form .grid:not([class*="sm:grid-cols"]):not([class*="md:grid-cols"]):not([class*="lg:grid-cols"]) { grid-template-columns: minmax(0, 1fr); }
+}
 .admin-feedback { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 80; background: var(--brand-deep); color: var(--brand-cream); border-radius: 8px; padding: 16px 22px; font-size: 14px; max-width: calc(100% - 32px); }
 .loading-shell { padding-block: 40px; }.skeleton { border-radius: 8px; background: var(--brand-nude); animation: skeleton-pulse 1.5s ease-in-out infinite alternate; }.loading-title { height: 50px; width: 50%; margin-bottom: 32px; }.loading-card { height: 360px; }
 .error-shell { min-height: 70vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 32px; text-align: center; gap: 20px; }.error-shell h1 { font-size: 32px; }.error-shell p { color: var(--brand-muted); max-width: 480px; }

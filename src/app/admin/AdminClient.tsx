@@ -151,7 +151,7 @@ export default function AdminClient({ data }: AdminClientProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-brand-cream text-brand-chocolate flex flex-col antialiased selection:bg-brand-chocolate/20 selection:text-brand-muted">
+    <div className="admin-app min-h-screen bg-brand-cream text-brand-chocolate flex flex-col antialiased selection:bg-brand-chocolate/20 selection:text-brand-muted">
       
       {/* WRAPPER PRINCIPAL: SIDEBAR + MAIN CONTENT */}
       <div className="flex flex-1 relative">
@@ -167,7 +167,7 @@ export default function AdminClient({ data }: AdminClientProps) {
         {/* SIDEBAR LUXUOSA */}
         <aside 
           className={`
-            fixed lg:sticky top-0 h-screen z-50 bg-brand-deep text-brand-cream border-r border-brand-rose-beige/25
+            fixed lg:sticky top-0 h-dvh z-50 bg-brand-deep text-brand-cream border-r border-brand-rose-beige/25
             flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0
             ${isSidebarCollapsed ? 'w-20' : 'w-64'}
             ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -305,12 +305,13 @@ export default function AdminClient({ data }: AdminClientProps) {
         <div className="flex-1 flex flex-col min-w-0">
           
           {/* TOPBAR LUXUOSA */}
-          <header className="sticky top-0 z-30 bg-brand-card/95 backdrop-blur-md border-b border-brand-line px-4 sm:px-8 py-3 flex items-center justify-between shadow-xs">
-            <div className="flex items-center gap-3">
+          <header className="sticky top-0 z-30 bg-brand-card/95 backdrop-blur-md border-b border-brand-line px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               {/* Botão de abrir menu no mobile */}
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden p-2 rounded-xl text-brand-chocolate hover:bg-brand-nude transition-colors"
+                aria-label="Abrir menu"
+                className="lg:hidden shrink-0 p-2 rounded-xl text-brand-chocolate hover:bg-brand-nude transition-colors"
               >
                 <div className="w-5 h-4 flex flex-col justify-between">
                   <span className="w-full h-0.5 bg-current rounded" />
@@ -319,8 +320,8 @@ export default function AdminClient({ data }: AdminClientProps) {
                 </div>
               </button>
 
-              <div>
-                <div className="flex items-center gap-2 text-[11px] text-brand-muted">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-brand-muted">
                   <span>Painel Administrativo</span>
                   <span>/</span>
                   <span className="font-semibold text-brand-muted capitalize">
@@ -346,7 +347,7 @@ export default function AdminClient({ data }: AdminClientProps) {
             </div>
 
             {/* BOTÕES DE AÇÃO RÁPIDA NO TOPO */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               <button
                 onClick={() => handleSelectTab('vendas')}
                 className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-semibold shadow-xs transition-all active:scale-95"
