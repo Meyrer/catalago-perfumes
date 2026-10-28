@@ -18,6 +18,10 @@ export default async function Home() {
     const { precoCusto: _precoCusto, ...publicProduto } = produto;
     return plainPrismaData({
       ...publicProduto,
+      fotos: publicProduto.fotos.map(foto => ({
+        ...foto,
+        url: foto.url.replace(/^https?:\/\/perfumes\.meyrer\.com(?=\/uploads\/)/i, ""),
+      })),
       precoVista: Number(produto.precoVista),
       precoOriginal: produto.precoOriginal === null ? null : Number(produto.precoOriginal),
     });
