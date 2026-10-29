@@ -594,7 +594,7 @@ export async function createVendaAction(data: {
   const { clienteId, nomeClienteAvulso, contatoClienteAvulso, itens, formaPagamento, observacoes } = data;
   const desconto = data.desconto || 0;
   const frete = data.frete || 0;
-  const status = data.status || "PAGO";
+  const status = data.status || "PREPARANDO";
 
   if (!itens || itens.length === 0) {
     throw new Error("Selecione pelo menos um produto para registrar a venda.");
@@ -958,6 +958,7 @@ export async function deleteVendaAction(vendaId: number) {
       include: { itens: true }
     });
     if (!venda) throw new Error("Venda não encontrada.");
+    if (venda.status === 'PAGO') throw new Error("Vendas pagas não podem ser excluídas.");
 
     const movsVenda = await tx.estoqueMovimentacao.findMany({
       where: { vendaId: venda.id, tipo: 'VENDA' }
@@ -987,10 +988,11 @@ export async function deleteVendaAction(vendaId: number) {
             updateData.previsaoEntrega = 'Disponível em estoque • Envio ou retirada imediata';
           }
 
-          await tx.produto.updateMany({
+          const changed = await tx.produto.updateMany({
             where: { id: item.produtoId, quantidade: qtdAnterior },
             data: updateData
           });
+          if (changed.count !== 1) throw new Error('O estoque foi alterado por outra operação. Atualize a página e tente novamente.');
 
           await tx.estoqueMovimentacao.create({
             data: {
@@ -1008,7 +1010,7 @@ export async function deleteVendaAction(vendaId: number) {
     }
 
     await tx.venda.delete({ where: { id: vendaId } });
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
   revalidatePath('/admin');
   revalidatePath('/');

@@ -5,7 +5,7 @@ import type { ERPData, AdminVenda, AdminProduto } from '../types';
 import { 
   ShoppingBag, Plus, Search, CheckCircle2, Clock, 
   X, Loader2, DollarSign, Calendar, User, Truck, 
-  CreditCard, ChevronRight, Eye, AlertCircle, Pencil
+  CreditCard, ChevronRight, Eye, AlertCircle, Pencil, Trash2
 } from 'lucide-react';
 import { createVendaAction, updateVendaAction, updateVendaStatusAction, deleteVendaAction } from '../../actions';
 
@@ -26,6 +26,7 @@ export default function VendasView({ data }: Props) {
   const [editingVenda, setEditingVenda] = useState<AdminVenda | null>(null);
   const [dataVenda, setDataVenda] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [deletingVendaId, setDeletingVendaId] = useState<number | null>(null);
 
   // Formulário Nova Venda
   const [clienteId, setClienteId] = useState<string>('');
@@ -33,7 +34,7 @@ export default function VendasView({ data }: Props) {
   const [nomeAvulso, setNomeAvulso] = useState('');
   const [contatoAvulso, setContatoAvulso] = useState('');
   const [formaPagamento, setFormaPagamento] = useState('PIX');
-  const [statusVenda, setStatusVenda] = useState('PAGO');
+  const [statusVenda, setStatusVenda] = useState('PREPARANDO');
   const [desconto, setDesconto] = useState<number>(0);
   const [frete, setFrete] = useState<number>(0);
   const [observacoes, setObservacoes] = useState('');
@@ -207,6 +208,19 @@ export default function VendasView({ data }: Props) {
     }
   };
 
+  const handleDeleteVenda = async (venda: AdminVenda) => {
+    if (venda.status === 'PAGO' || deletingVendaId !== null) return;
+    if (!window.confirm(`Excluir a venda ${venda.numero}? Os itens baixados serão devolvidos ao estoque. Esta ação não pode ser desfeita.`)) return;
+    setDeletingVendaId(venda.id);
+    try {
+      await deleteVendaAction(venda.id);
+      window.location.reload();
+    } catch (err: unknown) {
+      setFeedback(err instanceof Error ? err.message : 'Erro ao excluir venda.');
+      setDeletingVendaId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       
@@ -232,7 +246,7 @@ export default function VendasView({ data }: Props) {
             setProductSearch('');
             setShowAllProducts(false);
             setFormError('');
-            setStatusVenda('PAGO');
+            setStatusVenda('PREPARANDO');
             setClienteId('');
             setClientSearch('');
             setNomeAvulso('');
@@ -402,6 +416,17 @@ export default function VendasView({ data }: Props) {
                         >
                           <Eye size={14} />
                         </button>
+                        {v.status !== 'PAGO' && (
+                          <button
+                            onClick={() => handleDeleteVenda(v)}
+                            disabled={deletingVendaId !== null}
+                            title="Excluir venda"
+                            aria-label={`Excluir venda ${v.numero}`}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center text-red-700 hover:bg-red-50 focus-visible:bg-red-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {deletingVendaId === v.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                          </button>
+                        )}
                         </div>
                       </td>
                     </tr>
