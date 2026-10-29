@@ -8,7 +8,7 @@ interface CustomOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialValue?: string;
-  whatsappPhone?: string;
+  onWhatsApp: (message: string) => void;
 }
 
 const COMMON_VOLUMES = ["30 ml", "50 ml", "75 ml", "80 ml", "90 ml", "100 ml", "125 ml", "200 ml", "Outro"];
@@ -24,7 +24,7 @@ export default function CustomOrderModal({
   isOpen,
   onClose,
   initialValue = "",
-  whatsappPhone = "5511999999999",
+  onWhatsApp,
 }: CustomOrderModalProps) {
   const [fragranceName, setFragranceName] = useState(initialValue);
   const [brand, setBrand] = useState("");
@@ -216,12 +216,8 @@ export default function CustomOrderModal({
 
     message += `\nVi no catálogo a condição de *50% de sinal no pedido e 50% na entrega*. Poderia me informar o valor e a previsão de chegada?`;
 
-    window.open(
-      `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`,
-      "_blank"
-    );
-
     onClose();
+    onWhatsApp(message);
   };
 
   return (
