@@ -722,6 +722,114 @@ export async function createVendaAction(data: {
   return venda;
 }
 
+export async function updateVendaAction(vendaId: number, data: Parameters<typeof createVendaAction>[0] & { updatedAt: string; data: string }) {
+  const session = await requireAdminAuth();
+  const status = data.status || 'PAGO';
+  const desconto = roundMoney(data.desconto ?? 0);
+  const frete = roundMoney(data.frete ?? 0);
+  const date = new Date(data.data);
+  if (!Number.isSafeInteger(vendaId) || vendaId < 1 || Number.isNaN(date.getTime())) throw new Error('Venda ou data inválida.');
+  if (!['AGUARDANDO_PAGAMENTO', 'PAGO', 'PREPARANDO', 'ENVIADO', 'ENTREGUE', 'CANCELADO'].includes(status)) throw new Error('Status inválido.');
+  if (!['PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'DINHEIRO', 'LINK_PAGAMENTO'].includes(data.formaPagamento)) throw new Error('Forma de pagamento inválida.');
+  if (desconto < 0 || frete < 0) throw new Error('Desconto e frete não podem ser negativos.');
+  if (!Array.isArray(data.itens) || data.itens.length === 0) throw new Error('Adicione pelo menos um produto à venda.');
+  const ids = new Set<number>();
+  for (const item of data.itens) {
+    if (!Number.isSafeInteger(item.produtoId) || item.produtoId < 1 || ids.has(item.produtoId)) throw new Error('Produto inválido ou duplicado.');
+    if (!Number.isSafeInteger(item.quantidade) || item.quantidade < 1) throw new Error('A quantidade deve ser um inteiro positivo.');
+    if (!Number.isFinite(item.precoUnitario) || item.precoUnitario < 0) throw new Error('Preço unitário inválido.');
+    ids.add(item.produtoId);
+  }
+
+  await prisma.$transaction(async tx => {
+    const venda = await tx.venda.findUnique({ where: { id: vendaId }, include: { itens: true } });
+    if (!venda) throw new Error('Venda não encontrada.');
+    if (venda.updatedAt.toISOString() !== data.updatedAt) throw new Error('A venda foi alterada. Atualize a página antes de editar novamente.');
+    if (status === 'CANCELADO' && venda.status !== 'CANCELADO') throw new Error('Cancelado não está disponível para edição.');
+    if (data.clienteId && !await tx.cliente.findUnique({ where: { id: data.clienteId } })) throw new Error('Cliente não encontrado.');
+
+    const movimentos = await tx.estoqueMovimentacao.findMany({
+      where: { vendaId, tipo: { in: ['VENDA', 'DEVOLUCAO'] } }
+    });
+    const deduzidos = new Map<number, number>();
+    for (const movimento of movimentos) {
+      deduzidos.set(movimento.produtoId, (deduzidos.get(movimento.produtoId) || 0) - movimento.quantidade);
+    }
+    const produtos = await tx.produto.findMany({ where: { id: { in: [...new Set([...ids, ...deduzidos.keys()])] } } });
+    const produtosMap = new Map(produtos.map(p => [p.id, p]));
+    const itens = data.itens.map(item => {
+      const produto = produtosMap.get(item.produtoId);
+      if (!produto) throw new Error(`Produto #${item.produtoId} não encontrado.`);
+      const anterior = venda.itens.find(it => it.produtoId === item.produtoId);
+      const custoUnitario = roundMoney(Number(anterior?.custoUnitario ?? produto.precoCusto ?? 0));
+      const precoUnitario = roundMoney(item.precoUnitario);
+      return {
+        produtoId: item.produtoId,
+        quantidade: item.quantidade,
+        precoUnitario,
+        custoUnitario,
+        lucroUnitario: fromCents(toCents(precoUnitario) - toCents(custoUnitario)),
+        subtotal: fromCents(toCents(precoUnitario) * item.quantidade),
+      };
+    });
+
+    for (const produto of produtos) {
+      const quantidadeDesejada = status === 'CANCELADO' ? 0 : (itens.find(it => it.produtoId === produto.id)?.quantidade || 0);
+      const diferenca = quantidadeDesejada - (deduzidos.get(produto.id) || 0);
+      if (diferenca === 0) continue;
+      const quantidadeNova = produto.quantidade - diferenca;
+      if (quantidadeNova < 0) throw new Error(`Estoque insuficiente para "${produto.nome}". Disponível para esta venda: ${produto.quantidade + (deduzidos.get(produto.id) || 0)} un.`);
+      const changed = await tx.produto.updateMany({
+        where: { id: produto.id, quantidade: produto.quantidade },
+        data: {
+          quantidade: quantidadeNova,
+          ...(quantidadeNova === 0 ? {
+            tipoDisponibilidade: 'ENCOMENDA',
+            previsaoEntrega: 'Sob Encomenda • Próximo lote previsto em 7 a 12 dias',
+          } : produto.quantidade === 0 && produto.tipoDisponibilidade === 'ENCOMENDA' ? {
+            tipoDisponibilidade: 'PRONTA_ENTREGA',
+            previsaoEntrega: 'Disponível em estoque • Envio ou retirada imediata',
+          } : {}),
+        },
+      });
+      if (changed.count !== 1) throw new Error('O estoque foi alterado por outra operação. Atualize a página e tente novamente.');
+      await tx.estoqueMovimentacao.create({ data: {
+        produtoId: produto.id,
+        tipo: diferenca > 0 ? 'VENDA' : 'DEVOLUCAO',
+        quantidade: -diferenca,
+        quantidadeAnterior: produto.quantidade,
+        quantidadeNova,
+        motivo: `Edição da venda #${venda.numero}`,
+        usuarioResponsavel: session.name,
+        vendaId,
+      } });
+    }
+
+    const subtotalCents = itens.reduce((sum, item) => sum + toCents(item.subtotal), 0);
+    const custoTotalCents = itens.reduce((sum, item) => sum + toCents(item.custoUnitario) * item.quantidade, 0);
+    await tx.venda.update({ where: { id: vendaId }, data: {
+      clienteId: data.clienteId || null,
+      nomeClienteAvulso: data.clienteId ? null : data.nomeClienteAvulso?.trim() || null,
+      contatoClienteAvulso: data.clienteId ? null : data.contatoClienteAvulso?.trim() || null,
+      formaPagamento: data.formaPagamento,
+      status,
+      data: date,
+      desconto,
+      frete,
+      observacoes: data.observacoes?.trim() || null,
+      subtotal: fromCents(subtotalCents),
+      custoTotal: fromCents(custoTotalCents),
+      valorTotal: fromCents(Math.max(0, subtotalCents - toCents(desconto) + toCents(frete))),
+      lucroTotal: fromCents(subtotalCents - toCents(desconto) - custoTotalCents),
+      itens: { deleteMany: {}, create: itens },
+    } });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  revalidatePath('/admin');
+  revalidatePath('/');
+  return { success: true };
+}
+
 export async function updateVendaStatusAction(vendaId: number, novoStatus: string) {
   const session = await requireAdminAuth();
   await prisma.$transaction(async (tx) => {
@@ -743,9 +851,7 @@ export async function updateVendaStatusAction(vendaId: number, novoStatus: strin
       where: { vendaId: venda.id, tipo: 'DEVOLUCAO' }
     });
 
-    const jaTeveBaixa = movsVenda.length > 0;
-    const jaTeveDevolucao = movsDevolucao.length > 0;
-    const estoqueAtualmenteDeduzido = jaTeveBaixa && !jaTeveDevolucao;
+    const estoqueAtualmenteDeduzido = [...movsVenda, ...movsDevolucao].reduce((saldo, mov) => saldo + mov.quantidade, 0) < 0;
 
     // 1. Se foi alterado para CANCELADO e o estoque estava deduzido, devolve os itens ao estoque
     if (novoStatus === 'CANCELADO' && estoqueAtualmenteDeduzido) {
@@ -860,7 +966,7 @@ export async function deleteVendaAction(vendaId: number) {
       where: { vendaId: venda.id, tipo: 'DEVOLUCAO' }
     });
 
-    const estoqueAtualmenteDeduzido = movsVenda.length > 0 && movsDevolucao.length === 0;
+    const estoqueAtualmenteDeduzido = [...movsVenda, ...movsDevolucao].reduce((saldo, mov) => saldo + mov.quantidade, 0) < 0;
 
     // Se tinha debitado do estoque e não foi cancelado, devolve os itens ao estoque antes de excluir
     if (estoqueAtualmenteDeduzido && venda.status !== 'CANCELADO') {
