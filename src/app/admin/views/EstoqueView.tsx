@@ -280,7 +280,7 @@ export default function EstoqueView({ data }: Props) {
                             <div className="flex items-center gap-2.5">
                               <div className="w-9 h-9 rounded-xl bg-brand-cream border border-brand-line overflow-hidden shrink-0 flex items-center justify-center">
                                 {p.fotos && p.fotos[0] ? (
-                                  <img src={p.fotos[0].url} alt={p.nome} width={36} height={36} className="w-full h-full object-contain p-0.5" />
+                                  <img src={p.fotos[0].url.replace(/^https?:\/\/perfumes\.meyrer\.com(?=\/uploads\/)/i, "")} alt={p.nome} width={36} height={36} className="w-full h-full object-contain p-0.5" />
                                 ) : (
                                   <Package size={16} className="text-brand-muted" />
                                 )}

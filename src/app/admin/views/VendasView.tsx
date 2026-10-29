@@ -5,9 +5,9 @@ import type { ERPData, AdminVenda, AdminProduto } from '../types';
 import { 
   ShoppingBag, Plus, Search, CheckCircle2, Clock, 
   X, Loader2, DollarSign, Calendar, User, Truck, 
-  CreditCard, ChevronRight, Eye, AlertCircle
+  CreditCard, ChevronRight, Eye, AlertCircle, Pencil
 } from 'lucide-react';
-import { createVendaAction, updateVendaStatusAction, deleteVendaAction } from '../../actions';
+import { createVendaAction, updateVendaAction, updateVendaStatusAction, deleteVendaAction } from '../../actions';
 
 type Props = {
   data: ERPData;
@@ -23,10 +23,13 @@ export default function VendasView({ data }: Props) {
   // Drawer / Modais
   const [isNewVendaOpen, setIsNewVendaOpen] = useState(false);
   const [viewingVenda, setViewingVenda] = useState<AdminVenda | null>(null);
+  const [editingVenda, setEditingVenda] = useState<AdminVenda | null>(null);
+  const [dataVenda, setDataVenda] = useState('');
   const [feedback, setFeedback] = useState('');
 
   // Formulário Nova Venda
   const [clienteId, setClienteId] = useState<string>('');
+  const [clientSearch, setClientSearch] = useState('');
   const [nomeAvulso, setNomeAvulso] = useState('');
   const [contatoAvulso, setContatoAvulso] = useState('');
   const [formaPagamento, setFormaPagamento] = useState('PIX');
@@ -63,7 +66,8 @@ export default function VendasView({ data }: Props) {
     const itensDetalhados = cartItens.map(item => {
       const p = produtos.find(prod => prod.id === item.produtoId);
       const sub = item.precoUnitario * item.quantidade;
-      const cst = (p?.precoCusto || 0) * item.quantidade;
+      const custoUnitario = editingVenda?.itens.find(it => it.produtoId === item.produtoId)?.custoUnitario ?? p?.precoCusto ?? 0;
+      const cst = custoUnitario * item.quantidade;
       subtotal += sub;
       custoTotal += cst;
       return { ...item, produto: p, subtotal: sub, custoTotal: cst };
@@ -73,22 +77,62 @@ export default function VendasView({ data }: Props) {
     const lucroTotal = (subtotal - (desconto || 0)) - custoTotal;
 
     return { subtotal, custoTotal, valorTotal, lucroTotal, itensDetalhados };
-  }, [cartItens, produtos, desconto, frete]);
+  }, [cartItens, produtos, desconto, frete, editingVenda]);
+
+  const estoqueParaVenda = (produto: AdminProduto) => produto.quantidade + (
+    editingVenda && editingVenda.status !== 'CANCELADO'
+      ? editingVenda.itens.filter(it => it.produtoId === produto.id).reduce((sum, it) => sum + it.quantidade, 0)
+      : 0
+  );
+
+  const handleEditVenda = (venda: AdminVenda) => {
+    setEditingVenda(venda);
+    setClienteId(venda.clienteId ? String(venda.clienteId) : '');
+    setClientSearch('');
+    setNomeAvulso(venda.nomeClienteAvulso || '');
+    setContatoAvulso(venda.contatoClienteAvulso || '');
+    setFormaPagamento(venda.formaPagamento);
+    setStatusVenda(venda.status);
+    setDesconto(venda.desconto);
+    setFrete(venda.frete);
+    setObservacoes(venda.observacoes || '');
+    setCartItens(venda.itens.map(it => ({ produtoId: it.produtoId, quantidade: it.quantidade, precoUnitario: it.precoUnitario })));
+    const date = new Date(venda.data);
+    setDataVenda(new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19));
+    setProductSearch('');
+    setShowAllProducts(false);
+    setFormError('');
+    setIsSubmitting(false);
+    setViewingVenda(null);
+    setIsNewVendaOpen(true);
+  };
+
+  const selectedClient = clientes.find(c => String(c.id) === clienteId);
+  const filteredClients = useMemo(() => {
+    const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const terms = normalize(clientSearch).trim().split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return [];
+
+    return clientes.filter(c => {
+      const text = normalize(`${c.nome} ${c.whatsapp || ''} ${c.cidade || ''}`);
+      return terms.every(term => text.includes(term));
+    });
+  }, [clientes, clientSearch]);
 
   const filteredProducts = useMemo(() => {
     const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const terms = normalize(productSearch).trim().split(/\s+/).filter(Boolean);
 
     return produtos.filter(p => {
-      if (!showAllProducts && p.quantidade <= 0) return false;
+      if (!showAllProducts && estoqueParaVenda(p) <= 0) return false;
       const name = normalize(`${p.nome} ${p.marca || ''}`);
       return terms.every(term => name.includes(term));
     });
-  }, [produtos, productSearch, showAllProducts]);
+  }, [produtos, productSearch, showAllProducts, editingVenda]);
 
   const handleAddItemToCart = (prodId: number) => {
     const prod = produtos.find(p => p.id === prodId);
-    if (!prod || prod.quantidade <= 0) return;
+    if (!prod || estoqueParaVenda(prod) <= 0) return;
 
     const existingIndex = cartItens.findIndex(it => it.produtoId === prodId);
     if (existingIndex >= 0) {
@@ -121,7 +165,7 @@ export default function VendasView({ data }: Props) {
     setFormError('');
 
     try {
-      await createVendaAction({
+      const payload = {
         clienteId: clienteId ? parseInt(clienteId) : undefined,
         nomeClienteAvulso: nomeAvulso || undefined,
         contatoClienteAvulso: contatoAvulso || undefined,
@@ -131,9 +175,18 @@ export default function VendasView({ data }: Props) {
         frete,
         status: statusVenda,
         observacoes
-      });
+      };
+      if (editingVenda) {
+        await updateVendaAction(editingVenda.id, {
+          ...payload,
+          updatedAt: new Date(editingVenda.updatedAt).toISOString(),
+          data: new Date(dataVenda).toISOString(),
+        });
+      } else {
+        await createVendaAction(payload);
+      }
 
-      setFeedback('Venda registrada com sucesso e estoque atualizado!');
+      setFeedback(editingVenda ? 'Venda atualizada com sucesso e estoque ajustado!' : 'Venda registrada com sucesso e estoque atualizado!');
       setIsNewVendaOpen(false);
       window.location.reload();
     } catch (err: unknown) {
@@ -171,6 +224,9 @@ export default function VendasView({ data }: Props) {
 
         <button
           onClick={() => {
+            setEditingVenda(null);
+            setIsSubmitting(false);
+            setFormaPagamento('PIX');
             setIsNewVendaOpen(true);
             setCartItens([]);
             setProductSearch('');
@@ -178,6 +234,7 @@ export default function VendasView({ data }: Props) {
             setFormError('');
             setStatusVenda('PAGO');
             setClienteId('');
+            setClientSearch('');
             setNomeAvulso('');
             setContatoAvulso('');
             setDesconto(0);
@@ -323,11 +380,19 @@ export default function VendasView({ data }: Props) {
                           <option value="PREPARANDO">Preparando</option>
                           <option value="ENVIADO">Enviado</option>
                           <option value="ENTREGUE">Entregue</option>
-                          <option value="CANCELADO">Cancelado</option>
+                          {v.status === 'CANCELADO' && <option value="CANCELADO" disabled hidden>Cancelado</option>}
                         </select>
                       </td>
 
                       <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => handleEditVenda(v)}
+                          className="mr-1.5 p-1.5 rounded-lg bg-brand-nude hover:bg-brand-nude text-brand-chocolate border border-brand-line transition-colors cursor-pointer"
+                          title="Editar venda"
+                          aria-label={`Editar venda ${v.numero}`}
+                        >
+                          <Pencil size={14} />
+                        </button>
                         <button
                           onClick={() => setViewingVenda(v)}
                           className="p-1.5 rounded-lg bg-brand-nude hover:bg-brand-nude text-brand-chocolate border border-brand-line transition-colors cursor-pointer"
@@ -355,8 +420,8 @@ export default function VendasView({ data }: Props) {
 
             <div className="flex shrink-0 items-center justify-between gap-3 p-4 sm:px-6 sm:py-5 border-b border-brand-line">
               <div className="min-w-0">
-                <h3 id="nova-venda-title" className="text-xl font-serif font-bold text-brand-chocolate">Registrar Venda / Pedido</h3>
-                <p className="text-xs text-brand-muted">Venda direta com baixa automática de estoque</p>
+                <h3 id="nova-venda-title" className="text-xl font-serif font-bold text-brand-chocolate">{editingVenda ? `Editar Venda / Pedido ${editingVenda.numero}` : 'Registrar Venda / Pedido'}</h3>
+                <p className="text-xs text-brand-muted">{editingVenda ? 'Atualize os dados do pedido e ajuste o estoque automaticamente' : 'Venda direta com baixa automática de estoque'}</p>
               </div>
               <button aria-label="Fechar venda" onClick={() => setIsNewVendaOpen(false)} className="shrink-0 p-2 text-brand-muted hover:text-brand-chocolate rounded-full hover:bg-brand-nude cursor-pointer">
                 <X size={20} />
@@ -370,20 +435,85 @@ export default function VendasView({ data }: Props) {
             )}
 
             <form id="nova-venda-form" onSubmit={handleCreateVenda} className="min-h-0 overflow-y-auto space-y-4 p-4 sm:p-6">
+              {editingVenda && (
+                <label className="block text-[10px] font-bold text-brand-muted uppercase">
+                  Data e hora da venda
+                  <input
+                    type="datetime-local"
+                    step="1"
+                    required
+                    value={dataVenda}
+                    onChange={e => setDataVenda(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line outline-none"
+                  />
+                </label>
+              )}
               {/* SELEÇÃO DE CLIENTE */}
               <div className="p-4 rounded-2xl bg-brand-cream border border-brand-line space-y-3">
                 <span className="text-[11px] font-bold text-brand-muted uppercase tracking-wider block">1. Identificação do Cliente</span>
                 <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Cliente Cadastrado</label>
-                    <select
-                      value={clienteId}
-                      onChange={(e) => { setClienteId(e.target.value); if (e.target.value) { setNomeAvulso(''); setContatoAvulso(''); } }}
-                      className="w-full px-3 py-2 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none cursor-pointer"
-                    >
-                      <option value="">Cliente Avulso / Não cadastrado</option>
-                      {clientes.map(c => <option key={c.id} value={String(c.id)}>{c.nome} ({c.whatsapp || c.cidade || 'Sem contato'})</option>)}
-                    </select>
+                    {selectedClient ? (
+                      <div className="flex items-center justify-between gap-3 p-3 bg-brand-card rounded-xl border border-brand-line">
+                        <div className="min-w-0" role="status">
+                          <p className="text-xs font-bold text-brand-chocolate">{selectedClient.nome}</p>
+                          <p className="text-xs text-brand-muted">{selectedClient.whatsapp || selectedClient.cidade || 'Sem contato'}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setClienteId(''); setClientSearch(''); }}
+                          className="shrink-0 px-3 py-2 text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line hover:bg-brand-nude"
+                        >
+                          Trocar cliente
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <label htmlFor="venda-client-search" className="block text-[10px] font-bold text-brand-muted uppercase">Buscar cliente cadastrado</label>
+                        <div className="relative">
+                          <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
+                          <input
+                            id="venda-client-search"
+                            type="search"
+                            autoComplete="off"
+                            value={clientSearch}
+                            onChange={(e) => setClientSearch(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                            placeholder="Digite o nome, WhatsApp ou cidade..."
+                            className="w-full pl-9 pr-3 py-2.5 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line focus:border-brand-caramel outline-none"
+                          />
+                        </div>
+                        {clientSearch.trim() ? (
+                          <>
+                            <ul aria-label="Clientes encontrados" className="max-h-48 overflow-y-auto rounded-xl border border-brand-line bg-brand-card divide-y divide-brand-line">
+                              {filteredClients.length === 0 ? (
+                                <li role="status" className="p-3 text-xs text-brand-muted">Nenhum cliente encontrado.</li>
+                              ) : filteredClients.slice(0, 10).map(c => (
+                                <li key={c.id}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setClienteId(String(c.id));
+                                      setClientSearch('');
+                                      setNomeAvulso('');
+                                      setContatoAvulso('');
+                                    }}
+                                    className="w-full p-3 text-left hover:bg-brand-nude focus-visible:bg-brand-nude"
+                                  >
+                                    <span className="block font-bold break-words">{c.nome}</span>
+                                    <span className="block text-xs text-brand-muted break-words">{c.whatsapp || c.cidade || 'Sem contato'}</span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                            {filteredClients.length > 10 && <p className="text-xs text-brand-muted">Mostrando 10 resultados. Continue digitando para refinar a busca.</p>}
+                            <button type="button" onClick={() => setClientSearch('')} className="text-xs text-brand-muted underline underline-offset-4">Usar cliente avulso / não cadastrado</button>
+                          </>
+                        ) : (
+                          <p className="text-xs text-brand-muted">Busque um cliente ou preencha o nome avulso abaixo.</p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {!clienteId && (
@@ -444,7 +574,7 @@ export default function VendasView({ data }: Props) {
                         </div>
                         <button
                           type="button"
-                          disabled={p.quantidade <= 0}
+                          disabled={estoqueParaVenda(p) <= 0}
                           onClick={() => handleAddItemToCart(p.id)}
                           aria-label={`Adicionar ${p.nome}`}
                           className="shrink-0 px-3 py-2 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold rounded-xl cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
@@ -468,15 +598,28 @@ export default function VendasView({ data }: Props) {
                           <span className="text-[10px] text-brand-muted ml-1">({it.produto?.marca})</span>
                         </div>
                         
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <input
                             type="number"
                             min="1"
-                            max={it.produto?.quantidade || 99}
+                            aria-label={`Quantidade de ${it.produto?.nome || 'produto'}`}
+                            max={editingVenda ? undefined : it.produto?.quantidade || 99}
                             value={it.quantidade}
                             onChange={(e) => handleUpdateItemQtd(idx, parseInt(e.target.value) || 1)}
                             className="w-14 px-2 py-1 bg-brand-nude text-xs font-bold text-center rounded-lg border border-brand-line outline-none"
                           />
+                          <label className="flex flex-col gap-1 text-[10px] text-brand-muted">
+                            Preço unitário (R$)
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              aria-label={`Preço unitário de ${it.produto?.nome || 'produto'}`}
+                              value={it.precoUnitario}
+                              onChange={(e) => setCartItens(items => items.map((item, i) => i === idx ? { ...item, precoUnitario: Number(e.target.value) } : item))}
+                              className="w-24 px-2 py-1 bg-brand-nude text-xs font-bold text-right rounded-lg border border-brand-line outline-none"
+                            />
+                          </label>
                           <span className="text-xs font-bold text-brand-chocolate min-w-[70px] text-right">
                             {it.subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </span>
@@ -521,12 +664,15 @@ export default function VendasView({ data }: Props) {
                       onChange={(e) => setStatusVenda(e.target.value)}
                       className="w-full px-3 py-1.5 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none"
                     >
+                      <option value="AGUARDANDO_PAGAMENTO">Aguardando Pagamento</option>
                       <option value="PAGO">Pago</option>
-                      <option value="AGUARDANDO_PAGAMENTO">Aguardando pagamento</option>
-                      <option value="PREPARANDO">Preparando Envio</option>
+                      <option value="PREPARANDO">Preparando</option>
+                      <option value="ENVIADO">Enviado</option>
+                      <option value="ENTREGUE">Entregue</option>
+                      {editingVenda?.status === 'CANCELADO' && <option value="CANCELADO" disabled hidden>Cancelado</option>}
                     </select>
                     <p className="mt-1 text-[11px] text-brand-muted">
-                      {statusVenda === 'AGUARDANDO_PAGAMENTO' ? 'Reserva de estoque imediata.' : 'Baixa de estoque imediata.'}
+                      {editingVenda ? 'Estoque ajustado pela diferença entre os itens anteriores e os novos.' : statusVenda === 'AGUARDANDO_PAGAMENTO' ? 'Reserva de estoque imediata.' : 'Baixa de estoque imediata.'}
                     </p>
                   </div>
 
@@ -569,6 +715,17 @@ export default function VendasView({ data }: Props) {
                   </div>
                 </div>
               </div>
+              {editingVenda && (
+                <label className="block text-[10px] font-bold text-brand-muted uppercase">
+                  Observações
+                  <textarea
+                    value={observacoes}
+                    onChange={e => setObservacoes(e.target.value)}
+                    rows={3}
+                    className="mt-1 w-full px-3 py-2 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line outline-none"
+                  />
+                </label>
+              )}
             </form>
 
               {/* BOTÕES */}
@@ -593,7 +750,7 @@ export default function VendasView({ data }: Props) {
                       <span>Processando Venda...</span>
                     </>
                   ) : (
-                    <span>Concluir Venda & Baixar Estoque</span>
+                    <span>{editingVenda ? 'Salvar Alterações' : 'Concluir Venda & Baixar Estoque'}</span>
                   )}
                 </button>
               </div>

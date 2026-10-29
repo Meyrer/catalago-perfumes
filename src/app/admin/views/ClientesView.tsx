@@ -4,8 +4,8 @@ import { useState, useMemo } from 'react';
 import type { ERPData, AdminCliente } from '../types';
 import { 
   Users, Plus, Search, MessageCircle, AtSign, 
-  Mail, MapPin, Calendar, ShoppingBag, DollarSign, 
-  ChevronRight, X, Loader2, Edit3, Heart
+  Mail, MapPin,
+  ChevronLeft, ChevronRight, X, Loader2, Edit3, Heart
 } from 'lucide-react';
 import { createClienteAction, updateClienteAction } from '../../actions';
 
@@ -17,6 +17,10 @@ export default function ClientesView({ data }: Props) {
   const { clientes, vendas } = data;
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [purchaseFilter, setPurchaseFilter] = useState('ALL');
+  const [sortBy, setSortBy] = useState('nome');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
   const [selectedCliente, setSelectedCliente] = useState<AdminCliente | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<AdminCliente | null>(null);
@@ -36,14 +40,21 @@ export default function ClientesView({ data }: Props) {
 
   // Clientes com métricas calculadas
   const clientesComMetricas = useMemo(() => {
+    const vendasPorCliente = new Map<number, typeof vendas>();
+    for (const venda of vendas) {
+      if (venda.clienteId === null || !['PAGO', 'ENVIADO', 'ENTREGUE'].includes(venda.status)) continue;
+      const grupo = vendasPorCliente.get(venda.clienteId);
+      if (grupo) grupo.push(venda);
+      else vendasPorCliente.set(venda.clienteId, [venda]);
+    }
     return clientes.map(c => {
-      const cliVendas = vendas.filter(v => v.clienteId === c.id && (v.status === 'PAGO' || v.status === 'ENVIADO' || v.status === 'ENTREGUE'));
+      const cliVendas = vendasPorCliente.get(c.id) || [];
       const totalGasto = cliVendas.reduce((acc, v) => acc + v.valorTotal, 0);
       const qtdCompras = cliVendas.length;
       const ticketMedio = qtdCompras > 0 ? (totalGasto / qtdCompras) : 0;
       
-      const datas = cliVendas.map(v => new Date(v.data).getTime());
-      const ultimaCompra = datas.length > 0 ? new Date(Math.max(...datas)) : null;
+      const ultimaData = cliVendas.reduce((ultima, venda) => Math.max(ultima, new Date(venda.data).getTime()), 0);
+      const ultimaCompra = cliVendas.length > 0 ? new Date(ultimaData) : null;
 
       // Marcas preferidas
       const marcasCount = new Map<string, number>();
@@ -71,15 +82,25 @@ export default function ClientesView({ data }: Props) {
   }, [clientes, vendas]);
 
   const filteredClientes = useMemo(() => {
+    const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const terms = normalize(searchTerm).trim().split(/\s+/).filter(Boolean);
     return clientesComMetricas.filter(c => {
-      return (
-        c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (c.whatsapp && c.whatsapp.includes(searchTerm)) ||
-        (c.cidade && c.cidade.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (c.instagram && c.instagram.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+      const text = normalize([c.nome, c.whatsapp, c.whatsapp?.replace(/\D/g, ''), c.cidade, c.instagram, c.email].filter(Boolean).join(' '));
+      const matchSearch = terms.every(term => text.includes(term));
+      const matchPurchases = purchaseFilter === 'ALL' || (purchaseFilter === 'COM_COMPRAS' ? c.qtdCompras > 0 : c.qtdCompras === 0);
+      return matchSearch && matchPurchases;
+    }).sort((a, b) => {
+      if (sortBy === 'total') return b.totalGasto - a.totalGasto || a.nome.localeCompare(b.nome, 'pt-BR');
+      if (sortBy === 'ultima') return (b.ultimaCompra?.getTime() || 0) - (a.ultimaCompra?.getTime() || 0) || a.nome.localeCompare(b.nome, 'pt-BR');
+      return a.nome.localeCompare(b.nome, 'pt-BR');
     });
-  }, [clientesComMetricas, searchTerm]);
+  }, [clientesComMetricas, searchTerm, purchaseFilter, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredClientes.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const paginatedClientes = filteredClientes.slice(pageStart, pageStart + pageSize);
+  const selectedMetricas = selectedCliente ? clientesComMetricas.find(c => c.id === selectedCliente.id) : null;
 
   const handleOpenCreate = () => {
     setEditingCliente(null);
@@ -162,7 +183,7 @@ export default function ClientesView({ data }: Props) {
             Clientes VIP & CRM da Perfumio
           </h2>
           <p className="text-xs text-brand-muted mt-0.5">
-            Histórico de consumo, LTV (Total gasto), preferências olfativas e contato direto pelo WhatsApp.
+            Consulte clientes, acompanhe compras e acesse o histórico de cada cadastro.
           </p>
         </div>
 
@@ -183,129 +204,97 @@ export default function ClientesView({ data }: Props) {
       )}
 
       {/* BUSCA */}
-      <div className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs">
-        <div className="relative">
+      <div className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs flex flex-col lg:flex-row gap-3">
+        <div className="relative flex-1">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-muted" />
           <input
-            type="text"
+            type="search"
+            aria-label="Buscar clientes"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
             placeholder="Buscar por nome do cliente, WhatsApp, cidade ou Instagram..."
             className="w-full pl-10 pr-4 py-2 bg-brand-nude focus:bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line focus:border-brand-caramel outline-none font-medium"
           />
         </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <select aria-label="Filtrar clientes por compras" value={purchaseFilter} onChange={e => { setPurchaseFilter(e.target.value); setPage(1); }} className="px-3 py-2 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line">
+            <option value="ALL">Todos os clientes</option>
+            <option value="COM_COMPRAS">Com compras</option>
+            <option value="SEM_COMPRAS">Sem compras</option>
+          </select>
+          <select aria-label="Ordenar clientes" value={sortBy} onChange={e => { setSortBy(e.target.value); setPage(1); }} className="px-3 py-2 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line">
+            <option value="nome">Nome: A–Z</option>
+            <option value="total">Maior total gasto</option>
+            <option value="ultima">Compra mais recente</option>
+          </select>
+        </div>
       </div>
 
-      {/* GRID DE CLIENTES */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredClientes.length === 0 ? (
-          <div className="col-span-full py-16 text-center text-xs text-brand-muted bg-brand-card rounded-3xl border border-brand-line">
-            Nenhum cliente cadastrado ou correspondente à busca.
+      {/* LISTA PAGINADA DE CLIENTES */}
+      <div className="bg-brand-card rounded-2xl border border-brand-line shadow-xs overflow-hidden">
+        <div className="px-4 py-3 border-b border-brand-line text-xs text-brand-muted" role="status">
+          {filteredClientes.length} {filteredClientes.length === 1 ? 'cliente encontrado' : 'clientes encontrados'}
+          {filteredClientes.length !== clientes.length && ` de ${clientes.length} cadastrados`}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-brand-cream text-[10px] text-brand-muted uppercase">
+              <tr>
+                <th scope="col" className="px-4 py-3 font-semibold">Cliente</th>
+                <th scope="col" className="hidden md:table-cell px-4 py-3 font-semibold">Contato</th>
+                <th scope="col" className="hidden sm:table-cell px-4 py-3 text-center font-semibold">Compras</th>
+                <th scope="col" className="px-4 py-3 text-right font-semibold whitespace-nowrap">Total gasto</th>
+                <th scope="col" className="hidden lg:table-cell px-4 py-3 font-semibold whitespace-nowrap">Última compra</th>
+                <th scope="col" className="px-4 py-3 text-right font-semibold">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-brand-line">
+              {paginatedClientes.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-12 text-center text-brand-muted">{clientes.length === 0 ? 'Nenhum cliente cadastrado.' : 'Nenhum cliente corresponde aos filtros.'}</td></tr>
+              ) : paginatedClientes.map(c => {
+                const rawNumber = c.whatsapp?.replace(/\D/g, '') || '';
+                const phone = rawNumber.startsWith('55') ? rawNumber : `55${rawNumber}`;
+                return (
+                  <tr key={c.id} className="hover:bg-brand-cream transition-colors">
+                    <td className="px-4 py-3">
+                      <button onClick={() => setSelectedCliente(c)} className="font-semibold text-brand-chocolate text-left break-words hover:underline cursor-pointer">{c.nome}</button>
+                      {c.cidade && <p className="text-[11px] text-brand-muted mt-0.5">{c.cidade}</p>}
+                    </td>
+                    <td className="hidden md:table-cell px-4 py-3 text-brand-muted">
+                      {rawNumber ? <a href={`https://wa.me/${phone}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-brand-chocolate hover:underline"><MessageCircle size={13} />{c.whatsapp}</a> : <span>Sem WhatsApp</span>}
+                      {c.instagram && <p className="text-[11px] mt-0.5">{c.instagram}</p>}
+                    </td>
+                    <td className="hidden sm:table-cell px-4 py-3 text-center text-brand-muted">{c.qtdCompras}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-brand-chocolate whitespace-nowrap">{c.totalGasto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td className="hidden lg:table-cell px-4 py-3 text-brand-muted whitespace-nowrap">{c.ultimaCompra?.toLocaleDateString('pt-BR') || 'Nunca comprou'}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <button onClick={() => handleOpenEdit(c)} aria-label={`Editar cadastro de ${c.nome}`} title="Editar cadastro" className="p-2 rounded-lg text-brand-muted hover:text-brand-chocolate hover:bg-brand-nude cursor-pointer"><Edit3 size={14} /></button>
+                        <button onClick={() => setSelectedCliente(c)} aria-label={`Ver detalhes e histórico de ${c.nome}`} title="Detalhes e histórico" className="p-2 rounded-lg text-brand-muted hover:text-brand-chocolate hover:bg-brand-nude cursor-pointer"><ChevronRight size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-4 py-3 border-t border-brand-line flex flex-wrap items-center justify-between gap-3 text-xs text-brand-muted">
+          <span>{filteredClientes.length === 0 ? '0 clientes' : `${pageStart + 1}–${Math.min(pageStart + pageSize, filteredClientes.length)} de ${filteredClientes.length} clientes`}</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2">
+              Por página
+              <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }} className="px-2 py-1.5 rounded-lg border border-brand-line bg-brand-card text-brand-chocolate">
+                <option value={15}>15</option><option value={30}>30</option><option value={50}>50</option>
+              </select>
+            </label>
+            <nav aria-label="Paginação de clientes" className="flex items-center gap-2">
+              <button disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} aria-label="Página anterior" className="p-2 border border-brand-line rounded-lg hover:bg-brand-nude disabled:opacity-40 disabled:cursor-not-allowed"><ChevronLeft size={14} /></button>
+              <span aria-live="polite">{currentPage} / {totalPages}</span>
+              <button disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)} aria-label="Próxima página" className="p-2 border border-brand-line rounded-lg hover:bg-brand-nude disabled:opacity-40 disabled:cursor-not-allowed"><ChevronRight size={14} /></button>
+            </nav>
           </div>
-        ) : (
-          filteredClientes.map((c) => {
-            const rawNumber = c.whatsapp ? c.whatsapp.replace(/\D/g, '') : '';
-            const phone = rawNumber.startsWith('55') ? rawNumber : `55${rawNumber}`;
-            const whatsappUrl = rawNumber ? `https://wa.me/${phone}` : null;
-
-            return (
-              <div key={c.id} className="bg-brand-card rounded-3xl border border-brand-line p-5 shadow-xs flex flex-col justify-between hover:border-brand-caramel/50 transition-colors">
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div>
-                      <h3 className="font-serif font-bold text-base text-brand-chocolate leading-tight">
-                        {c.nome}
-                      </h3>
-                      {c.cidade && (
-                        <p className="text-[11px] text-brand-muted flex items-center gap-1 mt-0.5">
-                          <MapPin size={11} className="text-brand-muted" /> {c.cidade}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleOpenEdit(c)}
-                      className="p-1.5 rounded-lg text-brand-muted hover:text-brand-chocolate hover:bg-brand-nude transition-colors cursor-pointer"
-                      title="Editar cadastro"
-                    >
-                      <Edit3 size={14} />
-                    </button>
-                  </div>
-
-                  {/* Redes e Contatos */}
-                  <div className="flex flex-wrap gap-2 text-[11px] mb-4">
-                    {whatsappUrl && (
-                      <a
-                        href={whatsappUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-nude hover:bg-brand-nude text-brand-chocolate font-bold border border-brand-line transition-colors"
-                      >
-                        <MessageCircle size={12} />
-                        <span>WhatsApp</span>
-                      </a>
-                    )}
-                    {c.instagram && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-nude text-brand-chocolate font-medium border border-brand-line">
-                        <AtSign size={12} className="text-brand-caramel" />
-                        <span>{c.instagram}</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Métricas do Perfil */}
-                  <div className="p-3.5 rounded-2xl bg-brand-cream border border-brand-line grid grid-cols-3 gap-2 text-center mb-3">
-                    <div>
-                      <span className="text-[9px] font-bold text-brand-muted uppercase block">Total Gasto</span>
-                      <span className="text-xs font-bold text-brand-chocolate">
-                        {c.totalGasto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[9px] font-bold text-brand-muted uppercase block">Compras</span>
-                      <span className="text-xs font-bold text-brand-chocolate">{c.qtdCompras} pedidos</span>
-                    </div>
-                    <div>
-                      <span className="text-[9px] font-bold text-brand-muted uppercase block">Ticket Médio</span>
-                      <span className="text-xs font-bold text-brand-muted">
-                        {c.ticketMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Marcas Preferidas */}
-                  {c.marcasPreferidas.length > 0 && (
-                    <div className="text-[11px] text-brand-muted mb-2 flex items-center gap-1.5 flex-wrap">
-                      <Heart size={12} className="text-brand-caramel shrink-0" />
-                      <span className="font-semibold text-brand-chocolate">Grifes favoritas:</span>
-                      {c.marcasPreferidas.map((m, idx) => (
-                        <span key={idx} className="px-1.5 py-0.5 rounded bg-brand-nude text-[10px] font-bold text-brand-muted">
-                          {m}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Observações */}
-                  {c.observacoes && (
-                    <p className="text-[11px] text-brand-muted line-clamp-2 italic bg-brand-cream p-2 rounded-xl border border-brand-nude">
-                      &ldquo;{c.observacoes}&rdquo;
-                    </p>
-                  )}
-                </div>
-
-                <div className="pt-3 border-t border-brand-nude mt-3 flex items-center justify-between text-[11px] text-brand-muted">
-                  <span>Última compra: {c.ultimaCompra ? c.ultimaCompra.toLocaleDateString('pt-BR') : 'Nunca comprou'}</span>
-                  <button
-                    onClick={() => setSelectedCliente(c)}
-                    className="font-bold text-brand-muted hover:underline cursor-pointer flex items-center gap-0.5"
-                  >
-                    Ver Histórico <ChevronRight size={12} />
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
+        </div>
       </div>
 
       {/* ========================================================================= */}
@@ -396,7 +385,7 @@ export default function ClientesView({ data }: Props) {
             <div className="flex items-center justify-between pb-3 border-b border-brand-line mb-4">
               <div>
                 <h3 className="text-xl font-serif font-bold text-brand-chocolate">{selectedCliente.nome}</h3>
-                <p className="text-xs text-brand-muted">Histórico de compras e encomendas</p>
+                <p className="text-xs text-brand-muted">Dados do cliente e histórico de compras</p>
               </div>
               <button onClick={() => setSelectedCliente(null)} className="p-1 text-brand-muted hover:text-brand-chocolate rounded-full hover:bg-brand-nude cursor-pointer">
                 <X size={18} />
@@ -404,6 +393,25 @@ export default function ClientesView({ data }: Props) {
             </div>
 
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              <div className="space-y-2 text-xs text-brand-muted">
+                {selectedCliente.cidade && <p className="flex items-center gap-2"><MapPin size={14} />{selectedCliente.cidade}</p>}
+                {selectedCliente.whatsapp && (
+                  <a href={`https://wa.me/${selectedCliente.whatsapp.replace(/\D/g, '').startsWith('55') ? '' : '55'}${selectedCliente.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-brand-chocolate hover:underline"><MessageCircle size={14} />{selectedCliente.whatsapp}</a>
+                )}
+                {selectedCliente.instagram && <p className="flex items-center gap-2"><AtSign size={14} />{selectedCliente.instagram}</p>}
+                {selectedCliente.email && <p className="flex items-center gap-2 break-all"><Mail size={14} className="shrink-0" />{selectedCliente.email}</p>}
+              </div>
+              {selectedMetricas && (
+                <>
+                  <dl className="grid grid-cols-3 gap-2 p-3 rounded-xl bg-brand-cream border border-brand-line text-xs">
+                    <div><dt className="text-[10px] text-brand-muted">Total gasto</dt><dd className="mt-1 font-bold text-brand-chocolate">{selectedMetricas.totalGasto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</dd></div>
+                    <div><dt className="text-[10px] text-brand-muted">Compras</dt><dd className="mt-1 font-bold text-brand-chocolate">{selectedMetricas.qtdCompras}</dd></div>
+                    <div><dt className="text-[10px] text-brand-muted">Ticket médio</dt><dd className="mt-1 font-bold text-brand-chocolate">{selectedMetricas.ticketMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</dd></div>
+                  </dl>
+                  {selectedMetricas.marcasPreferidas.length > 0 && <p className="flex items-center gap-2 text-xs text-brand-muted"><Heart size={14} className="shrink-0" /><span>Grifes favoritas: {selectedMetricas.marcasPreferidas.join(', ')}</span></p>}
+                </>
+              )}
+              {selectedCliente.observacoes && <p className="text-xs text-brand-muted whitespace-pre-wrap break-words p-3 rounded-xl bg-brand-cream border border-brand-line">{selectedCliente.observacoes}</p>}
               <span className="text-[11px] font-bold text-brand-muted uppercase tracking-wider block">Pedidos Realizados ({selectedCliente.vendas?.length || 0})</span>
               
               {(!selectedCliente.vendas || selectedCliente.vendas.length === 0) ? (
