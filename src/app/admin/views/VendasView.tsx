@@ -368,7 +368,7 @@ export default function VendasView({ data }: Props) {
                           value={v.status}
                           onChange={(e) => handleUpdateStatus(v.id, e.target.value)}
                           className={`min-w-[180px]! w-[180px] px-2.5 py-1 rounded-lg text-[10px] font-bold border outline-none cursor-pointer ${
-                            v.status === 'PAGO' ? 'bg-brand-nude text-brand-chocolate border-brand-line' :
+                            v.status === 'PAGO' ? 'bg-green-50 text-green-800 border-green-300' :
                             v.status === 'ENVIADO' ? 'bg-brand-nude text-brand-chocolate border-brand-line' :
                             v.status === 'ENTREGUE' ? 'bg-brand-nude text-brand-chocolate border-brand-line' :
                             v.status === 'CANCELADO' ? 'bg-brand-rose-beige text-brand-chocolate border-brand-terracotta' :
@@ -601,7 +601,9 @@ export default function VendasView({ data }: Props) {
                           <span className="text-[10px] text-brand-muted ml-1">({it.produto?.marca})</span>
                         </div>
                         
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="grid w-full sm:w-auto grid-cols-[minmax(0,0.65fr)_minmax(0,1fr)_minmax(0,1fr)_2rem] sm:grid-cols-[3.5rem_6rem_5rem_2.5rem] items-end gap-2">
+                          <label className="flex min-w-0 flex-col gap-1 text-[10px] text-brand-muted">
+                            Qtd.
                           <input
                             type="number"
                             min="1"
@@ -609,10 +611,11 @@ export default function VendasView({ data }: Props) {
                             max={editingVenda ? undefined : it.produto?.quantidade || 99}
                             value={it.quantidade}
                             onChange={(e) => handleUpdateItemQtd(idx, parseInt(e.target.value) || 1)}
-                            className="w-14 px-2 py-1 bg-brand-nude text-xs font-bold text-center rounded-lg border border-brand-line outline-none"
+                            className="h-[42px] w-full px-2 py-1 bg-brand-nude text-xs font-bold text-center rounded-lg border border-brand-line outline-none"
                           />
-                          <label className="flex flex-col gap-1 text-[10px] text-brand-muted">
-                            Preço unitário (R$)
+                          </label>
+                          <label className="flex min-w-0 flex-col gap-1 text-[10px] text-brand-muted">
+                            Unitário (R$)
                             <input
                               type="number"
                               min="0"
@@ -620,16 +623,20 @@ export default function VendasView({ data }: Props) {
                               aria-label={`Preço unitário de ${it.produto?.nome || 'produto'}`}
                               value={it.precoUnitario}
                               onChange={(e) => setCartItens(items => items.map((item, i) => i === idx ? { ...item, precoUnitario: Number(e.target.value) } : item))}
-                              className="w-24 px-2 py-1 bg-brand-nude text-xs font-bold text-right rounded-lg border border-brand-line outline-none"
+                              className="h-[42px] w-full px-2 py-1 bg-brand-nude text-xs font-bold text-right rounded-lg border border-brand-line outline-none"
                             />
                           </label>
-                          <span className="text-xs font-bold text-brand-chocolate min-w-[70px] text-right">
-                            {it.subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </span>
+                          <div className="flex min-w-0 flex-col gap-1 text-right">
+                            <span className="text-[10px] text-brand-muted">Subtotal</span>
+                            <span className="flex h-[42px] items-center justify-end text-xs font-bold text-brand-chocolate whitespace-nowrap">
+                              {it.subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </span>
+                          </div>
                           <button
                             type="button"
                             onClick={() => handleRemoveCartItem(idx)}
-                            className="p-1 text-brand-chocolate hover:text-brand-chocolate cursor-pointer"
+                            aria-label={`Remover ${it.produto?.nome || 'produto'} da venda`}
+                            className="flex h-[42px] w-full items-center justify-center rounded-lg text-brand-muted hover:bg-brand-nude hover:text-brand-chocolate cursor-pointer"
                           >
                             <X size={14} />
                           </button>
