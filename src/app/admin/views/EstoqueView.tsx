@@ -112,7 +112,7 @@ export default function EstoqueView({ data }: Props) {
               activeSubTab === 'saldo' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-muted hover:text-brand-chocolate'
             }`}
           >
-            Saldo de Estoque ({produtos.length})
+            Saldo de Estoque ({totalFisico})
           </button>
           <button
             onClick={() => setActiveSubTab('historico')}

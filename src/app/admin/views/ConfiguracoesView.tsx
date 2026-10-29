@@ -279,11 +279,6 @@ export function ConfiguracoesView({ user }: ConfiguracoesViewProps) {
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-brand-muted">Estoque Mínimo Padrão</span>
-                <span className="font-bold text-brand-muted">2 unidades</span>
-              </div>
-
-              <div className="flex items-center justify-between">
                 <span className="text-brand-muted">Auditoria de Ações</span>
                 <span className="font-bold text-brand-chocolate">Ativada (com registro de autor)</span>
               </div>
