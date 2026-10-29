@@ -328,7 +328,7 @@ export default function VendasView({ data }: Props) {
 
                   return (
                     <tr key={v.id} className="hover:bg-brand-cream transition-colors">
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <span className="font-mono font-bold text-brand-chocolate block">{v.numero}</span>
                         <span className="text-[10px] text-brand-muted">{dataFormatada}</span>
                       </td>
@@ -355,11 +355,11 @@ export default function VendasView({ data }: Props) {
                         </span>
                       </td>
 
-                      <td className="py-3 px-3 text-right font-bold text-brand-chocolate">
+                      <td className="py-3 px-3 text-right font-bold text-brand-chocolate whitespace-nowrap">
                         {v.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </td>
 
-                      <td className="py-3 px-3 text-right font-bold text-brand-chocolate">
+                      <td className="py-3 px-3 text-right font-bold text-brand-chocolate whitespace-nowrap">
                         +{v.lucroTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </td>
 
@@ -367,7 +367,7 @@ export default function VendasView({ data }: Props) {
                         <select
                           value={v.status}
                           onChange={(e) => handleUpdateStatus(v.id, e.target.value)}
-                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border outline-none cursor-pointer ${
+                          className={`min-w-[180px]! w-[180px] px-2.5 py-1 rounded-lg text-[10px] font-bold border outline-none cursor-pointer ${
                             v.status === 'PAGO' ? 'bg-brand-nude text-brand-chocolate border-brand-line' :
                             v.status === 'ENVIADO' ? 'bg-brand-nude text-brand-chocolate border-brand-line' :
                             v.status === 'ENTREGUE' ? 'bg-brand-nude text-brand-chocolate border-brand-line' :
@@ -384,10 +384,11 @@ export default function VendasView({ data }: Props) {
                         </select>
                       </td>
 
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3 px-4 text-right w-px whitespace-nowrap">
+                        <div className="inline-flex items-center overflow-hidden rounded-xl border border-brand-line bg-brand-card divide-x divide-brand-line align-middle">
                         <button
                           onClick={() => handleEditVenda(v)}
-                          className="mr-1.5 p-1.5 rounded-lg bg-brand-nude hover:bg-brand-nude text-brand-chocolate border border-brand-line transition-colors cursor-pointer"
+                          className="flex h-10 w-10 shrink-0 items-center justify-center text-brand-muted hover:bg-brand-nude hover:text-brand-chocolate focus-visible:bg-brand-nude transition-colors cursor-pointer"
                           title="Editar venda"
                           aria-label={`Editar venda ${v.numero}`}
                         >
@@ -395,11 +396,13 @@ export default function VendasView({ data }: Props) {
                         </button>
                         <button
                           onClick={() => setViewingVenda(v)}
-                          className="p-1.5 rounded-lg bg-brand-nude hover:bg-brand-nude text-brand-chocolate border border-brand-line transition-colors cursor-pointer"
+                          className="flex h-10 w-10 shrink-0 items-center justify-center text-brand-muted hover:bg-brand-nude hover:text-brand-chocolate focus-visible:bg-brand-nude transition-colors cursor-pointer"
                           title="Ver detalhes da venda"
+                          aria-label={`Ver detalhes da venda ${v.numero}`}
                         >
                           <Eye size={14} />
                         </button>
+                        </div>
                       </td>
                     </tr>
                   );
