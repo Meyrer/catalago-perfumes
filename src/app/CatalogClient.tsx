@@ -196,6 +196,7 @@ export default function CatalogClient({
   const [customEncomendaQuery, setCustomEncomendaQuery] = useState('');
   const [isCustomOrderOpen, setIsCustomOrderOpen] = useState(false);
   const [customOrderInitialValue, setCustomOrderInitialValue] = useState('');
+  const [whatsappMessage, setWhatsappMessage] = useState<string | null>(null);
 
   const openCustomOrderModal = (initialQuery = '') => {
     setCustomOrderInitialValue(initialQuery);
@@ -291,7 +292,8 @@ export default function CatalogClient({
     setIsCartOpen(false); 
     setIsFavoritesOpen(false); 
   };
-  const dialogRef = useDialog(Boolean(selectedProduct || isCartOpen || isFavoritesOpen || isMobileFiltersOpen), closeDialog);
+  const dialogRef = useDialog(whatsappMessage === null && Boolean(selectedProduct || isCartOpen || isFavoritesOpen || isMobileFiltersOpen), closeDialog);
+  const whatsappDialogRef = useDialog(whatsappMessage !== null, () => setWhatsappMessage(null));
   const chooseProduct = (product: Produto) => { setActiveImageIndex(0); setSelectedProduct(product); };
   const hasFilters = Boolean(searchTerm.trim() || activeCategory !== 'todos' || selectedBrand !== 'todas' || availabilityFilter !== 'TODOS' || onlyPromos || priceRange !== 'todos' || selectedGender !== 'Todos');
 
@@ -519,8 +521,10 @@ export default function CatalogClient({
     });
   };
 
-  // WhatsApp Configuration
-  const WHATSAPP_PHONE = "5511999999999"; // Configure seu WhatsApp de atendimento aqui
+  const whatsappContacts = [
+    { name: 'Ágatha', phone: '5551998233526', display: '(51) 99823-3526' },
+    { name: 'Carol', phone: '5551999112167', display: '(51) 99911-2167' },
+  ];
 
   const buyDirectOnWhatsApp = (produto: Produto, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -534,7 +538,7 @@ export default function CatalogClient({
       msg = `Olá! Gostaria de encomendar o *${productName}* (${produto.marca}), no valor de ${formattedPrice}. Qual é o prazo de chegada?`;
     }
 
-    window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(msg)}`, '_blank');
+    setWhatsappMessage(msg);
   };
 
   const checkoutCartOnWhatsApp = () => {
@@ -548,12 +552,12 @@ export default function CatalogClient({
     const total = cart.reduce((acc, item) => acc + (item.produto.precoVista * item.qtd), 0);
     msg += `\n*Valor Total: ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}*`;
     msg += "\n\nPoderia me passar os detalhes para combinarmos a entrega/prazos de encomenda e pagamento?";
-    window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(msg)}`, '_blank');
+    setWhatsappMessage(msg);
   };
 
   const generalWhatsAppContact = (customMessage?: string) => {
     const msg = customMessage || "Olá! Gostaria de tirar uma dúvida sobre os produtos a pronta entrega e encomendas do catálogo.";
-    window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(msg)}`, '_blank');
+    setWhatsappMessage(msg);
   };
 
   const orderCustomFragranceWhatsApp = (customName?: string) => {
@@ -564,7 +568,7 @@ export default function CatalogClient({
     } else {
       msg = `Olá! Gostaria de solicitar um orçamento para um perfume/cosmético importado sob encomenda.\n\nVi no catálogo que vocês conseguem qualquer fragrância com *50% no pedido e 50% na entrega*. Como posso fazer meu pedido?`;
     }
-    window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(msg)}`, '_blank');
+    setWhatsappMessage(msg);
   };
 
   // Brands list
@@ -922,14 +926,13 @@ export default function CatalogClient({
                   >
                     Solicitar perfume sob encomenda <ArrowRight size={16} />
                   </button>
-                  <a 
-                    href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent('Olá! Gostaria de tirar uma dúvida sobre os perfumes da Perfumio.')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => generalWhatsAppContact('Olá! Gostaria de tirar uma dúvida sobre os perfumes da Perfumio.')}
                     className="button-text flex items-center gap-1.5 text-xs text-brand-muted hover:text-brand-chocolate font-semibold transition-colors"
                   >
                     <MessageCircle size={15} className="text-brand-caramel" /> Dúvidas no WhatsApp
-                  </a>
+                  </button>
                 </div>
               </div>
 
@@ -2209,8 +2212,28 @@ export default function CatalogClient({
         isOpen={isCustomOrderOpen}
         onClose={() => setIsCustomOrderOpen(false)}
         initialValue={customOrderInitialValue}
-        whatsappPhone={WHATSAPP_PHONE}
+        onWhatsApp={setWhatsappMessage}
       />
+
+      {whatsappMessage !== null && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-brand-deep/70 backdrop-blur-xs p-4" onClick={() => setWhatsappMessage(null)}>
+          <div ref={whatsappDialogRef} role="dialog" aria-modal="true" aria-labelledby="whatsapp-contact-title" tabIndex={-1} className="w-full max-w-sm rounded-3xl border border-brand-line bg-brand-card p-6 shadow-xl outline-none" onClick={e => e.stopPropagation()}>
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <h2 id="whatsapp-contact-title" className="text-lg font-bold text-brand-chocolate">Fale no WhatsApp</h2>
+              <button type="button" aria-label="Fechar contatos" onClick={() => setWhatsappMessage(null)} className="p-2 text-brand-muted cursor-pointer"><X size={20} /></button>
+            </div>
+            <p className="mb-4 text-sm text-brand-muted">Escolha com quem deseja falar:</p>
+            <div className="space-y-3">
+              {whatsappContacts.map(contact => (
+                <a key={contact.phone} href={`https://wa.me/${contact.phone}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noopener noreferrer" onClick={() => setWhatsappMessage(null)} className="flex items-center gap-3 rounded-xl border border-brand-line p-4 text-brand-chocolate hover:bg-brand-cream transition-colors">
+                  <MessageCircle size={22} />
+                  <span><span className="block font-bold">{contact.name}</span><span className="text-sm text-brand-muted">{contact.display}</span></span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 10. BOTAO FLUTUANTE WHATSAPP */}
       <div className="contact-float hidden md:block fixed bottom-6 right-6 z-40">
