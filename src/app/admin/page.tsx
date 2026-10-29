@@ -107,7 +107,13 @@ export default async function AdminPage() {
 
   const erpData = plainPrismaData({
     user: session,
-    produtos,
+    produtos: produtos.map(produto => ({
+      ...produto,
+      fotos: produto.fotos.map(foto => ({
+        ...foto,
+        url: foto.url.replace(/^https?:\/\/perfumes\.meyrer\.com(?=\/uploads\/)/i, ""),
+      })),
+    })),
     categorias,
     banners,
     fornecedores,

@@ -246,22 +246,19 @@ export default function EstoqueView({ data }: Props) {
                 <thead>
                   <tr className="bg-brand-cream border-b border-brand-line text-[10px] font-bold text-brand-muted uppercase tracking-wider">
                     <th className="py-3 px-4">Produto & Marca</th>
-                    <th className="py-3 px-3">SKU</th>
                     <th className="py-3 px-3 text-center">Físico</th>
                     <th className="py-3 px-3 text-center">Reservado</th>
                     <th className="py-3 px-3 text-center">Disponível</th>
-                    <th className="py-3 px-3 text-center">Mínimo</th>
                     <th className="py-3 px-3 text-right">Custo Unit.</th>
                     <th className="py-3 px-3 text-right">Investido</th>
                     <th className="py-3 px-3 text-right">Potencial Venda</th>
-                    <th className="py-3 px-3 text-center">Status</th>
                     <th className="py-3 px-4 text-right">Movimentação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-brand-nude text-xs">
                   {filteredProdutos.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="text-center py-10 text-xs text-brand-muted">
+                      <td colSpan={8} className="text-center py-10 text-xs text-brand-muted">
                         Nenhum produto encontrado com os filtros selecionados.
                       </td>
                     </tr>
@@ -294,11 +291,6 @@ export default function EstoqueView({ data }: Props) {
                             </div>
                           </td>
 
-                          {/* SKU */}
-                          <td className="py-3 px-3 font-mono text-[10px] text-brand-muted">
-                            {p.sku || '—'}
-                          </td>
-
                           {/* Quantidade Físico */}
                           <td className="py-3 px-3 text-center font-bold text-brand-chocolate">
                             {p.quantidade} un.
@@ -322,11 +314,6 @@ export default function EstoqueView({ data }: Props) {
                             </span>
                           </td>
 
-                          {/* Mínimo */}
-                          <td className="py-3 px-3 text-center text-brand-muted">
-                            {p.estoqueMinimo || 2}
-                          </td>
-
                           {/* Custo Unitário */}
                           <td className="py-3 px-3 text-right font-medium text-brand-muted">
                             {(p.precoCusto || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -340,27 +327,6 @@ export default function EstoqueView({ data }: Props) {
                           {/* Potencial Venda */}
                           <td className="py-3 px-3 text-right font-bold text-brand-chocolate">
                             {totalPotVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </td>
-
-                          {/* Status */}
-                          <td className="py-3 px-3 text-center">
-                            {isZerado ? (
-                              <span className="px-2 py-0.5 rounded-md bg-brand-nude border border-brand-line text-brand-muted text-[10px] font-bold">
-                                Sob Encomenda
-                              </span>
-                            ) : isBaixo ? (
-                              <span className="px-2 py-0.5 rounded-md bg-brand-nude border border-brand-line text-brand-chocolate text-[10px] font-bold">
-                                Estoque Baixo
-                              </span>
-                            ) : p.tipoDisponibilidade === 'ENCOMENDA' ? (
-                              <span className="px-2 py-0.5 rounded-md bg-brand-nude border border-brand-line text-brand-muted text-[10px] font-bold">
-                                Encomenda
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-md bg-brand-nude border border-brand-line text-brand-chocolate text-[10px] font-bold">
-                                Normal
-                              </span>
-                            )}
                           </td>
 
                           {/* Botão de Ação Rápida */}
