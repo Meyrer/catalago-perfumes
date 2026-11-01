@@ -10,6 +10,7 @@ import { useDialog } from './useDialog';
 import FragranceSearch from '@/components/FragranceSearch';
 import CustomOrderModal from '@/components/CustomOrderModal';
 import { normalizeProductGender, PRODUCT_GENDERS, type ProductGender } from '@/lib/product-gender';
+import { normalizeImageUrl } from '@/lib/image-url';
 
 type Foto = { id: number; url: string };
 type Categoria = { id: number; nome: string; imagemUrl?: string | null };
@@ -2366,7 +2367,7 @@ function ProductCard({
     : 0;
 
   return (
-    <article className="product-card group">
+    <article className={'product-card group' + (isProntaEntrega ? ' product-card-in-stock' : '')}>
       <div className="product-visual">
         {/* Badges no topo esquerdo */}
         {hasDiscount ? (
@@ -2410,8 +2411,8 @@ function ProductCard({
         </h3>
 
         <p className={'product-availability ' + (isProntaEntrega ? 'in-stock text-brand-chocolate' : 'text-brand-muted')}>
-          {isProntaEntrega ? <Check size={13} className="text-brand-chocolate" /> : <Clock size={13} className="text-brand-muted" />}
-          {isProntaEntrega ? 'Pronta entrega' : 'Sob encomenda'}
+          {isProntaEntrega ? <CheckCircle2 size={15} aria-hidden="true" /> : <Clock size={13} className="text-brand-muted" />}
+          {isProntaEntrega ? 'Em estoque · Pronta entrega' : 'Sob encomenda'}
         </p>
 
         <div className="product-pricing">
@@ -2445,8 +2446,9 @@ function ProductCard({
 
 function ProductImage({src,alt,...props}: React.ImgHTMLAttributes<HTMLImageElement>) {
   const [failedSrc,setFailedSrc] = useState<string | null>(null);
-  if (!src || failedSrc===src) return <span className={'image-placeholder '+(props.className || '')} role="img" aria-label={alt || 'Imagem indisponível'}><Sparkles size={28}/><span>Imagem indisponível</span></span>;
+  const normalizedSrc = typeof src === 'string' ? normalizeImageUrl(src) : src;
+  if (!normalizedSrc || failedSrc===normalizedSrc) return <span className={'image-placeholder '+(props.className || '')} role="img" aria-label={alt || 'Imagem indisponível'}><Sparkles size={28}/><span>Imagem indisponível</span></span>;
   // Existing local and remote images keep their URLs; no extra proxy or external dependency.
   // eslint-disable-next-line @next/next/no-img-element
-  return <img {...props} src={src} alt={alt} decoding="async" onError={()=>setFailedSrc(typeof src==='string'?src:null)}/>;
+  return <img {...props} src={normalizedSrc} alt={alt} decoding="async" onError={()=>setFailedSrc(typeof normalizedSrc==='string'?normalizedSrc:null)}/>;
 }

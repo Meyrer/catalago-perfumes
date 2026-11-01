@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { ERPData } from '../types';
+import { normalizeImageUrl } from '@/lib/image-url';
 import { 
   TrendingUp, DollarSign, Package, AlertTriangle, 
   ShoppingBag, Clock, ArrowUpRight, ArrowDownRight, 
@@ -12,6 +13,26 @@ type Props = {
   data: ERPData;
   onNavigate: (tab: string) => void;
 };
+
+function DashboardProductThumbnail({ fotoUrl, nome }: { fotoUrl?: string; nome: string }) {
+  const [error, setError] = useState(false);
+  const normalized = normalizeImageUrl(fotoUrl);
+
+  if (!normalized || error) {
+    return <Package size={18} className="text-brand-muted" />;
+  }
+
+  return (
+    <img
+      src={normalized}
+      alt={nome}
+      width={40}
+      height={40}
+      className="w-full h-full object-contain p-0.5"
+      onError={() => setError(true)}
+    />
+  );
+}
 
 export default function DashboardView({ data, onNavigate }: Props) {
   const [salesTimeframe, setSalesTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
@@ -94,7 +115,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
     const map = new Map<number, { produto: typeof produtos[0]; qtd: number; totalVendas: number }>();
     for (const v of vendasPagas) {
       for (const item of v.itens) {
-        const prod = item.produto;
+        const prod = produtos.find(p => p.id === item.produtoId) || item.produto;
         if (!prod) continue;
         const current = map.get(prod.id) || { produto: prod as unknown as typeof produtos[0], qtd: 0, totalVendas: 0 };
         current.qtd += item.quantidade;
@@ -643,17 +664,10 @@ export default function DashboardView({ data, onNavigate }: Props) {
                       #{idx + 1}
                     </span>
                     <div className="w-10 h-10 rounded-xl bg-brand-cream border border-brand-line overflow-hidden shrink-0 flex items-center justify-center">
-                      {item.produto.fotos && item.produto.fotos[0] ? (
-                          <img
-                          src={item.produto.fotos[0].url} 
-                          alt={item.produto.nome} 
-                          width={40} 
-                          height={40} 
-                          className="w-full h-full object-contain p-0.5" 
-                        />
-                      ) : (
-                        <Package size={18} className="text-brand-muted" />
-                      )}
+                      <DashboardProductThumbnail
+                        fotoUrl={item.produto.fotos && item.produto.fotos[0]?.url}
+                        nome={item.produto.nome}
+                      />
                     </div>
                     <div>
                       <p className="text-xs font-bold text-brand-chocolate leading-tight">

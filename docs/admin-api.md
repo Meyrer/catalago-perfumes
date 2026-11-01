@@ -2,7 +2,7 @@
 
 Base URL local: `http://localhost:3000/api/admin`
 
-Base URL de produção: `https://perfumes.meyrer.com/api/admin`
+Base URL de produção: `https://perfumio.app/api/admin`
 
 Configure `API_ADMIN_KEY` no ambiente do servidor com uma chave aleatória longa e mantenha-a privada. Envie-a em todas as chamadas administrativas:
 
@@ -94,7 +94,7 @@ Imagens aceitam URL HTTP/HTTPS ou caminho `/uploads/...`. Esta API recebe endere
 ## Exemplo com curl
 
 ```sh
-curl -X POST "https://perfumes.meyrer.com/api/admin/products" \
+curl -X POST "https://perfumio.app/api/admin/products" \
   -H "Authorization: Bearer $API_ADMIN_KEY" \
   -H "Content-Type: application/json" \
   --data '{"nome":"Perfume Exemplo","marca":"Marca Exemplo","categoriaId":1,"precoVista":349.90,"quantidade":5}'
