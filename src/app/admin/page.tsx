@@ -5,6 +5,7 @@ import AdminChangePasswordForm from "./AdminChangePasswordForm";
 import { getAdminSession } from "@/lib/auth";
 import type { ERPData } from "./types";
 import { plainPrismaData } from "@/lib/admin-api";
+import { normalizeImageUrl } from "@/lib/image-url";
 
 export const dynamic = "force-dynamic";
 
@@ -111,17 +112,44 @@ export default async function AdminPage() {
       ...produto,
       fotos: produto.fotos.map(foto => ({
         ...foto,
-        url: foto.url.replace(/^https?:\/\/perfumes\.meyrer\.com(?=\/uploads\/)/i, ""),
+        url: normalizeImageUrl(foto.url),
       })),
     })),
-    categorias,
-    banners,
+    categorias: categorias.map(categoria => ({
+      ...categoria,
+      imagemUrl: categoria.imagemUrl ? normalizeImageUrl(categoria.imagemUrl) : categoria.imagemUrl,
+    })),
+    banners: banners.map(banner => ({
+      ...banner,
+      imagemUrl: normalizeImageUrl(banner.imagemUrl),
+    })),
     fornecedores,
     movimentacoes,
     compras,
-    vendas,
+    vendas: vendas.map(venda => ({
+      ...venda,
+      itens: venda.itens.map(item => ({
+        ...item,
+        produto: item.produto ? {
+          ...item.produto,
+          fotos: item.produto.fotos ? item.produto.fotos.map(foto => ({
+            ...foto,
+            url: normalizeImageUrl(foto.url),
+          })) : [],
+        } : item.produto,
+      })),
+    })),
     clientes,
-    encomendas,
+    encomendas: encomendas.map(encomenda => ({
+      ...encomenda,
+      produto: encomenda.produto ? {
+        ...encomenda.produto,
+        fotos: encomenda.produto.fotos ? encomenda.produto.fotos.map(foto => ({
+          ...foto,
+          url: normalizeImageUrl(foto.url),
+        })) : [],
+      } : encomenda.produto,
+    })),
     despesas
   }) as unknown as ERPData;
 
