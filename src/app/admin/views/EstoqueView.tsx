@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef } from 'react';
 import type { ERPData, AdminProduto } from '../types';
+import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
 import { 
   Boxes, AlertTriangle, ArrowDownRight, ArrowUpRight, 
   Search, History, RefreshCw, X, Loader2,
@@ -15,12 +16,16 @@ type Props = {
   onRefresh?: () => void;
 };
 
+const STOCK_PAGE_SIZE = 20;
+
 export default function EstoqueView({ data }: Props) {
   const { produtos, movimentacoes, user } = data;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'BAIXO' | 'ZERADO' | 'PRONTA_ENTREGA' | 'ENCOMENDA'>('ALL');
   const [activeSubTab, setActiveSubTab] = useState<'saldo' | 'historico'>('saldo');
+  const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
+  const [page, setPage] = useState(1);
   const [previewProduct, setPreviewProduct] = useState<AdminProduto | null>(null);
   const photoDialogRef = useRef<HTMLDialogElement>(null);
 
@@ -54,7 +59,19 @@ export default function EstoqueView({ data }: Props) {
     });
   }, [produtos, searchTerm, filterType]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredProdutos.length / STOCK_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * STOCK_PAGE_SIZE;
+  const paginatedProdutos = filteredProdutos.slice(pageStart, pageStart + STOCK_PAGE_SIZE);
+
+  const handleFilterChange = (filter: typeof filterType) => {
+    setFilterType(filter);
+    setPage(1);
+  };
+
   // Totais de Estoque
+  const filteredMovimentacoes = useMemo(() => movimentacoes.filter(movimentacao => isInMonth(movimentacao.createdAt, selectedMonth)), [movimentacoes, selectedMonth]);
+
   const totalFisico = useMemo(() => produtos.reduce((acc, p) => acc + (p.quantidade || 0), 0), [produtos]);
   const totalCusto = useMemo(() => produtos.reduce((acc, p) => acc + (p.precoCusto || 0) * (p.quantidade || 0), 0), [produtos]);
   const totalVenda = useMemo(() => produtos.reduce((acc, p) => acc + (p.precoVista || 0) * (p.quantidade || 0), 0), [produtos]);
@@ -191,7 +208,10 @@ export default function EstoqueView({ data }: Props) {
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Buscar por nome, marca ou SKU..."
                 className="w-full pl-10 pr-4 py-2.5 bg-brand-nude focus:bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line focus:border-brand-caramel outline-none transition-all font-medium"
               />
@@ -200,7 +220,7 @@ export default function EstoqueView({ data }: Props) {
             {/* Pílulas de Filtro */}
             <div className="flex items-center gap-1 bg-brand-nude p-1 rounded-xl border border-brand-line overflow-x-auto no-scrollbar">
               <button
-                onClick={() => setFilterType('ALL')}
+                onClick={() => handleFilterChange('ALL')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   filterType === 'ALL' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-muted hover:text-brand-chocolate'
                 }`}
@@ -208,7 +228,7 @@ export default function EstoqueView({ data }: Props) {
                 Todos ({produtos.length})
               </button>
               <button
-                onClick={() => setFilterType('BAIXO')}
+                onClick={() => handleFilterChange('BAIXO')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   filterType === 'BAIXO' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-chocolate hover:text-brand-chocolate'
                 }`}
@@ -216,7 +236,7 @@ export default function EstoqueView({ data }: Props) {
                 Estoque Baixo
               </button>
               <button
-                onClick={() => setFilterType('ZERADO')}
+                onClick={() => handleFilterChange('ZERADO')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   filterType === 'ZERADO' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-chocolate hover:text-brand-chocolate'
                 }`}
@@ -224,7 +244,7 @@ export default function EstoqueView({ data }: Props) {
                 Sem Estoque
               </button>
               <button
-                onClick={() => setFilterType('PRONTA_ENTREGA')}
+                onClick={() => handleFilterChange('PRONTA_ENTREGA')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   filterType === 'PRONTA_ENTREGA' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-chocolate hover:text-brand-chocolate'
                 }`}
@@ -232,7 +252,7 @@ export default function EstoqueView({ data }: Props) {
                 Pronta Entrega
               </button>
               <button
-                onClick={() => setFilterType('ENCOMENDA')}
+                onClick={() => handleFilterChange('ENCOMENDA')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   filterType === 'ENCOMENDA' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-muted hover:text-brand-deep'
                 }`}
@@ -266,7 +286,7 @@ export default function EstoqueView({ data }: Props) {
                       </td>
                     </tr>
                   ) : (
-                    filteredProdutos.map((p) => {
+                    paginatedProdutos.map((p) => {
                       const disponivel = Math.max(0, (p.quantidade || 0) - (p.quantidadeReservada || 0));
                       const isBaixo = p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade <= (p.estoqueMinimo || 2) && p.quantidade > 0;
                       const isZerado = p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade === 0;
@@ -374,6 +394,26 @@ export default function EstoqueView({ data }: Props) {
                 </tbody>
               </table>
             </div>
+            {filteredProdutos.length > 0 && (
+              <nav aria-label="Paginação do estoque" className="flex flex-col gap-3 border-t border-brand-line px-4 py-3 text-xs text-brand-muted sm:flex-row sm:items-center sm:justify-between">
+                <span>Mostrando {pageStart + 1}–{Math.min(pageStart + STOCK_PAGE_SIZE, filteredProdutos.length)} de {filteredProdutos.length} produtos</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() => setPage(currentPage - 1)}
+                    className="rounded-lg border border-brand-line px-3 py-2 font-semibold text-brand-chocolate hover:bg-brand-cream cursor-pointer disabled:opacity-40 disabled:cursor-default"
+                  >Anterior</button>
+                  <span aria-live="polite">Página {currentPage} de {totalPages}</span>
+                  <button
+                    type="button"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setPage(currentPage + 1)}
+                    className="rounded-lg border border-brand-line px-3 py-2 font-semibold text-brand-chocolate hover:bg-brand-cream cursor-pointer disabled:opacity-40 disabled:cursor-default"
+                  >Próxima</button>
+                </div>
+              </nav>
+            )}
           </div>
         </div>
       )}
@@ -383,13 +423,14 @@ export default function EstoqueView({ data }: Props) {
       {/* ========================================================= */}
       {activeSubTab === 'historico' && (
         <div className="bg-brand-card rounded-2xl border border-brand-line shadow-xs overflow-hidden">
+          <MonthFilter value={selectedMonth} onChange={setSelectedMonth} />
           <div className="p-4 border-b border-brand-line flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-brand-chocolate">Registro Geral de Auditoria de Estoque</h3>
               <p className="text-[11px] text-brand-muted">Todas as entradas, saídas, vendas e ajustes manuais registrados no sistema.</p>
             </div>
             <span className="text-xs font-bold text-brand-muted">
-              {movimentacoes.length} registros
+              {filteredMovimentacoes.length} registros
             </span>
           </div>
 
@@ -407,14 +448,14 @@ export default function EstoqueView({ data }: Props) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-nude text-xs">
-                {movimentacoes.length === 0 ? (
+                {filteredMovimentacoes.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-10 text-xs text-brand-muted">
-                      Nenhuma movimentação de estoque registrada.
+                      Nenhuma movimentação de estoque registrada neste período.
                     </td>
                   </tr>
                 ) : (
-                  movimentacoes.map((m) => {
+                  filteredMovimentacoes.map((m) => {
                     const dataFormatada = new Date(m.createdAt).toLocaleString('pt-BR', {
                       day: '2-digit', month: '2-digit', year: 'numeric',
                       hour: '2-digit', minute: '2-digit'

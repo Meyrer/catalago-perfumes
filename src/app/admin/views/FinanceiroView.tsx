@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { ERPData } from '../types';
+import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
 import { 
   DollarSign, TrendingUp, TrendingDown, Plus, 
   Calendar, PieChart, CreditCard, ArrowUpRight, 
@@ -17,6 +18,7 @@ export default function FinanceiroView({ data }: Props) {
   const { vendas, despesas, encomendas } = data;
 
   const [periodo, setPeriodo] = useState<'hoje' | '7d' | '30d' | 'mes' | 'todos'>('mes');
+  const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
   const [isNewDespesaOpen, setIsNewDespesaOpen] = useState(false);
   const [descDespesa, setDescDespesa] = useState('');
   const [catDespesa, setCatDespesa] = useState('EMBALAGENS');
@@ -45,14 +47,14 @@ export default function FinanceiroView({ data }: Props) {
     return vendas.filter(v => {
       const vDate = new Date(v.data);
       const isPaid = v.status === 'PAGO' || v.status === 'ENVIADO' || v.status === 'ENTREGUE';
-      return isPaid && vDate >= dataCorte;
+      return isPaid && (periodo === 'mes' ? isInMonth(v.data, selectedMonth) : vDate >= dataCorte);
     });
-  }, [vendas, dataCorte]);
+  }, [vendas, dataCorte, periodo, selectedMonth]);
 
   // Despesas no Período
   const despesasFiltradas = useMemo(() => {
-    return despesas.filter(d => new Date(d.data) >= dataCorte);
-  }, [despesas, dataCorte]);
+    return despesas.filter(d => periodo === 'mes' ? isInMonth(d.data, selectedMonth) : new Date(d.data) >= dataCorte);
+  }, [despesas, dataCorte, periodo, selectedMonth]);
 
   // Indicadores DRE
   const receitaBruta = useMemo(() => vendasFiltradas.reduce((acc, v) => acc + v.valorTotal, 0), [vendasFiltradas]);
@@ -143,9 +145,12 @@ export default function FinanceiroView({ data }: Props) {
             {(['hoje', '7d', '30d', 'mes', 'todos'] as const).map(p => (
               <button
                 key={p}
-                onClick={() => setPeriodo(p)}
+                onClick={() => {
+                  setPeriodo(p);
+                  if (p === 'mes') setSelectedMonth(getMonthKey());
+                }}
                 className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  periodo === p ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-muted hover:text-brand-chocolate'
+                  periodo === p && (p !== 'mes' || selectedMonth === getMonthKey()) ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-muted hover:text-brand-chocolate'
                 }`}
               >
                 {p === 'hoje' ? 'Hoje' : p === '7d' ? '7 dias' : p === '30d' ? '30 dias' : p === 'mes' ? 'Mês Atual' : 'Todo o Histórico'}
@@ -166,6 +171,14 @@ export default function FinanceiroView({ data }: Props) {
           </button>
         </div>
       </div>
+
+      <MonthFilter
+        value={periodo === 'mes' ? selectedMonth : ''}
+        onChange={month => {
+          setSelectedMonth(month);
+          setPeriodo(month ? 'mes' : 'todos');
+        }}
+      />
 
       {feedback && (
         <div className="p-3.5 rounded-2xl bg-brand-nude border border-brand-line text-brand-chocolate text-xs font-bold flex items-center justify-between">

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { ERPData, AdminEncomenda } from '../types';
+import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
 import { 
   Clock, Plus, Search, MessageCircle, ChevronRight, 
   CheckCircle2, AlertCircle, X, Loader2, DollarSign, 
@@ -29,6 +30,7 @@ export default function EncomendasView({ data }: Props) {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
 
   // Modal Nova Encomenda
   const [isNewOpen, setIsNewOpen] = useState(false);
@@ -59,9 +61,9 @@ export default function EncomendasView({ data }: Props) {
         (e.marca && e.marca.toLowerCase().includes(searchTerm.toLowerCase()));
 
       const matchStatus = filterStatus === 'ALL' || e.status === filterStatus;
-      return matchSearch && matchStatus;
+      return matchSearch && matchStatus && isInMonth(e.createdAt, selectedMonth);
     });
-  }, [encomendas, searchTerm, filterStatus]);
+  }, [encomendas, searchTerm, filterStatus, selectedMonth]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,6 +151,8 @@ export default function EncomendasView({ data }: Props) {
           <span>Registrar Nova Encomenda</span>
         </button>
       </div>
+
+      <MonthFilter value={selectedMonth} onChange={setSelectedMonth} />
 
       {feedback && (
         <div className="p-3.5 rounded-2xl bg-brand-nude border border-brand-line text-brand-chocolate text-xs font-bold flex items-center justify-between">

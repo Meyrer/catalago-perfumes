@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { ERPData } from '../types';
+import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
 import { 
   BarChart3, Download, Copy, CheckCheck, 
   TrendingUp, TrendingDown, Percent, DollarSign, 
@@ -17,11 +18,12 @@ export default function RelatoriosView({ data }: Props) {
 
   const [activeReport, setActiveReport] = useState<'mais_vendidos' | 'maior_lucro' | 'maior_margem' | 'estoque_parado' | 'marcas'>('mais_vendidos');
   const [copied, setCopied] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
 
   // Vendas pagas
   const vendasPagas = useMemo(() => {
-    return vendas.filter(v => v.status === 'PAGO' || v.status === 'ENVIADO' || v.status === 'ENTREGUE');
-  }, [vendas]);
+    return vendas.filter(v => (v.status === 'PAGO' || v.status === 'ENVIADO' || v.status === 'ENTREGUE') && isInMonth(v.data, selectedMonth));
+  }, [vendas, selectedMonth]);
 
   // Vendas por produto
   const statsPorProduto = useMemo(() => {
@@ -133,6 +135,8 @@ export default function RelatoriosView({ data }: Props) {
           <span>Exportar Relatório CSV</span>
         </button>
       </div>
+
+      <MonthFilter value={selectedMonth} onChange={setSelectedMonth} />
 
       {/* SELEÇÃO DO TIPO DE RELATÓRIO */}
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
