@@ -91,6 +91,26 @@ Fornecedor: `nome` obrigatório; aceita `contato`, `cidadePais` e `observacoes`.
 
 Imagens aceitam URL HTTP/HTTPS ou caminho `/uploads/...`. Esta API recebe endereços de imagem, não upload de arquivo.
 
+## Despesas
+
+| Método | Caminho | Ação |
+| --- | --- | --- |
+| GET | `/expenses?limit=100` | Lista as despesas mais recentes (até 200). |
+| POST | `/expenses` | Registra uma despesa separada no DRE, sem alterar custos ou estoque dos produtos. |
+
+Campos obrigatórios: `descricao` e `valor` (número em reais, mínimo de R$ 0,01). Campos opcionais: `categoria` (`EMBALAGENS`, `FRETE`, `MARKETING`, `IMPOSTOS`, `ESTRUTURA` ou `OUTROS`, padrão `OUTROS`), `data` (ISO em UTC, padrão agora), `pago` (booleano, padrão `true`), `formaPagamento` e `observacoes`.
+
+Exemplo de corpo para frete separado:
+
+```json
+{
+  "descricao": "Barbara Freteira — Frete Brand Collection / Dora",
+  "categoria": "FRETE",
+  "valor": 571.55,
+  "observacoes": "Frete registrado separadamente, sem rateio no custo dos perfumes."
+}
+```
+
 ## Exemplo com curl
 
 ```sh
