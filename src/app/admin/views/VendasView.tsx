@@ -8,7 +8,7 @@ import {
   X, Loader2, DollarSign, Calendar, User, Truck, 
   CreditCard, ChevronRight, Eye, AlertCircle, Pencil, Trash2
 } from 'lucide-react';
-import { createVendaAction, updateVendaAction, updateVendaStatusAction, deleteVendaAction } from '../../actions';
+import { createVendaAction, updateVendaStatusAction, deleteVendaAction } from '../../actions';
 
 type Props = {
   data: ERPData;
@@ -180,11 +180,20 @@ export default function VendasView({ data }: Props) {
         observacoes
       };
       if (editingVenda) {
-        await updateVendaAction(editingVenda.id, {
-          ...payload,
-          updatedAt: new Date(editingVenda.updatedAt).toISOString(),
-          data: new Date(dataVenda).toISOString(),
+        const response = await fetch(`/api/erp/sales/${editingVenda.id}`, {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...payload,
+            updatedAt: new Date(editingVenda.updatedAt).toISOString(),
+            data: new Date(dataVenda).toISOString(),
+          }),
         });
+        const result: { success?: boolean; error?: string } | null = await response.json().catch(() => null);
+        if (!response.ok || !result?.success) {
+          throw new Error(result?.error || 'Não foi possível salvar a venda. Os dados preenchidos foram mantidos; tente novamente.');
+        }
       } else {
         await createVendaAction(payload);
       }
