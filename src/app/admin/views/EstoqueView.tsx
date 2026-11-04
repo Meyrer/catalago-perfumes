@@ -57,7 +57,7 @@ export default function EstoqueView({ data }: Props) {
       }
 
       return matchSearch && matchFilter;
-    }));
+    }).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })));
   }, [produtos, searchTerm, filterType]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProdutos.length / STOCK_PAGE_SIZE));
