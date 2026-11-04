@@ -397,7 +397,8 @@ export default function CatalogClient({
   // Nomes concisos e elegantes para o menu superior (sem cortes)
   const getCategoryShortName = (nome: string) => {
     const clean = nome.trim().toLowerCase();
-    if (clean.includes('mini') || clean.includes('brand')) return 'Mini 25ml';
+    if (clean.includes('mini')) return 'Mini 25ml';
+    if (clean.includes('brand')) return 'Brand Collection';
     if (clean.includes('splash')) return 'Body Splash';
     if (clean.includes('creme') || clean.includes('loção') || clean.includes('locao')) return 'Cremes';
     if (clean.includes('feminino')) return 'Femininos';

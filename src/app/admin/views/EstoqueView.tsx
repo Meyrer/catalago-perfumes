@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import type { ERPData, AdminProduto } from '../types';
 import { 
   Boxes, AlertTriangle, ArrowDownRight, ArrowUpRight, 
@@ -21,6 +21,8 @@ export default function EstoqueView({ data }: Props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'BAIXO' | 'ZERADO' | 'PRONTA_ENTREGA' | 'ENCOMENDA'>('ALL');
   const [activeSubTab, setActiveSubTab] = useState<'saldo' | 'historico'>('saldo');
+  const [previewProduct, setPreviewProduct] = useState<AdminProduto | null>(null);
+  const photoDialogRef = useRef<HTMLDialogElement>(null);
 
   // Modal de Movimentação
   const [movingProduct, setMovingProduct] = useState<AdminProduto | null>(null);
@@ -276,13 +278,23 @@ export default function EstoqueView({ data }: Props) {
                           {/* Produto e Marca */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-9 h-9 rounded-xl bg-brand-cream border border-brand-line overflow-hidden shrink-0 flex items-center justify-center">
+                              <button
+                                type="button"
+                                disabled={!p.fotos?.[0]}
+                                aria-label={`Ampliar foto de ${p.nome}`}
+                                title="Ampliar foto"
+                                onClick={() => {
+                                  setPreviewProduct(p);
+                                  photoDialogRef.current?.showModal();
+                                }}
+                                className="w-9 h-9 rounded-xl bg-brand-cream border border-brand-line overflow-hidden shrink-0 flex items-center justify-center cursor-zoom-in disabled:cursor-default focus-visible:outline-2 focus-visible:outline-brand-chocolate"
+                              >
                                 {p.fotos && p.fotos[0] ? (
                                   <img src={normalizeImageUrl(p.fotos[0].url)} alt={p.nome} width={36} height={36} className="w-full h-full object-contain p-0.5" />
                                 ) : (
                                   <Package size={16} className="text-brand-muted" />
                                 )}
-                              </div>
+                              </button>
                               <div>
                                 <p className="font-bold text-brand-chocolate leading-tight line-clamp-1">{p.nome}</p>
                                 <p className="text-[10px] text-brand-muted font-medium">
@@ -450,6 +462,37 @@ export default function EstoqueView({ data }: Props) {
           </div>
         </div>
       )}
+
+      <dialog
+        ref={photoDialogRef}
+        aria-label="Foto ampliada do produto"
+        className="m-auto w-[92vw] max-w-3xl max-h-[92vh] overflow-auto rounded-2xl border border-brand-line bg-brand-card p-4 backdrop:bg-black/70"
+        onClick={(event) => {
+          if (event.target === event.currentTarget) event.currentTarget.close();
+        }}
+      >
+        {previewProduct?.fotos?.[0] && (
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-sm font-bold text-brand-chocolate">{previewProduct.nome}</p>
+              <button
+                type="button"
+                autoFocus
+                aria-label="Fechar foto ampliada"
+                onClick={() => photoDialogRef.current?.close()}
+                className="shrink-0 rounded-full p-2 text-brand-chocolate hover:bg-brand-nude cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <img
+              src={normalizeImageUrl(previewProduct.fotos[0].url)}
+              alt={previewProduct.nome}
+              className="max-h-[75vh] w-full rounded-xl object-contain"
+            />
+          </div>
+        )}
+      </dialog>
 
       {/* ========================================================= */}
       {/* MODAL DE MOVIMENTAÇÃO RÁPIDA DE ESTOQUE */}
