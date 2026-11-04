@@ -62,6 +62,21 @@ export function isProdutoProntaEntrega(p?: { tipoDisponibilidade: string; quanti
   return p.tipoDisponibilidade === 'PRONTA_ENTREGA' && (p.quantidade ?? 1) > 0;
 }
 
+function getCatalogPrice(produto: Produto): string {
+  if (!isProdutoProntaEntrega(produto)) return produto.tipoDisponibilidade === 'ENCOMENDA' ? 'Preço sob consulta' : 'Consulte reposição';
+  return produto.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function getAvailabilityLabel(produto: Produto): string {
+  if (isProdutoProntaEntrega(produto)) return 'Em estoque · Pronta entrega';
+  return produto.tipoDisponibilidade === 'ENCOMENDA' ? 'Sob encomenda' : 'Esgotado';
+}
+
+function getContactActionLabel(produto: Produto): string {
+  if (isProdutoProntaEntrega(produto)) return 'Comprar no WhatsApp';
+  return produto.tipoDisponibilidade === 'ENCOMENDA' ? 'Solicitar orçamento' : 'Consultar reposição';
+}
+
 export function isVolumeBadge(badge?: string | null, volume?: string | null): boolean {
   if (!badge) return true;
   const b = badge.trim().toLowerCase();
@@ -70,7 +85,7 @@ export function isVolumeBadge(badge?: string | null, volume?: string | null): bo
 }
 
 function hasVisibleDiscount(produto: Produto): produto is Produto & { precoOriginal: number } {
-  return produto.precoOriginal !== null && produto.precoOriginal > 0 &&
+  return isProdutoProntaEntrega(produto) && produto.precoOriginal !== null && produto.precoOriginal > 0 &&
     (produto.precoOriginal - produto.precoVista) / produto.precoOriginal >= 0.05;
 }
 
@@ -86,7 +101,8 @@ interface CatalogFilterCriteria {
 
 function testProductFilter(p: Produto, filters: CatalogFilterCriteria): boolean {
   if (filters.availabilityFilter === 'PRONTA_ENTREGA' && !isProdutoProntaEntrega(p)) return false;
-  if (filters.availabilityFilter === 'ENCOMENDA' && isProdutoProntaEntrega(p)) return false;
+  if (filters.availabilityFilter === 'ENCOMENDA' && p.tipoDisponibilidade !== 'ENCOMENDA') return false;
+  if ((filters.onlyPromos || filters.activeCategory === 'promocoes' || (filters.priceRange && filters.priceRange !== 'todos')) && !isProdutoProntaEntrega(p)) return false;
 
   if (filters.activeCategory && filters.activeCategory !== 'todos' && filters.activeCategory !== 'promocoes') {
     if (p.categoria?.nome?.trim().toLowerCase() !== filters.activeCategory.trim().toLowerCase()) return false;
@@ -450,7 +466,7 @@ export default function CatalogClient({
         const parsed: unknown = JSON.parse(savedCart);
         if (Array.isArray(parsed)) setCart(parsed.flatMap(item => {
           const produto = initialProdutos.find(p => p.id === item?.produto?.id);
-          return produto && Number.isInteger(item.qtd) && item.qtd > 0 ? [{produto, qtd: item.qtd}] : [];
+          return produto && isProdutoProntaEntrega(produto) && Number.isInteger(item.qtd) && item.qtd > 0 ? [{produto, qtd: item.qtd}] : [];
         }));
       }
     } catch (e) {
@@ -479,6 +495,10 @@ export default function CatalogClient({
 
   const addToCart = (produto: Produto, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (!isProdutoProntaEntrega(produto)) {
+      buyDirectOnWhatsApp(produto);
+      return;
+    }
     setCart(prev => {
       const exists = prev.find(item => item.produto.id === produto.id);
       let updated;
@@ -536,8 +556,10 @@ export default function CatalogClient({
     let msg = "";
     if (isProdutoProntaEntrega(produto)) {
       msg = `Olá! Tenho interesse no *${productName}* (${produto.marca}), no valor de ${formattedPrice}. Ele ainda está disponível para entrega ou retirada?`;
+    } else if (produto.tipoDisponibilidade === 'ENCOMENDA') {
+      msg = `Olá! Gostaria de solicitar um orçamento para encomendar o *${productName}* (${produto.marca}). Qual é o valor atualizado e o prazo de chegada?`;
     } else {
-      msg = `Olá! Gostaria de encomendar o *${productName}* (${produto.marca}), no valor de ${formattedPrice}. Qual é o prazo de chegada?`;
+      msg = `Olá! Vi que o *${productName}* (${produto.marca}) está esgotado. Existe previsão de reposição? Poderia confirmar o preço atualizado?`;
     }
 
     setWhatsappMessage(msg);
@@ -592,7 +614,7 @@ export default function CatalogClient({
     return {
       TODOS: base.length,
       PRONTA_ENTREGA: pronta,
-      ENCOMENDA: base.length - pronta,
+      ENCOMENDA: base.filter(p => p.tipoDisponibilidade === 'ENCOMENDA').length,
     };
   }, [initialProdutos, activeCategory, selectedBrand, selectedGender, searchTerm, onlyPromos, priceRange]);
 
@@ -651,9 +673,9 @@ export default function CatalogClient({
 
     // Sort
     if (sortBy === 'menor-preco') {
-      result.sort((a, b) => a.precoVista - b.precoVista);
+      result.sort((a, b) => Number(isProdutoProntaEntrega(b)) - Number(isProdutoProntaEntrega(a)) || (isProdutoProntaEntrega(a) && isProdutoProntaEntrega(b) ? a.precoVista - b.precoVista : 0));
     } else if (sortBy === 'maior-preco') {
-      result.sort((a, b) => b.precoVista - a.precoVista);
+      result.sort((a, b) => Number(isProdutoProntaEntrega(b)) - Number(isProdutoProntaEntrega(a)) || (isProdutoProntaEntrega(a) && isProdutoProntaEntrega(b) ? b.precoVista - a.precoVista : 0));
     } else if (sortBy === 'novidades') {
       result.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     } else if (sortBy === 'mais-vendidos') {
@@ -990,7 +1012,7 @@ export default function CatalogClient({
                           </span>
                         ) : (
                           <span className="absolute bottom-1.5 left-1.5 right-1.5 text-center text-[9px] font-extrabold uppercase tracking-wider bg-brand-chocolate text-brand-cream py-0.5 rounded shadow-xs">
-                            Sob Encomenda
+                            {getAvailabilityLabel(currentFeatured)}
                           </span>
                         )}
                       </div>
@@ -1046,9 +1068,9 @@ export default function CatalogClient({
 
                         <div className="mt-1 flex items-baseline gap-2 shrink-0 h-[24px]">
                           <span className="text-xl font-extrabold text-brand-chocolate leading-none">
-                            {currentFeatured.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            {getCatalogPrice(currentFeatured)}
                           </span>
-                          <span className="text-xs text-brand-muted font-medium">à vista</span>
+                          {isProdutoProntaEntrega(currentFeatured) && <span className="text-xs text-brand-muted font-medium">à vista</span>}
                         </div>
                       </div>
                     </div>
@@ -1345,7 +1367,7 @@ export default function CatalogClient({
                         ) : (
                           <span className="bg-brand-chocolate text-brand-cream text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md flex items-center gap-1 shadow-xs">
                             <CalendarCheck size={12} />
-                            Sob Encomenda
+                            {getAvailabilityLabel(selectedProduct)}
                           </span>
                         )}
                         {selectedProduct.badge && !isVolumeBadge(selectedProduct.badge, selectedProduct.volume) && (
@@ -1417,11 +1439,11 @@ export default function CatalogClient({
                         {isProdutoProntaEntrega(selectedProduct) ? (
                           <><CheckCircle2 size={16} className="text-brand-chocolate"/> Pronta entrega imediata</>
                         ) : (
-                          <><CalendarCheck size={16} className="text-brand-muted"/> Disponível sob encomenda</>
+                          <><CalendarCheck size={16} className="text-brand-muted"/> {getAvailabilityLabel(selectedProduct)}</>
                         )}
                       </div>
                       <p className="text-brand-muted font-medium">
-                        {selectedProduct.previsaoEntrega || (
+                        {!isProdutoProntaEntrega(selectedProduct) && selectedProduct.tipoDisponibilidade !== 'ENCOMENDA' ? 'Consulte a previsão de reposição pelo WhatsApp.' : selectedProduct.previsaoEntrega || (
                           isProdutoProntaEntrega(selectedProduct)
                             ? 'Envio ou retirada combinada de imediato.'
                             : 'Traga seu cosmético dos sonhos no próximo lote com a gente.'
@@ -1438,11 +1460,11 @@ export default function CatalogClient({
                           </span>
                         )}
                         <span className="text-2xl font-extrabold text-brand-chocolate">
-                          {selectedProduct.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          {getCatalogPrice(selectedProduct)}
                         </span>
-                        <span className="text-xs text-brand-muted font-semibold">à vista</span>
+                        {isProdutoProntaEntrega(selectedProduct) && <span className="text-xs text-brand-muted font-semibold">à vista</span>}
                       </div>
-                      {selectedProduct.precoParcelado && (
+                      {isProdutoProntaEntrega(selectedProduct) && selectedProduct.precoParcelado && (
                         <p className="text-xs text-brand-muted font-bold mt-0.5">
                           {selectedProduct.precoParcelado}
                         </p>
@@ -1460,12 +1482,10 @@ export default function CatalogClient({
                         }`}
                       >
                         <MessageCircle size={18} />
-                        {isProdutoProntaEntrega(selectedProduct)
-                          ? 'Reservar pelo WhatsApp'
-                          : 'Fazer Encomenda pelo WhatsApp'}
+                        {getContactActionLabel(selectedProduct)}
                       </button>
                       
-                      <button 
+                      {isProdutoProntaEntrega(selectedProduct) && <button 
                         onClick={() => {
                           addToCart(selectedProduct);
                           setSelectedProduct(null);
@@ -1473,7 +1493,7 @@ export default function CatalogClient({
                         className="w-full bg-brand-card hover:bg-brand-nude text-brand-chocolate border-2 border-brand-chocolate py-3 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-2xs"
                       >
                         <ShoppingBag size={16} /> Adicionar à Sacola
-                      </button>
+                      </button>}
                     </div>
 
                     {/* GUIA DE USO & RENDIMENTO (Mobile: após ações de compra e antes da descrição) */}
@@ -1624,7 +1644,7 @@ export default function CatalogClient({
                         <span className="text-[10px] text-brand-muted font-extrabold uppercase truncate">{rel.marca}</span>
                         <p className="text-xs font-bold text-brand-chocolate truncate mb-1">{rel.nome}</p>
                         <span className="text-xs font-extrabold text-brand-chocolate mt-auto">
-                          {rel.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          {getCatalogPrice(rel)}
                         </span>
                       </div>
                     ))}
@@ -1643,9 +1663,9 @@ export default function CatalogClient({
                   }`}
                 >
                   <MessageCircle size={16} />
-                  <span>{isProdutoProntaEntrega(selectedProduct) ? 'Reservar no WhatsApp' : 'Encomendar no WhatsApp'}</span>
+                  <span>{getContactActionLabel(selectedProduct)}</span>
                 </button>
-                <button
+                {isProdutoProntaEntrega(selectedProduct) && <button
                   onClick={() => {
                     addToCart(selectedProduct);
                     setSelectedProduct(null);
@@ -1655,7 +1675,7 @@ export default function CatalogClient({
                   className="w-12 h-11 bg-brand-card hover:bg-brand-nude text-brand-chocolate border-2 border-brand-chocolate rounded-xl font-bold flex items-center justify-center transition-colors cursor-pointer shrink-0"
                 >
                   <ShoppingBag size={18} />
-                </button>
+                </button>}
               </div>
 
             </motion.div>
@@ -1752,7 +1772,7 @@ export default function CatalogClient({
 
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-sm font-extrabold text-brand-rose-beige">
-                  {selectedProduct.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  {getCatalogPrice(selectedProduct)}
                 </span>
               </div>
             </div>
@@ -2181,7 +2201,7 @@ export default function CatalogClient({
                         <span className="text-[10px] text-brand-muted uppercase font-extrabold">{fav.marca}</span>
                         <h4 className="text-xs font-bold text-brand-chocolate line-clamp-1">{fav.nome}</h4>
                         <span className="text-xs font-extrabold text-brand-chocolate">
-                          {fav.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          {getCatalogPrice(fav)}
                         </span>
                       </div>
                       <div className="flex flex-col gap-1">
@@ -2413,32 +2433,32 @@ function ProductCard({
 
         <p className={'product-availability ' + (isProntaEntrega ? 'in-stock text-brand-chocolate' : 'text-brand-muted')}>
           {isProntaEntrega ? <CheckCircle2 size={15} aria-hidden="true" /> : <Clock size={13} className="text-brand-muted" />}
-          {isProntaEntrega ? 'Em estoque · Pronta entrega' : 'Sob encomenda'}
+          {getAvailabilityLabel(produto)}
         </p>
 
         <div className="product-pricing">
           {hasDiscount && <span className="original-price">{produto.precoOriginal!.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
-          <strong>{produto.precoVista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
-          <small>{produto.precoParcelado || 'Consulte condições de pagamento'}</small>
+          <strong style={isProntaEntrega ? undefined : { fontSize: '1rem' }}>{getCatalogPrice(produto)}</strong>
+          <small>{isProntaEntrega ? produto.precoParcelado || 'Consulte condições de pagamento' : produto.tipoDisponibilidade === 'ENCOMENDA' ? 'Consulte valor e prazo de chegada' : 'Consulte a previsão de reposição'}</small>
         </div>
 
         <div className="product-actions">
           <button 
             className="button-primary flex items-center justify-center gap-1.5 cursor-pointer" 
             onClick={e => onBuyWhatsApp(produto, e)}
-            title={isProntaEntrega ? 'Comprar pelo WhatsApp' : 'Consultar pelo WhatsApp'}
+            title={getContactActionLabel(produto)}
           >
             <MessageCircle size={15} />
-            <span>{isProntaEntrega ? 'Comprar no WhatsApp' : 'Consultar no WhatsApp'}</span>
+            <span>{getContactActionLabel(produto)}</span>
           </button>
-          <button 
+          {isProntaEntrega && <button 
             className="button-secondary hidden md:flex items-center justify-center cursor-pointer"
             aria-label={'Adicionar à sacola: ' + produto.nome} 
             onClick={e => onAddToCart(produto, e)}
             title="Adicionar à sacola"
           >
             <ShoppingBag size={17} />
-          </button>
+          </button>}
         </div>
       </div>
     </article>
