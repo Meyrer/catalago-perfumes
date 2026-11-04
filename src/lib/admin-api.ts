@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 export function apiError(message: string, status: number) {
   return NextResponse.json({ success: false, error: message }, { status });
@@ -11,9 +12,8 @@ export function apiSuccess<T>(data: T, status = 200) {
 
 export function plainPrismaData<T>(value: T): T {
   if (value === null || value === undefined || typeof value !== "object") return value;
-  const candidate = value as { constructor?: { name?: string }; toNumber?: () => number };
-  if (candidate.constructor?.name === "Decimal" && typeof candidate.toNumber === "function") {
-    return candidate.toNumber() as T;
+  if (Prisma.Decimal.isDecimal(value)) {
+    return value.toNumber() as T;
   }
   if (value instanceof Date) return value;
   if (Array.isArray(value)) return value.map((item) => plainPrismaData(item)) as T;

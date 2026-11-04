@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import type { ERPData } from '../types';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
+import { getSalePaymentStatus, summarizeSalePayments } from '@/lib/sale-payment';
 import { 
   DollarSign, TrendingUp, TrendingDown, Plus, 
   Calendar, PieChart, CreditCard, ArrowUpRight, 
@@ -46,7 +47,7 @@ export default function FinanceiroView({ data }: Props) {
   const vendasFiltradas = useMemo(() => {
     return vendas.filter(v => {
       const vDate = new Date(v.data);
-      const isPaid = v.status === 'PAGO' || v.status === 'ENVIADO' || v.status === 'ENTREGUE';
+      const isPaid = getSalePaymentStatus(v) === 'PAGO';
       return isPaid && (periodo === 'mes' ? isInMonth(v.data, selectedMonth) : vDate >= dataCorte);
     });
   }, [vendas, dataCorte, periodo, selectedMonth]);
@@ -64,18 +65,17 @@ export default function FinanceiroView({ data }: Props) {
   const lucroLiquido = lucroBruto - totalDespesas;
   const margemLiquida = receitaBruta > 0 ? ((lucroLiquido / receitaBruta) * 100).toFixed(1) : '0';
 
-  // Contas a Receber (Vendas pendentes + Saldo de Encomendas ativas)
+  const paymentSummary = useMemo(() => summarizeSalePayments(vendas), [vendas]);
+  // Contas a Receber (Saldos confirmados + Saldo de Encomendas ativas)
   const contasAReceber = useMemo(() => {
-    const vendasPendentes = vendas
-      .filter(v => v.status === 'AGUARDANDO_PAGAMENTO' || v.status === 'PREPARANDO')
-      .reduce((acc, v) => acc + v.valorTotal, 0);
+    const vendasPendentes = paymentSummary.outstanding;
 
     const saldoEncomendas = encomendas
       .filter(e => e.status !== 'FINALIZADO' && e.status !== 'CANCELADO')
       .reduce((acc, e) => acc + Math.max(0, (e.precoEstimado || 0) - (e.valorAdiantamento || 0)), 0);
 
     return vendasPendentes + saldoEncomendas;
-  }, [vendas, encomendas]);
+  }, [paymentSummary, encomendas]);
 
   // Formas de Pagamento
   const formasPagamentoStats = useMemo(() => {
@@ -196,7 +196,7 @@ export default function FinanceiroView({ data }: Props) {
           <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {receitaBruta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
-          <span className="text-[10px] text-brand-muted block mt-1">{vendasFiltradas.length} pedidos pagos</span>
+          <span className="text-[10px] text-brand-muted block mt-1">{vendasFiltradas.length} pedidos quitados · sem pagamentos parciais</span>
         </div>
 
         <div className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs">
@@ -248,7 +248,8 @@ export default function FinanceiroView({ data }: Props) {
           <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {contasAReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
-          <span className="text-[10px] text-brand-chocolate block mt-1">Vendas e encomendas pendentes</span>
+          <span className="text-[10px] text-brand-chocolate block mt-1">Saldos confirmados de vendas e encomendas · todos os períodos</span>
+          {paymentSummary.unconfirmedCount > 0 && <p className="text-[11px] font-semibold text-brand-chocolate mt-2">{paymentSummary.unconfirmedCount} venda(s) com pagamento a conferir: {paymentSummary.unconfirmed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}. Confira na tela de Vendas.</p>}
         </div>
       </div>
 
@@ -262,7 +263,7 @@ export default function FinanceiroView({ data }: Props) {
               Divisão por Forma de Pagamento
             </h3>
             <p className="text-xs text-brand-muted mb-5">
-              Volume recebido em cada meio de pagamento
+              Vendas quitadas em cada meio de pagamento
             </p>
 
             <div className="space-y-4">

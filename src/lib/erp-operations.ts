@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { plainPrismaData } from "@/lib/admin-api";
 import { fromCents, roundMoney, toCents } from "@/lib/money";
+import { getSaleReceivedAmount, validateSaleReceivedAmount } from "@/lib/sale-payment";
 
 export async function createSale(data: {
   clienteId?: number;
@@ -15,6 +16,7 @@ export async function createSale(data: {
   frete?: number;
   observacoes?: string;
   status?: string;
+  valorRecebido?: number | null;
 }, actor: string) {
   const { clienteId, nomeClienteAvulso, contatoClienteAvulso, itens, formaPagamento, observacoes } = data;
   const desconto = data.desconto || 0;
@@ -61,6 +63,8 @@ export async function createSale(data: {
   const custoTotal = fromCents(custoTotalCents);
   const valorTotal = fromCents(Math.max(0, subtotalCents - toCents(desconto) + toCents(frete)));
   const lucroTotal = fromCents(subtotalCents - toCents(desconto) - custoTotalCents);
+  const valorRecebido = validateSaleReceivedAmount(data.valorRecebido === undefined ? (status === 'PAGO' ? valorTotal : 0) : data.valorRecebido, valorTotal);
+  if (status === 'PAGO' && valorRecebido !== valorTotal) throw new Error('Para marcar a venda como Pago, confirme o recebimento do valor total.');
   const numeroVenda = `VND-${Date.now().toString().slice(-5)}`;
 
   const venda = await prisma.$transaction(async (tx) => {
@@ -76,6 +80,7 @@ export async function createSale(data: {
       desconto,
       frete,
       valorTotal,
+      valorRecebido,
       custoTotal,
       lucroTotal,
       observacoes: observacoes || null,
@@ -231,6 +236,9 @@ export async function updateSale(vendaId: number, data: Parameters<typeof create
 
     const subtotalCents = itens.reduce((sum, item) => sum + toCents(item.subtotal), 0);
     const custoTotalCents = itens.reduce((sum, item) => sum + toCents(item.custoUnitario) * item.quantidade, 0);
+    const valorTotal = fromCents(Math.max(0, subtotalCents - toCents(desconto) + toCents(frete)));
+    const valorRecebido = validateSaleReceivedAmount(data.valorRecebido === undefined ? getSaleReceivedAmount(venda) : data.valorRecebido, valorTotal);
+    if (status === 'PAGO' && valorRecebido !== valorTotal) throw new Error('Para marcar a venda como Pago, confirme o recebimento do valor total.');
     await tx.venda.update({ where: { id: vendaId }, data: {
       clienteId: data.clienteId || null,
       nomeClienteAvulso: data.clienteId ? null : data.nomeClienteAvulso?.trim() || null,
@@ -243,7 +251,8 @@ export async function updateSale(vendaId: number, data: Parameters<typeof create
       observacoes: data.observacoes?.trim() || null,
       subtotal: fromCents(subtotalCents),
       custoTotal: fromCents(custoTotalCents),
-      valorTotal: fromCents(Math.max(0, subtotalCents - toCents(desconto) + toCents(frete))),
+      valorTotal,
+      valorRecebido,
       lucroTotal: fromCents(subtotalCents - toCents(desconto) - custoTotalCents),
       itens: { deleteMany: {}, create: itens },
     } });
@@ -362,8 +371,8 @@ export async function updateSaleStatus(vendaId: number, novoStatus: string, acto
     }
 
     const statusUpdated = await tx.venda.updateMany({
-      where: { id: vendaId, status: statusAnterior },
-      data: { status: novoStatus }
+      where: { id: vendaId, status: statusAnterior, updatedAt: venda.updatedAt },
+      data: { status: novoStatus, valorRecebido: novoStatus === 'PAGO' ? venda.valorTotal : getSaleReceivedAmount(venda) }
     });
     if (statusUpdated.count !== 1) throw new Error("O status da venda foi alterado por outra operação. Atualize os dados e tente novamente.");
   });
@@ -380,7 +389,7 @@ export async function deleteSale(vendaId: number, actor: string) {
       include: { itens: true }
     });
     if (!venda) throw new Error("Venda não encontrada.");
-    if (venda.status === 'PAGO') throw new Error("Vendas pagas não podem ser excluídas.");
+    if (venda.status === 'PAGO' || (getSaleReceivedAmount(venda) ?? 0) > 0) throw new Error("Vendas com recebimentos registrados não podem ser excluídas.");
 
     const movsVenda = await tx.estoqueMovimentacao.findMany({
       where: { vendaId: venda.id, tipo: 'VENDA' }

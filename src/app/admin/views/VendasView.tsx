@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import type { ERPData, AdminVenda, AdminProduto } from '../types';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
+import { getSalePaymentStatus, getSaleReceivedAmount, summarizeSalePayments } from '@/lib/sale-payment';
 import { 
   ShoppingBag, Plus, Search, CheckCircle2, Clock, 
   X, Loader2, DollarSign, Calendar, User, Truck, 
@@ -21,6 +22,7 @@ export default function VendasView({ data }: Props) {
   const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedFormaPagamento, setSelectedFormaPagamento] = useState<string>('ALL');
+  const [selectedPayment, setSelectedPayment] = useState('ALL');
 
   // Drawer / Modais
   const [isNewVendaOpen, setIsNewVendaOpen] = useState(false);
@@ -40,6 +42,7 @@ export default function VendasView({ data }: Props) {
   const [desconto, setDesconto] = useState<number>(0);
   const [frete, setFrete] = useState<number>(0);
   const [observacoes, setObservacoes] = useState('');
+  const [valorRecebido, setValorRecebido] = useState<number | ''>(0);
   const [cartItens, setCartItens] = useState<Array<{ produtoId: number; quantidade: number; precoUnitario: number }>>([]);
   const [productSearch, setProductSearch] = useState('');
   const [showAllProducts, setShowAllProducts] = useState(false);
@@ -56,10 +59,14 @@ export default function VendasView({ data }: Props) {
 
       const matchStatus = selectedStatus === 'ALL' || v.status === selectedStatus;
       const matchPag = selectedFormaPagamento === 'ALL' || v.formaPagamento === selectedFormaPagamento;
+      const payment = getSalePaymentStatus(v);
+      const matchPayment = selectedPayment === 'ALL' || payment === selectedPayment
+        || (selectedPayment === 'ABERTO' && (payment === 'PENDENTE' || payment === 'PARCIAL'));
 
-      return matchSearch && matchStatus && matchPag && isInMonth(v.data, selectedMonth);
+      return matchSearch && matchStatus && matchPag && matchPayment && isInMonth(v.data, selectedMonth);
     });
-  }, [vendas, searchTerm, selectedStatus, selectedFormaPagamento, selectedMonth]);
+  }, [vendas, searchTerm, selectedStatus, selectedFormaPagamento, selectedPayment, selectedMonth]);
+  const paymentSummary = useMemo(() => summarizeSalePayments(filteredVendas), [filteredVendas]);
 
   // Cálculos do carrinho na criação de venda
   const carrinhoCalculado = useMemo(() => {
@@ -99,6 +106,7 @@ export default function VendasView({ data }: Props) {
     setDesconto(venda.desconto);
     setFrete(venda.frete);
     setObservacoes(venda.observacoes || '');
+    setValorRecebido(getSaleReceivedAmount(venda) ?? '');
     setCartItens(venda.itens.map(it => ({ produtoId: it.produtoId, quantidade: it.quantidade, precoUnitario: it.precoUnitario })));
     const date = new Date(venda.data);
     setDataVenda(new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19));
@@ -177,7 +185,8 @@ export default function VendasView({ data }: Props) {
         desconto,
         frete,
         status: statusVenda,
-        observacoes
+        observacoes,
+        valorRecebido: valorRecebido === '' ? null : valorRecebido,
       };
       if (editingVenda) {
         const response = await fetch(`/api/erp/sales/${editingVenda.id}`, {
@@ -220,7 +229,7 @@ export default function VendasView({ data }: Props) {
   };
 
   const handleDeleteVenda = async (venda: AdminVenda) => {
-    if (venda.status === 'PAGO' || deletingVendaId !== null) return;
+    if ((getSaleReceivedAmount(venda) ?? 0) > 0 || venda.status === 'PAGO' || deletingVendaId !== null) return;
     if (!window.confirm(`Excluir a venda ${venda.numero}? Os itens baixados serão devolvidos ao estoque. Esta ação não pode ser desfeita.`)) return;
     setDeletingVendaId(venda.id);
     try {
@@ -265,6 +274,7 @@ export default function VendasView({ data }: Props) {
             setDesconto(0);
             setFrete(0);
             setObservacoes('');
+            setValorRecebido(0);
           }}
           className="px-5 py-2.5 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer self-start sm:self-auto"
         >
@@ -274,6 +284,26 @@ export default function VendasView({ data }: Props) {
       </div>
 
       <MonthFilter value={selectedMonth} onChange={setSelectedMonth} />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" aria-label="Resumo financeiro das vendas filtradas">
+        {[
+          { label: 'Total vendido', value: paymentSummary.total, detail: `${paymentSummary.count} venda(s) · canceladas excluídas` },
+          { label: 'Já recebido', value: paymentSummary.received, detail: 'Recebimentos confirmados destas vendas' },
+          { label: 'Falta receber', value: paymentSummary.unconfirmedCount ? null : paymentSummary.outstanding, detail: paymentSummary.unconfirmedCount ? `${paymentSummary.outstanding.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} de saldo já confirmado` : 'Saldo em aberto destas vendas' },
+        ].map(card => (
+          <div key={card.label} className="bg-brand-card border border-brand-line rounded-2xl p-4 sm:p-5 shadow-xs min-w-0">
+            <p className="text-xs font-semibold text-brand-muted">{card.label}</p>
+            <p className="text-xl sm:text-2xl font-bold text-brand-chocolate mt-2">{card.value === null ? 'A conferir' : card.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+            <p className="text-[11px] text-brand-muted mt-1">{card.detail}</p>
+          </div>
+        ))}
+      </div>
+      {paymentSummary.unconfirmedCount > 0 && (
+        <div className="rounded-2xl border border-brand-terracotta bg-brand-nude p-4 text-xs text-brand-chocolate" role="status">
+          <strong>{paymentSummary.unconfirmedCount} venda(s), totalizando {paymentSummary.unconfirmed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}, precisam de conferência do pagamento.</strong>
+          {' '}Esses valores ainda não entram em “Já recebido” nem em “Falta receber”. Edite as vendas e informe quanto foi recebido; envio e entrega não confirmam pagamento.
+        </div>
+      )}
 
       {feedback && (
         <div className="p-3.5 rounded-2xl bg-brand-nude border border-brand-line text-brand-chocolate text-xs font-bold flex items-center justify-between">
@@ -321,6 +351,12 @@ export default function VendasView({ data }: Props) {
           <option value="DINHEIRO">Dinheiro</option>
           <option value="LINK_PAGAMENTO">Link de Pagamento</option>
         </select>
+        <select value={selectedPayment} onChange={event => setSelectedPayment(event.target.value)} aria-label="Situação do pagamento" className="px-3 py-2 bg-brand-nude text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none cursor-pointer">
+          <option value="ALL">Todos os pagamentos</option>
+          <option value="PAGO">Quitados</option>
+          <option value="ABERTO">Com saldo a receber</option>
+          <option value="A_CONFERIR">Pagamento a conferir</option>
+        </select>
       </div>
 
       {/* TABELA DE VENDAS */}
@@ -349,6 +385,12 @@ export default function VendasView({ data }: Props) {
               ) : (
                 filteredVendas.map((v) => {
                   const clienteNome = v.cliente?.nome || v.nomeClienteAvulso || 'Cliente Balcão';
+                  const received = getSaleReceivedAmount(v);
+                  const paymentStatus = getSalePaymentStatus(v);
+                  const paymentLabel = paymentStatus === 'CANCELADO' ? 'Cancelada'
+                    : received === null ? 'Pagamento a conferir'
+                    : paymentStatus === 'PAGO' ? 'Quitado'
+                    : `Falta ${Math.max(0, v.valorTotal - received).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
                   const dataFormatada = new Date(v.data).toLocaleDateString('pt-BR', {
                     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
                   });
@@ -379,6 +421,9 @@ export default function VendasView({ data }: Props) {
                       <td className="py-3 px-3 text-center">
                         <span className="px-2 py-0.5 rounded-md bg-brand-nude text-[10px] font-bold text-brand-chocolate border border-brand-line">
                           {v.formaPagamento}
+                        </span>
+                        <span className="block text-[10px] text-brand-muted mt-1">
+                          {paymentLabel}
                         </span>
                       </td>
 
@@ -429,7 +474,7 @@ export default function VendasView({ data }: Props) {
                         >
                           <Eye size={14} />
                         </button>
-                        {v.status !== 'PAGO' && (
+                        {v.status !== 'PAGO' && (received ?? 0) <= 0 && (
                           <button
                             onClick={() => handleDeleteVenda(v)}
                             disabled={deletingVendaId !== null}
@@ -709,7 +754,10 @@ export default function VendasView({ data }: Props) {
                     <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Status da Venda</label>
                     <select
                       value={statusVenda}
-                      onChange={(e) => setStatusVenda(e.target.value)}
+                      onChange={(e) => {
+                        setStatusVenda(e.target.value);
+                        if (e.target.value === 'PAGO') setValorRecebido(carrinhoCalculado.valorTotal);
+                      }}
                       className="w-full px-3 py-1.5 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none"
                     >
                       <option value="AGUARDANDO_PAGAMENTO">Aguardando Pagamento</option>
@@ -749,6 +797,15 @@ export default function VendasView({ data }: Props) {
                   </div>
                 </div>
 
+                <div className="border-t border-brand-line pt-3">
+                  <label htmlFor="venda-valor-recebido" className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Valor já recebido (R$)</label>
+                  <div className="flex flex-wrap gap-2">
+                    <input id="venda-valor-recebido" type="number" min="0" max={carrinhoCalculado.valorTotal} step="0.01" value={valorRecebido} onChange={event => setValorRecebido(event.target.value === '' ? '' : Number(event.target.value))} placeholder="Pagamento ainda não conferido" className="min-w-0 flex-1 px-3 py-2 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none" />
+                    <button type="button" onClick={() => setValorRecebido(carrinhoCalculado.valorTotal)} className="px-3 py-2 rounded-xl border border-brand-line bg-brand-card text-xs font-semibold text-brand-chocolate cursor-pointer">Recebi tudo</button>
+                  </div>
+                  <p className="text-[11px] text-brand-muted mt-1">Informe zero se ainda não recebeu. Deixe em branco somente se o pagamento precisa ser conferido. A entrega não altera esse valor.</p>
+                  {valorRecebido !== '' && <p className="text-xs font-semibold text-brand-chocolate mt-2">Falta receber: {Math.max(0, carrinhoCalculado.valorTotal - valorRecebido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
+                </div>
                 {/* Resumo Final da Venda */}
                 <div className="pt-3 border-t border-brand-line flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
