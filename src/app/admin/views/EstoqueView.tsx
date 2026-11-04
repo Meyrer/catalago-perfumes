@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { movimentarEstoqueAction } from '../../actions';
 import { normalizeImageUrl } from '@/lib/image-url';
+import { sortBrandCollectionProducts } from '@/lib/product-order';
 
 type Props = {
   data: ERPData;
@@ -39,7 +40,7 @@ export default function EstoqueView({ data }: Props) {
 
   // Produtos filtrados
   const filteredProdutos = useMemo(() => {
-    return produtos.filter(p => {
+    return sortBrandCollectionProducts(produtos.filter(p => {
       const matchSearch = p.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           p.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -56,7 +57,7 @@ export default function EstoqueView({ data }: Props) {
       }
 
       return matchSearch && matchFilter;
-    });
+    }));
   }, [produtos, searchTerm, filterType]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProdutos.length / STOCK_PAGE_SIZE));

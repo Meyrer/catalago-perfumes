@@ -11,6 +11,7 @@ import FragranceSearch from '@/components/FragranceSearch';
 import CustomOrderModal from '@/components/CustomOrderModal';
 import { normalizeProductGender, PRODUCT_GENDERS, type ProductGender } from '@/lib/product-gender';
 import { normalizeImageUrl } from '@/lib/image-url';
+import { sortBrandCollectionProducts } from '@/lib/product-order';
 
 type Foto = { id: number; url: string };
 type Categoria = { id: number; nome: string; imagemUrl?: string | null };
@@ -19,6 +20,7 @@ type Produto = {
   id: number;
   nome: string;
   marca: string;
+  sku?: string | null;
   descricao: string;
   precoVista: number;
   precoOriginal: number | null;
@@ -211,7 +213,7 @@ export default function CatalogClient({
   const [searchTerm, setSearchTerm] = useState('');
   const [availabilityFilter, setAvailabilityFilter] = useState<'TODOS' | 'PRONTA_ENTREGA' | 'ENCOMENDA'>('TODOS');
   const [onlyPromos, setOnlyPromos] = useState(false);
-  const [sortBy, setSortBy] = useState<'mais-vendidos' | 'menor-preco' | 'maior-preco' | 'novidades'>('mais-vendidos');
+  const [sortBy, setSortBy] = useState<'padrao' | 'mais-vendidos' | 'menor-preco' | 'maior-preco' | 'novidades'>('padrao');
   const [customEncomendaQuery, setCustomEncomendaQuery] = useState('');
   const [isCustomOrderOpen, setIsCustomOrderOpen] = useState(false);
   const [customOrderInitialValue, setCustomOrderInitialValue] = useState('');
@@ -674,6 +676,10 @@ export default function CatalogClient({
     }));
 
     // Sort
+    if (sortBy === 'padrao') {
+      result.sort((a, b) => (b.badge === 'MAIS VENDIDO' ? 1 : 0) - (a.badge === 'MAIS VENDIDO' ? 1 : 0));
+      return sortBrandCollectionProducts(result);
+    }
     if (sortBy === 'menor-preco') {
       result.sort((a, b) => Number(isProdutoProntaEntrega(b)) - Number(isProdutoProntaEntrega(a)) || (isProdutoProntaEntrega(a) && isProdutoProntaEntrega(b) ? a.precoVista - b.precoVista : 0));
     } else if (sortBy === 'maior-preco') {
@@ -1166,6 +1172,7 @@ export default function CatalogClient({
           <label className="sort-control hidden md:flex">
             Ordenar por{' '}
             <select className="filter-select" value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}>
+              <option value="padrao">Padrão</option>
               <option value="mais-vendidos">Mais vendidos</option>
               <option value="novidades">Novidades</option>
               <option value="menor-preco">Menor preço</option>
@@ -2005,6 +2012,7 @@ export default function CatalogClient({
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {[
+                      { value: 'padrao', label: 'Padrão' },
                       { value: 'mais-vendidos', label: 'Mais vendidos' },
                       { value: 'novidades', label: 'Novidades' },
                       { value: 'menor-preco', label: 'Menor preço' },
