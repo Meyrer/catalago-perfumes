@@ -1,4 +1,9 @@
-type NumberedProduct = { nome: string; marca: string; sku?: string | null };
+type StockProduct = { quantidade?: number | null };
+type NumberedProduct = StockProduct & { nome: string; marca: string; sku?: string | null };
+
+export function sortProductsWithStockFirst<T extends StockProduct>(products: T[]): T[] {
+  return [...products].sort((a, b) => Number((b.quantidade ?? 0) > 0) - Number((a.quantidade ?? 0) > 0));
+}
 
 function getBrandCollectionNumber(product: NumberedProduct): number | null {
   if (product.marca.trim().toUpperCase() !== 'BRAND COLLECTION') return null;
@@ -15,7 +20,7 @@ export function sortBrandCollectionProducts<T extends NumberedProduct>(products:
     return number === null ? [] : [{ product, number }];
   }).sort((a, b) => direction === 'asc' ? a.number - b.number : b.number - a.number);
   let index = 0;
-  // Preserve the positions and relative order of other product lines.
-  return products.map(product => getBrandCollectionNumber(product) === null
-    ? product : numbered[index++].product);
+  // Preserve other product lines' relative order within each stock group.
+  return sortProductsWithStockFirst(products.map(product => getBrandCollectionNumber(product) === null
+    ? product : numbered[index++].product));
 }

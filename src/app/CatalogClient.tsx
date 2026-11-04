@@ -11,7 +11,7 @@ import FragranceSearch from '@/components/FragranceSearch';
 import CustomOrderModal from '@/components/CustomOrderModal';
 import { normalizeProductGender, PRODUCT_GENDERS, type ProductGender } from '@/lib/product-gender';
 import { normalizeImageUrl } from '@/lib/image-url';
-import { sortBrandCollectionProducts } from '@/lib/product-order';
+import { sortBrandCollectionProducts, sortProductsWithStockFirst } from '@/lib/product-order';
 
 type Foto = { id: number; url: string };
 type Categoria = { id: number; nome: string; imagemUrl?: string | null };
@@ -677,7 +677,7 @@ export default function CatalogClient({
 
     // Sort
     if (sortBy === 'padrao') {
-      result.sort((a, b) => (b.badge === 'MAIS VENDIDO' ? 1 : 0) - (a.badge === 'MAIS VENDIDO' ? 1 : 0));
+      result.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
       return sortBrandCollectionProducts(result);
     }
     if (sortBy === 'menor-preco') {
@@ -690,7 +690,7 @@ export default function CatalogClient({
       result.sort((a, b) => (b.badge === 'MAIS VENDIDO' ? 1 : 0) - (a.badge === 'MAIS VENDIDO' ? 1 : 0));
     }
 
-    return result;
+    return sortProductsWithStockFirst(result);
   }, [initialProdutos, availabilityFilter, activeCategory, selectedBrand, selectedGender, searchTerm, onlyPromos, sortBy, priceRange]);
 
   // Related products for detail modal

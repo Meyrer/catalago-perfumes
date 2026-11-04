@@ -16,7 +16,7 @@ import {
 } from '../../actions';
 import type { PerfumeSearchResult } from '@/services/perfumeApi';
 import { normalizeProductGender, PRODUCT_GENDERS } from '@/lib/product-gender';
-import { sortBrandCollectionProducts } from '@/lib/product-order';
+import { sortBrandCollectionProducts, sortProductsWithStockFirst } from '@/lib/product-order';
 
 type Props = {
   data: ERPData;
@@ -165,7 +165,7 @@ export default function ProdutosView({ data }: Props) {
       return 0;
     });
     return sortField === 'nome' || sortField === 'marca'
-      ? sortBrandCollectionProducts(result, sortDirection) : result;
+      ? sortBrandCollectionProducts(result, sortDirection) : sortProductsWithStockFirst(result);
   }, [produtos, searchTerm, selectedMarca, selectedDisponibilidade, selectedEstoqueFiltro, sortField, sortDirection]);
 
   const handleSort = (field: typeof sortField) => {
