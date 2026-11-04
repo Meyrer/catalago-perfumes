@@ -44,6 +44,8 @@ type Produto = {
   genero?: string | null;
   anoLancamento?: number | null;
   descricaoFragrancia?: string | null;
+  dataSource?: string | null;
+  sourceUrl?: string | null;
   longevidade?: string | null;
   projecao?: string | null;
   createdAt?: Date | string;
@@ -1526,8 +1528,20 @@ export default function CatalogClient({
                 </div>
               </div>
 
+              {selectedProduct.dataSource === 'reference-fragrance' && selectedProduct.descricaoFragrancia && (
+                <section className="bg-brand-nude border-t-2 border-brand-line p-5 sm:p-8">
+                  <h4 className="font-serif text-brand-chocolate text-lg font-bold mb-3">Notas do perfume de inspiração</h4>
+                  <p className="text-sm text-brand-muted leading-relaxed whitespace-pre-line">{selectedProduct.descricaoFragrancia}</p>
+                  {selectedProduct.sourceUrl && /^https:\/\//i.test(selectedProduct.sourceUrl) && (
+                    <a href={selectedProduct.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-chocolate underline underline-offset-4 mt-3">
+                      Consultar fonte das notas <ArrowUpRight size={14} aria-hidden="true" />
+                    </a>
+                  )}
+                </section>
+              )}
+
               {/* PERFIL DA FRAGRÂNCIA (SEÇÃO NOBRE LARGURA TOTAL) */}
-              {(selectedProduct.familiaOlfativa || selectedProduct.acordesPrincipais || selectedProduct.notasSaida) && (
+              {selectedProduct.dataSource !== 'reference-fragrance' && (selectedProduct.familiaOlfativa || selectedProduct.acordesPrincipais || selectedProduct.notasSaida) && (
                 <div className="bg-brand-nude border-t-2 border-brand-line p-5 sm:p-8">
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-3 border-b border-brand-line">
                     <div className="flex items-center gap-2">
