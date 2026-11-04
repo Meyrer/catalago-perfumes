@@ -2,10 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import type { ERPData, AdminCompra } from '../types';
+import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
 import { 
   Truck, Plus, Search, CheckCircle2, Clock, 
   X, Loader2, DollarSign, Calendar, ArrowDownRight, 
-  Globe, ChevronRight, Eye, Coins, ShoppingCart, Package, Sparkles, Check
+  Globe, ChevronRight, Eye, Coins, ShoppingCart, Package, Check
 } from 'lucide-react';
 import { createCompraAction, receberCompraAction, deleteCompraAction } from '../../actions';
 
@@ -17,6 +18,7 @@ export default function ComprasView({ data }: Props) {
   const { compras, fornecedores, produtos } = data;
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterFornecedor, setFilterFornecedor] = useState('ALL');
 
@@ -51,14 +53,14 @@ export default function ComprasView({ data }: Props) {
         c.itens.some(item => item.produto?.nome.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchStatus = filterStatus === 'ALL' || c.status === filterStatus;
       const matchFornecedor = filterFornecedor === 'ALL' || String(c.fornecedorId) === filterFornecedor;
-      return matchSearch && matchStatus && matchFornecedor;
+      return matchSearch && matchStatus && matchFornecedor && isInMonth(c.data, selectedMonth);
     });
-  }, [compras, searchTerm, filterStatus, filterFornecedor]);
+  }, [compras, searchTerm, filterStatus, filterFornecedor, selectedMonth]);
 
   const indicadores = useMemo(() => {
-    const agora = new Date();
+    const agora = selectedMonth ? new Date(`${selectedMonth}-15T12:00:00Z`) : new Date();
     const formatoMes = new Intl.DateTimeFormat('pt-BR', { month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
-    const validas = compras.filter(compra => compra.status !== 'CANCELADO');
+    const validas = compras.filter(compra => compra.status !== 'CANCELADO' && isInMonth(compra.data, selectedMonth));
     const noMes = validas.filter(compra => formatoMes.format(new Date(compra.data)) === formatoMes.format(agora));
     const emTransito = validas.filter(compra => compra.status === 'EM_TRANSITO');
     const recebidas = validas.filter(compra => compra.status === 'RECEBIDO');
@@ -70,14 +72,7 @@ export default function ComprasView({ data }: Props) {
       { titulo: 'Em trânsito', valor: total(emTransito), descricao: quantidade(emTransito, 'compra em importação', 'compras em importação'), icon: Truck },
       { titulo: 'Recebidas', valor: total(recebidas), descricao: quantidade(recebidas, 'compra recebida', 'compras recebidas'), icon: Package },
     ];
-  }, [compras]);
-
-  const cotacoesReferencia = useMemo(() => (['USD', 'EUR'] as const).map(codigo => {
-    const ultimaCompra = compras
-      .filter(compra => compra.moeda === codigo && compra.status !== 'CANCELADO')
-      .reduce<AdminCompra | null>((ultima, compra) => !ultima || new Date(compra.data) > new Date(ultima.data) ? compra : ultima, null);
-    return { codigo, nome: codigo === 'USD' ? 'Dólar Americano' : 'Euro', compra: ultimaCompra };
-  }), [compras]);
+  }, [compras, selectedMonth]);
 
   // Cálculos dinâmicos em BRL e rateio
   const calculoCompra = useMemo(() => {
@@ -168,6 +163,8 @@ export default function ComprasView({ data }: Props) {
 
   return (
     <div className="space-y-6">
+      <MonthFilter value={selectedMonth} onChange={setSelectedMonth} />
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {indicadores.map(({ titulo, valor, descricao, icon: Icon }) => (
           <div key={titulo} className="flex items-start gap-4 rounded-2xl border border-brand-line bg-brand-card p-5 shadow-[0_3px_8px_rgba(67,44,31,0.04)]">
@@ -372,46 +369,6 @@ export default function ComprasView({ data }: Props) {
 
       </section>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.5fr)]">
-        <section className="rounded-2xl border border-brand-line bg-brand-card shadow-xs">
-          <div className="flex items-center gap-3 border-b border-brand-line p-5">
-            <Coins size={29} strokeWidth={1.6} className="shrink-0 text-[#995e29]" />
-            <div>
-              <h3 className="font-serif text-xl font-bold text-brand-chocolate">Cotação de Referência</h3>
-              <p className="mt-1 text-xs text-brand-muted">Cotações utilizadas nas últimas compras.</p>
-            </div>
-          </div>
-          <div className="divide-y divide-brand-line px-5">
-            {cotacoesReferencia.map(({ codigo, nome, compra }) => (
-              <div key={codigo} className="flex flex-wrap items-center justify-between gap-2 py-4 text-xs">
-                <span className="font-semibold text-brand-chocolate">{codigo} <span className="font-normal text-brand-muted">– {nome}</span></span>
-                <div className="flex items-center gap-3">
-                  <strong className="text-sm text-brand-chocolate">{compra ? compra.cotacao.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Sem registro'}</strong>
-                  {compra && <span className="rounded-full border border-brand-line bg-brand-cream px-2 py-1 text-[10px] text-brand-muted">Cotação da compra</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-        <section className="relative isolate overflow-hidden rounded-2xl border border-brand-line bg-brand-card p-5 shadow-xs sm:p-6">
-          <img src="/images/compras-perfume.png" alt="" aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 -z-10 hidden h-full w-[42%] object-cover object-right opacity-90 md:block" />
-          <div className="md:max-w-[70%]">
-            <div className="flex items-center gap-3">
-              <Sparkles size={29} strokeWidth={1.6} className="shrink-0 text-[#995e29]" />
-              <div>
-                <h3 className="font-serif text-xl font-bold text-brand-chocolate">Dicas de Operação</h3>
-                <p className="mt-1 text-xs text-brand-muted">Boas práticas para compras e importações.</p>
-              </div>
-            </div>
-            <ul className="mt-5 space-y-3 text-xs leading-relaxed text-brand-muted">
-              {['Confira a cotação antes de registrar a compra.', 'Acompanhe o status da importação até o recebimento.', 'Confira frete, taxas e impostos antes da entrada no estoque.'].map(dica => (
-                <li key={dica} className="flex items-start gap-2"><Check size={17} className="mt-0.5 shrink-0 text-[#995e29]" /><span>{dica}</span></li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      </div>
-
       {/* ========================================================================= */}
       {/* MODAL: REGISTRAR NOVA COMPRA / IMPORTAÇÃO */}
       {/* ========================================================================= */}
@@ -596,6 +553,18 @@ export default function ComprasView({ data }: Props) {
                 </div>
               </div>
 
+              <div>
+                <label htmlFor="compra-observacoes" className="mb-1.5 block text-xs font-bold text-brand-muted">Observação</label>
+                <textarea
+                  id="compra-observacoes"
+                  value={observacoes}
+                  onChange={event => setObservacoes(event.target.value)}
+                  rows={3}
+                  placeholder="Informações adicionais sobre esta compra..."
+                  className="w-full resize-y rounded-xl border border-brand-line bg-brand-card px-3 py-2 text-sm text-brand-chocolate outline-none focus:border-brand-caramel"
+                />
+              </div>
+
               {/* BOTÕES */}
               <div className="pt-3 border-t border-brand-line flex items-center justify-end gap-2.5">
                 <button
@@ -666,7 +635,12 @@ export default function ComprasView({ data }: Props) {
                 </div>
               </div>
 
-              {viewingCompra.observacoes && <p className="rounded-xl border border-brand-line bg-brand-cream p-3 text-xs leading-relaxed text-brand-muted">{viewingCompra.observacoes}</p>}
+              {viewingCompra.observacoes && (
+                <div className="rounded-xl border border-brand-line bg-brand-cream p-3 text-xs text-brand-muted">
+                  <p className="mb-1 font-bold">Observação</p>
+                  <p className="whitespace-pre-wrap leading-relaxed">{viewingCompra.observacoes}</p>
+                </div>
+              )}
 
               <div className="p-3.5 rounded-xl bg-brand-nude border border-brand-line space-y-1">
                 <div className="flex justify-between text-brand-muted">

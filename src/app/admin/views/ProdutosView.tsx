@@ -94,6 +94,7 @@ export default function ProdutosView({ data }: Props) {
   const [viewingQuickProduct, setViewingQuickProduct] = useState<AdminProduto | null>(null);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [isDuplicating, setIsDuplicating] = useState<number | null>(null);
+  const [isTogglingActive, setIsTogglingActive] = useState<number | null>(null);
   const [isLoadingAction, setIsLoadingAction] = useState(false);
   const [feedback, setFeedback] = useState('');
 
@@ -170,6 +171,19 @@ export default function ProdutosView({ data }: Props) {
     } else {
       setSortField(field);
       setSortDirection('asc');
+    }
+  };
+
+  const handleToggleActive = async (product: AdminProduto) => {
+    setIsTogglingActive(product.id);
+    try {
+      await toggleAtivo(product.id);
+      setFeedback(product.disponivel ? 'Produto ocultado do catálogo.' : 'Produto ativado no catálogo.');
+      window.location.reload();
+    } catch (err: unknown) {
+      setFeedback(err instanceof Error ? err.message : 'Erro ao alterar a visibilidade do produto.');
+    } finally {
+      setIsTogglingActive(null);
     }
   };
 
@@ -459,11 +473,26 @@ export default function ProdutosView({ data }: Props) {
                         }`}>
                           {isEncomenda ? 'Sob Encomenda' : 'Pronta Entrega'}
                         </span>
+                        <span className="mt-1.5 flex items-center justify-center gap-1 text-[10px] font-semibold text-brand-muted">
+                          {p.disponivel ? <Eye size={12} /> : <EyeOff size={12} />}
+                          {p.disponivel ? 'Visível no catálogo' : 'Oculto no catálogo'}
+                        </span>
                       </td>
 
                       {/* Ações */}
                       <td className="py-3 px-4 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(p)}
+                            disabled={isTogglingActive !== null}
+                            aria-label={`${p.disponivel ? 'Desativar' : 'Ativar'} ${p.nome} no catálogo`}
+                            title={p.disponivel ? 'Ocultar do catálogo' : 'Mostrar no catálogo'}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-line bg-brand-nude px-2.5 py-1.5 text-[11px] font-semibold text-brand-chocolate hover:bg-brand-cream cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+                          >
+                            {isTogglingActive === p.id ? <Loader2 size={13} className="animate-spin" /> : p.disponivel ? <EyeOff size={13} /> : <Eye size={13} />}
+                            {p.disponivel ? 'Desativar' : 'Ativar'}
+                          </button>
                           <button
                             onClick={() => setViewingQuickProduct(p)}
                             className="p-1.5 rounded-lg bg-brand-nude hover:bg-brand-nude text-brand-chocolate border border-brand-line transition-colors cursor-pointer"
@@ -639,6 +668,7 @@ function ProductFormModal({
       formData.set('fornecedorId', fornecedorId);
       formData.set('destaque', String(destaque));
       formData.set('novidade', String(novidade));
+      formData.set('disponivel', String(productToEdit?.disponivel ?? true));
       formData.set('descricao', descricao);
       formData.set('fotoUrlDirect', fotoUrlDirect);
 

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { ERPData, AdminVenda, AdminProduto } from '../types';
+import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
 import { 
   ShoppingBag, Plus, Search, CheckCircle2, Clock, 
   X, Loader2, DollarSign, Calendar, User, Truck, 
@@ -17,6 +18,7 @@ export default function VendasView({ data }: Props) {
   const { vendas, produtos, clientes, user } = data;
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedFormaPagamento, setSelectedFormaPagamento] = useState<string>('ALL');
 
@@ -55,9 +57,9 @@ export default function VendasView({ data }: Props) {
       const matchStatus = selectedStatus === 'ALL' || v.status === selectedStatus;
       const matchPag = selectedFormaPagamento === 'ALL' || v.formaPagamento === selectedFormaPagamento;
 
-      return matchSearch && matchStatus && matchPag;
+      return matchSearch && matchStatus && matchPag && isInMonth(v.data, selectedMonth);
     });
-  }, [vendas, searchTerm, selectedStatus, selectedFormaPagamento]);
+  }, [vendas, searchTerm, selectedStatus, selectedFormaPagamento, selectedMonth]);
 
   // Cálculos do carrinho na criação de venda
   const carrinhoCalculado = useMemo(() => {
@@ -261,6 +263,8 @@ export default function VendasView({ data }: Props) {
           <span>Registrar Nova Venda</span>
         </button>
       </div>
+
+      <MonthFilter value={selectedMonth} onChange={setSelectedMonth} />
 
       {feedback && (
         <div className="p-3.5 rounded-2xl bg-brand-nude border border-brand-line text-brand-chocolate text-xs font-bold flex items-center justify-between">
