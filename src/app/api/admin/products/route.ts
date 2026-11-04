@@ -50,7 +50,23 @@ export async function GET(request: Request) {
   const rawCategory = searchParams.get("categoriaId");
   const categoryId = rawCategory === null ? undefined : Number(rawCategory);
   if (categoryId !== undefined && (!Number.isSafeInteger(categoryId) || categoryId < 1)) return apiError("categoriaId inválido.", 400);
-  const where = categoryId === undefined ? undefined : { categoriaId: categoryId };
+  const search = searchParams.get("q")?.trim();
+  const brand = searchParams.get("marca")?.trim();
+  const sku = searchParams.get("sku")?.trim();
+  const active = searchParams.get("disponivel");
+  if ([search, brand, sku].some(value => value !== undefined && value.length > 200)) return apiError("Filtros de texto aceitam até 200 caracteres.", 400);
+  if (active !== null && !["true", "false"].includes(active)) return apiError("disponivel deve ser true ou false.", 400);
+  const where: Prisma.ProdutoWhereInput = {
+    categoriaId: categoryId,
+    ...(brand ? { marca: { equals: brand, mode: "insensitive" as const } } : {}),
+    ...(sku ? { sku } : {}),
+    ...(active === null ? {} : { disponivel: active === "true" }),
+    ...(search ? { OR: [
+      { nome: { contains: search, mode: "insensitive" as const } },
+      { marca: { contains: search, mode: "insensitive" as const } },
+      { sku: { contains: search, mode: "insensitive" as const } },
+    ] } : {}),
+  };
   const products = await prisma.produto.findMany({ where, include: productInclude, orderBy: { id: "asc" }, take: limit, ...(parsedCursor ? { skip: 1, cursor: { id: parsedCursor } } : {}) });
   return apiSuccess({ items: products, nextCursor: products.length === limit ? products.at(-1)?.id ?? null : null });
 }
