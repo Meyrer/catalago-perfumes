@@ -85,6 +85,7 @@ export async function POST(request: Request) {
     const { fotos, categoriaId, fornecedorId, quantidade, ...productFields } = data;
     const createData = {
       ...productFields,
+      quantidade: initialQuantity,
       descricao: productFields.descricao ?? "",
       categoria: { connect: { id: categoriaId as number } },
       ...(fornecedorId ? { fornecedor: { connect: { id: fornecedorId as number } } } : {}),
