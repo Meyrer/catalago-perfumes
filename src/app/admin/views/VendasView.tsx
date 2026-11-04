@@ -362,16 +362,16 @@ export default function VendasView({ data }: Props) {
       {/* TABELA DE VENDAS */}
       <div className="bg-brand-card rounded-2xl border border-brand-line shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full min-w-[1040px] text-left border-collapse">
             <thead>
               <tr className="bg-brand-cream border-b border-brand-line text-[10px] font-bold text-brand-muted uppercase tracking-wider">
                 <th className="py-3 px-4">Pedido / Data</th>
                 <th className="py-3 px-3">Cliente</th>
                 <th className="py-3 px-3">Itens</th>
-                <th className="py-3 px-3 text-center">Pagamento</th>
+                <th className="py-3 px-2 text-center whitespace-nowrap">Pagamento</th>
                 <th className="py-3 px-3 text-right">Valor Total</th>
                 <th className="py-3 px-3 text-right">Lucro Bruto</th>
-                <th className="py-3 px-3 text-center">Status</th>
+                <th className="py-3 px-2 text-center">Status</th>
                 <th className="py-3 px-4 text-right">Ações</th>
               </tr>
             </thead>
@@ -418,11 +418,11 @@ export default function VendasView({ data }: Props) {
                         </span>
                       </td>
 
-                      <td className="py-3 px-3 text-center">
-                        <span className="px-2 py-0.5 rounded-md bg-brand-nude text-[10px] font-bold text-brand-chocolate border border-brand-line">
-                          {v.formaPagamento}
+                      <td className="py-3 px-2 text-center min-w-[132px]">
+                        <span className="inline-block max-w-[124px] truncate align-middle px-2 py-0.5 rounded-md bg-brand-nude text-[10px] font-bold text-brand-chocolate border border-brand-line" title={v.formaPagamento}>
+                          {v.formaPagamento.replaceAll('_', ' ')}
                         </span>
-                        <span className="block text-[10px] text-brand-muted mt-1">
+                        <span className="block whitespace-nowrap text-[10px] text-brand-muted mt-1">
                           {paymentLabel}
                         </span>
                       </td>
@@ -435,11 +435,11 @@ export default function VendasView({ data }: Props) {
                         +{v.lucroTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </td>
 
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-3 px-2 text-center">
                         <select
                           value={v.status}
                           onChange={(e) => handleUpdateStatus(v.id, e.target.value)}
-                          className={`min-w-[180px]! w-[180px] px-2.5 py-1 rounded-lg text-[10px] font-bold border outline-none cursor-pointer ${
+                          className={`w-[150px] max-w-[150px] px-2 py-1 rounded-lg text-[10px] font-bold border outline-none cursor-pointer ${
                             v.status === 'PAGO' ? 'bg-green-50 text-green-800 border-green-300' :
                             v.status === 'ENVIADO' ? 'bg-brand-nude text-brand-chocolate border-brand-line' :
                             v.status === 'ENTREGUE' ? 'bg-brand-nude text-brand-chocolate border-brand-line' :
