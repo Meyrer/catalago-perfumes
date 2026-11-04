@@ -328,11 +328,11 @@ export default function ProdutosView({ data }: Props) {
 
       {/* TABELA DENSE MODERNA DE PRODUTOS */}
       <div className="bg-brand-card rounded-2xl border border-brand-line shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de produtos e preços">
+          <table className="w-full min-w-[1480px] text-left border-collapse">
             <thead>
               <tr className="bg-brand-cream border-b border-brand-line text-[10px] font-bold text-brand-muted uppercase tracking-wider">
-                <th className="py-3 px-4 cursor-pointer select-none hover:text-brand-chocolate" onClick={() => handleSort('nome')}>
+                <th className="min-w-[340px] py-3 px-4 cursor-pointer select-none hover:text-brand-chocolate" onClick={() => handleSort('nome')}>
                   <span className="flex items-center gap-1">Produto <ArrowUpDown size={11} /></span>
                 </th>
                 <th className="py-3 px-3 cursor-pointer select-none hover:text-brand-chocolate" onClick={() => handleSort('marca')}>
@@ -363,7 +363,7 @@ export default function ProdutosView({ data }: Props) {
                   </span>
                 </th>
                 <th className="py-3 px-3 text-center whitespace-nowrap">Status</th>
-                <th className="py-3 px-4 text-right">Ações</th>
+                <th className="min-w-[260px] py-3 px-4 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-nude text-xs">
@@ -385,7 +385,7 @@ export default function ProdutosView({ data }: Props) {
                   return (
                     <tr key={p.id} className="hover:bg-brand-cream transition-colors">
                       {/* Produto */}
-                      <td className="py-3 px-4">
+                      <td className="min-w-[340px] py-3 px-4">
                         <div className="flex items-center gap-3">
                           <button
                             type="button"
@@ -407,7 +407,8 @@ export default function ProdutosView({ data }: Props) {
                               type="button"
                               onClick={() => setViewingQuickProduct(p)}
                               className="text-left font-bold text-brand-chocolate leading-tight hover:text-brand-muted transition-colors truncate block max-w-[280px] cursor-pointer"
-                              title="Clique para ver detalhes completos"
+                              style={{ overflowWrap: 'normal', whiteSpace: 'normal' }}
+                              title={p.nome}
                             >
                               {p.nome}
                             </button>
@@ -480,14 +481,15 @@ export default function ProdutosView({ data }: Props) {
                       </td>
 
                       {/* Ações */}
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1">
+                      <td className="min-w-[260px] py-3 px-4 text-right whitespace-nowrap">
+                        <div className="inline-flex flex-nowrap items-center gap-1 [&>button]:shrink-0">
                           <button
                             type="button"
                             onClick={() => handleToggleActive(p)}
                             disabled={isTogglingActive !== null}
                             aria-label={`${p.disponivel ? 'Desativar' : 'Ativar'} ${p.nome} no catálogo`}
                             title={p.disponivel ? 'Ocultar do catálogo' : 'Mostrar no catálogo'}
+                            style={{ whiteSpace: 'nowrap' }}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-brand-line bg-brand-nude px-2.5 py-1.5 text-[11px] font-semibold text-brand-chocolate hover:bg-brand-cream cursor-pointer disabled:opacity-50 disabled:cursor-wait"
                           >
                             {isTogglingActive === p.id ? <Loader2 size={13} className="animate-spin" /> : p.disponivel ? <EyeOff size={13} /> : <Eye size={13} />}
