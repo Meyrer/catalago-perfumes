@@ -754,17 +754,16 @@ export default function VendasView({ data }: Props) {
                   </div>
                 </div>
               </div>
-              {editingVenda && (
-                <label className="block text-[10px] font-bold text-brand-muted uppercase">
-                  Observações
-                  <textarea
-                    value={observacoes}
-                    onChange={e => setObservacoes(e.target.value)}
-                    rows={3}
-                    className="mt-1 w-full px-3 py-2 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line outline-none"
-                  />
-                </label>
-              )}
+              <label className="block text-[10px] font-bold text-brand-muted uppercase">
+                Observações / anotações
+                <textarea
+                  value={observacoes}
+                  onChange={e => setObservacoes(e.target.value)}
+                  rows={3}
+                  placeholder="Informações adicionais sobre esta venda..."
+                  className="mt-1 w-full px-3 py-2 bg-brand-card text-xs normal-case font-normal text-brand-chocolate rounded-xl border border-brand-line outline-none focus:border-brand-caramel"
+                />
+              </label>
             </form>
 
               {/* BOTÕES */}
@@ -841,6 +840,13 @@ export default function VendasView({ data }: Props) {
                   ))}
                 </div>
               </div>
+
+              {viewingVenda.observacoes && (
+                <div className="p-3 rounded-xl bg-brand-cream border border-brand-line">
+                  <p className="mb-1 font-bold text-brand-muted">Observações / anotações</p>
+                  <p className="whitespace-pre-wrap leading-relaxed text-brand-chocolate">{viewingVenda.observacoes}</p>
+                </div>
+              )}
 
               {/* Totais */}
               <div className="p-3.5 rounded-xl bg-brand-nude border border-brand-line space-y-1.5">
