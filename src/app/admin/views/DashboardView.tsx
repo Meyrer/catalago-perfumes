@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import type { ERPData } from '../types';
 import { normalizeImageUrl } from '@/lib/image-url';
+import { getSalePaymentStatus } from '@/lib/sale-payment';
 import { 
   TrendingUp, DollarSign, Package, AlertTriangle, 
   ShoppingBag, Clock, ArrowUpRight, ArrowDownRight, 
@@ -46,7 +47,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
 
   // Cálculos de Vendas
   const vendasPagas = useMemo(() => {
-    return vendas.filter(v => v.status === 'PAGO' || v.status === 'ENVIADO' || v.status === 'ENTREGUE');
+    return vendas.filter(v => getSalePaymentStatus(v) === 'PAGO');
   }, [vendas]);
 
   const faturamentoHoje = useMemo(() => {
@@ -258,7 +259,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
             {faturamentoHoje.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
           <span className="text-[10px] font-semibold text-brand-chocolate flex items-center gap-0.5 mt-1">
-            <ArrowUpRight size={12} /> Vendas de hoje
+            <ArrowUpRight size={12} /> Vendas quitadas de hoje
           </span>
         </div>
 
@@ -271,7 +272,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
             {faturamentoMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
           <span className="text-[10px] text-brand-muted block mt-1">
-            {vendasMesCount} pedido(s) confirmados
+            {vendasMesCount} pedido(s) quitado(s)
           </span>
         </div>
 
@@ -405,7 +406,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
             {vendasPagas.length}
           </p>
           <span className="text-[10px] text-brand-chocolate font-bold block mt-1">
-            Total histórico pago
+            Total histórico quitado
           </span>
         </div>
       </div>

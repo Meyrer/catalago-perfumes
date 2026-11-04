@@ -97,7 +97,7 @@ Exemplo de registro:
 | PUT | `/sales/{id}` | Edita a venda completa e ajusta o estoque pela diferença dos itens. Exige `data` e `updatedAt` obtido no GET. |
 | PATCH | `/sales/{id}` | Edita apenas `{ "observacoes": "...", "updatedAt": "..." }`. `observacoes: null` limpa o texto. |
 | PATCH | `/sales/{id}/status` | Altera `{ "status": "CANCELADO" }` com as regras de devolução/baixa do painel. |
-| DELETE | `/sales/{id}?confirm=true` | Exclui venda permitida pelo painel, devolvendo estoque quando aplicável. Vendas com status `PAGO` não podem ser excluídas. |
+| DELETE | `/sales/{id}?confirm=true` | Exclui venda permitida pelo painel, devolvendo estoque quando aplicável. Vendas com recebimentos registrados ou status `PAGO` não podem ser excluídas. |
 
 ```json
 {
@@ -107,6 +107,7 @@ Exemplo de registro:
   "desconto": 0,
   "frete": 0,
   "observacoes": "Combinar retirada com o cliente.",
+  "valorRecebido": 0,
   "itens": [{ "produtoId": 75, "quantidade": 1, "precoUnitario": 99.9 }]
 }
 ```
@@ -114,6 +115,10 @@ Exemplo de registro:
 Cliente avulso: omita `clienteId` e envie `nomeClienteAvulso` e `contatoClienteAvulso`. Pagamentos: `PIX`, `CARTAO_CREDITO`, `CARTAO_DEBITO`, `DINHEIRO`, `LINK_PAGAMENTO`. Status: `AGUARDANDO_PAGAMENTO`, `PAGO`, `PREPARANDO`, `ENVIADO`, `ENTREGUE`, `CANCELADO`; padrão: `PREPARANDO`. Não envie produtos duplicados; consolide a quantidade por produto. Desconto não pode superar o subtotal. Custos, totais e lucro são calculados pelo servidor.
 
 PUT exige os campos do cadastro, `data` em ISO UTC e o `updatedAt` exato retornado pelo GET; omitir campos opcionais limpa/retorna seus valores padrão. Para cancelar ou reativar uma venda, use `/status`; não use o PUT para esse fluxo. Movimentações feitas pela API têm responsável `API`.
+
+`valorRecebido` registra o valor efetivamente recebido, independentemente de envio ou entrega. Aceita número entre zero e o total da venda; zero significa não recebido e `null` significa pagamento a conferir. No POST, omitir o campo registra zero, exceto quando o status explicitamente informado é `PAGO`, que registra o total. No PUT, omitir o campo preserva o recebimento conhecido; informar `null` mantém a pendência de conferência. Para marcar `PAGO`, o recebimento deve corresponder ao total. A ação de status `PAGO` confirma o total recebido; os demais status preservam o recebimento.
+
+Nas vendas antigas sem esse campo, somente `PAGO` confirma recebimento integral e `AGUARDANDO_PAGAMENTO` indica zero. `PREPARANDO`, `ENVIADO` e `ENTREGUE` permanecem a conferir. O resumo de Vendas exclui canceladas e separa total vendido, recebimentos confirmados, saldo confirmado e valores a conferir. Financeiro e indicadores de vendas pagas consideram apenas pedidos quitados; pagamentos parciais aparecem no resumo de recebimentos da tela de Vendas.
 
 ## Encomendas
 
