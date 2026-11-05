@@ -30,9 +30,9 @@ export default function FornecedoresView({ data }: Props) {
 
   const fornecedoresComDados = useMemo(() => {
     return fornecedores.map(f => {
-      const fCompras = compras.filter(c => c.fornecedorId === f.id);
+      const fCompras = compras.filter(c => c.fornecedorId === f.id && c.status !== 'CANCELADO');
       const totalComprado = fCompras.reduce((acc, c) => acc + c.custoTotalBRL, 0);
-      const fProdutos = produtos.filter(p => p.fornecedorId === f.id);
+      const fProdutos = produtos.filter(p => p.fornecedorId === f.id && p.disponivel);
 
       return {
         ...f,

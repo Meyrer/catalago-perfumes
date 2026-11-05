@@ -91,6 +91,8 @@ export function saleFields(body: Record<string, unknown>) {
     formaPagamento: enumField(body.formaPagamento, "formaPagamento", paymentMethods),
     status: enumField(body.status, "status", saleStatuses, "PREPARANDO"),
     observacoes: optionalText(body.observacoes, "observacoes", 5000) ?? undefined,
+    dataPagamento: body.dataPagamento === undefined ? undefined : dateField(body.dataPagamento, "dataPagamento").toISOString(),
+    formaRecebimento: body.formaRecebimento === undefined ? undefined : enumField(body.formaRecebimento, "formaRecebimento", paymentMethods),
     ...(body.valorRecebido === undefined ? {} : {
       valorRecebido: body.valorRecebido === null ? null : numberField(body.valorRecebido, "valorRecebido", 0),
     }),

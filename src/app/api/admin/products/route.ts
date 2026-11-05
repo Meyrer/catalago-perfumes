@@ -1,3 +1,4 @@
+import { initialFifoStock } from '@/lib/fifo-stock';
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
@@ -85,11 +86,15 @@ export async function POST(request: Request) {
     const { fotos, categoriaId, fornecedorId, quantidade, ...productFields } = data;
     const createData = {
       ...productFields,
+      nome: productFields.nome as string,
+      marca: productFields.marca as string,
+      precoVista: productFields.precoVista as number,
       quantidade: initialQuantity,
-      descricao: productFields.descricao ?? "",
+      lotesEstoque: initialFifoStock(initialQuantity, Number(productFields.precoCusto ?? 0)),
+      descricao: (productFields.descricao as string | undefined) ?? "",
       categoria: { connect: { id: categoriaId as number } },
       ...(fornecedorId ? { fornecedor: { connect: { id: fornecedorId as number } } } : {}),
-      ...(fotos ? { fotos } : {}),
+      ...(fotos ? { fotos: fotos as Prisma.FotoCreateNestedManyWithoutProdutoInput } : {}),
     } as Prisma.ProdutoCreateInput;
     const product = await prisma.$transaction(async (tx) => {
       const created = await tx.produto.create({ data: createData, include: productInclude });

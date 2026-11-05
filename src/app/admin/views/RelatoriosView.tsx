@@ -3,6 +3,9 @@
 import { useState, useMemo } from 'react';
 import type { ERPData } from '../types';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
+import { fromCents, toCents } from '@/lib/money';
+import { getFifoNextCost } from '@/lib/fifo';
+import { getSaleItemNetAmounts } from '@/lib/sale-payment';
 import { 
   BarChart3, Download, Copy, CheckCheck, 
   TrendingUp, TrendingDown, Percent, DollarSign, 
@@ -20,9 +23,9 @@ export default function RelatoriosView({ data }: Props) {
   const [copied, setCopied] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
 
-  // Vendas pagas
-  const vendasPagas = useMemo(() => {
-    return vendas.filter(v => (v.status === 'PAGO' || v.status === 'ENVIADO' || v.status === 'ENTREGUE') && isInMonth(v.data, selectedMonth));
+  // Vendas do período; entrega e recebimento não alteram o volume vendido.
+  const vendasValidas = useMemo(() => {
+    return vendas.filter(v => v.status !== 'CANCELADO' && isInMonth(v.data, selectedMonth));
   }, [vendas, selectedMonth]);
 
   // Vendas por produto
@@ -34,18 +37,20 @@ export default function RelatoriosView({ data }: Props) {
       map.set(p.id, { produto: p, qtdVendida: 0, faturamento: 0, lucroReal: 0 });
     }
 
-    for (const v of vendasPagas) {
-      for (const it of v.itens) {
+    for (const v of vendasValidas) {
+      const netAmounts = getSaleItemNetAmounts(v);
+      for (const [index, it] of v.itens.entries()) {
+        const itemLiquido = toCents(netAmounts[index]);
         const itemP = map.get(it.produtoId);
         if (itemP) {
           itemP.qtdVendida += it.quantidade;
-          itemP.faturamento += it.subtotal;
-          itemP.lucroReal += (it.lucroUnitario * it.quantidade);
+          itemP.faturamento = fromCents(toCents(itemP.faturamento) + itemLiquido);
+          itemP.lucroReal = fromCents(toCents(itemP.lucroReal) + itemLiquido - toCents(it.custoUnitario * it.quantidade));
         }
       }
     }
     return Array.from(map.values());
-  }, [produtos, vendasPagas]);
+  }, [produtos, vendasValidas]);
 
   // Ranking Mais Vendidos
   const maisVendidos = useMemo(() => {
@@ -61,11 +66,11 @@ export default function RelatoriosView({ data }: Props) {
   const maiorMargem = useMemo(() => {
     return [...produtos].sort((a, b) => {
       const aVenda = a.precoVista || 0;
-      const aCusto = a.precoCusto || 0;
+      const aCusto = getFifoNextCost(a);
       const aMargem = aVenda > 0 ? ((aVenda - aCusto) / aVenda) : 0;
 
       const bVenda = b.precoVista || 0;
-      const bCusto = b.precoCusto || 0;
+      const bCusto = getFifoNextCost(b);
       const bMargem = bVenda > 0 ? ((bVenda - bCusto) / bVenda) : 0;
 
       return bMargem - aMargem;
@@ -97,9 +102,10 @@ export default function RelatoriosView({ data }: Props) {
     let csv = '\uFEFF';
     csv += 'Relatório;Produto;Marca;Volume;Estoque Físico;Custo Unitário (R$);Preço Venda (R$);Qtd Vendida;Faturamento (R$);Lucro Gerado (R$)\n';
 
+    const textCell = (value: string) => `"${(/^[\s]*[=+@-]/.test(value) ? "'" + value : value).replaceAll('"', '""')}"`;
     for (const sp of statsPorProduto) {
       const p = sp.produto;
-      csv += `"Geral";"${p.nome}";"${p.marca}";"${p.volume || ''}";${p.quantidade};${(p.precoCusto || 0).toFixed(2).replace('.', ',')};${(p.precoVista || 0).toFixed(2).replace('.', ',')};${sp.qtdVendida};${sp.faturamento.toFixed(2).replace('.', ',')};${sp.lucroReal.toFixed(2).replace('.', ',')}\n`;
+      csv += `"Geral";${textCell(p.nome)};${textCell(p.marca)};${textCell(p.volume || '')};${p.quantidade};${getFifoNextCost(p).toFixed(2).replace('.', ',')};${(p.precoVista || 0).toFixed(2).replace('.', ',')};${sp.qtdVendida};${sp.faturamento.toFixed(2).replace('.', ',')};${sp.lucroReal.toFixed(2).replace('.', ',')}\n`;
     }
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -110,6 +116,7 @@ export default function RelatoriosView({ data }: Props) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -137,6 +144,7 @@ export default function RelatoriosView({ data }: Props) {
       </div>
 
       <MonthFilter value={selectedMonth} onChange={setSelectedMonth} />
+      <p className="text-xs text-brand-muted">Vendas não canceladas do período, com descontos rateados por produto. Faturamento e lucro dos produtos não incluem frete. O relatório de margens usa os preços atuais do catálogo.</p>
 
       {/* SELEÇÃO DO TIPO DE RELATÓRIO */}
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -226,7 +234,7 @@ export default function RelatoriosView({ data }: Props) {
               </thead>
               <tbody className="divide-y divide-brand-nude text-xs">
                 {maiorMargem.map((p) => {
-                  const custo = p.precoCusto || 0;
+                  const custo = getFifoNextCost(p);
                   const venda = p.precoVista || 0;
                   const lucro = venda - custo;
                   const margem = venda > 0 ? ((lucro / venda) * 100).toFixed(1) : '0';

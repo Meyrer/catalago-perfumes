@@ -1,5 +1,7 @@
 "use client";
 
+import { getFifoNextCost } from '@/lib/fifo';
+
 import { useState, useMemo, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import type { ERPData, AdminProduto } from '../types';
@@ -125,7 +127,7 @@ export default function ProdutosView({ data }: Props) {
       
       let matchEstoque = true;
       if (selectedEstoqueFiltro === 'BAIXO') {
-        matchEstoque = p.quantidade <= (p.estoqueMinimo || 2) && p.quantidade > 0;
+        matchEstoque = p.quantidade <= (p.estoqueMinimo ?? 2) && p.quantidade > 0;
       } else if (selectedEstoqueFiltro === 'ZERADO') {
         matchEstoque = p.quantidade === 0;
       }
@@ -145,17 +147,17 @@ export default function ProdutosView({ data }: Props) {
         aVal = a.quantidade || 0;
         bVal = b.quantidade || 0;
       } else if (sortField === 'precoCusto') {
-        aVal = a.precoCusto || 0;
-        bVal = b.precoCusto || 0;
+        aVal = getFifoNextCost(a);
+        bVal = getFifoNextCost(b);
       } else if (sortField === 'precoVista') {
         aVal = a.precoVista || 0;
         bVal = b.precoVista || 0;
       } else if (sortField === 'lucro') {
-        aVal = (a.precoVista || 0) - (a.precoCusto || 0);
-        bVal = (b.precoVista || 0) - (b.precoCusto || 0);
+        aVal = (a.precoVista || 0) - (getFifoNextCost(a));
+        bVal = (b.precoVista || 0) - (getFifoNextCost(b));
       } else if (sortField === 'margem') {
-        const aLucro = (a.precoVista || 0) - (a.precoCusto || 0);
-        const bLucro = (b.precoVista || 0) - (b.precoCusto || 0);
+        const aLucro = (a.precoVista || 0) - (getFifoNextCost(a));
+        const bLucro = (b.precoVista || 0) - (getFifoNextCost(b));
         aVal = a.precoVista > 0 ? (aLucro / a.precoVista) : 0;
         bVal = b.precoVista > 0 ? (bLucro / b.precoVista) : 0;
       }
@@ -378,7 +380,7 @@ export default function ProdutosView({ data }: Props) {
                 </tr>
               ) : (
                 filteredSortedProdutos.map((p) => {
-                  const custo = p.precoCusto || 0;
+                  const custo = getFifoNextCost(p);
                   const venda = p.precoVista || 0;
                   const lucro = venda - custo;
                   const margem = venda > 0 ? ((lucro / venda) * 100).toFixed(1) : '0';
@@ -434,7 +436,7 @@ export default function ProdutosView({ data }: Props) {
                       <td className="py-3 px-3 text-center whitespace-nowrap">
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           p.quantidade === 0 ? 'bg-brand-rose-beige text-brand-chocolate' :
-                          p.quantidade <= (p.estoqueMinimo || 2) ? 'bg-brand-nude text-brand-chocolate' :
+                          p.quantidade <= (p.estoqueMinimo ?? 2) ? 'bg-brand-nude text-brand-chocolate' :
                           'bg-brand-nude text-brand-chocolate'
                         }`}>
                           {p.quantidade} un.
@@ -604,7 +606,7 @@ function ProductFormModal({
   const [precoVista, setPrecoVista] = useState<number>(productToEdit?.precoVista || 0);
   const [precoOriginal, setPrecoOriginal] = useState<number>(productToEdit?.precoOriginal || 0);
   const [quantidade, setQuantidade] = useState<number>(productToEdit?.quantidade || 1);
-  const [estoqueMinimo, setEstoqueMinimo] = useState<number>(productToEdit?.estoqueMinimo || 2);
+  const [estoqueMinimo, setEstoqueMinimo] = useState<number>(productToEdit?.estoqueMinimo ?? 2);
   const [sku, setSku] = useState(productToEdit?.sku || '');
   const [codigoBarras, setCodigoBarras] = useState(productToEdit?.codigoBarras || '');
   const [tipoDisponibilidade, setTipoDisponibilidade] = useState(productToEdit?.tipoDisponibilidade || 'PRONTA_ENTREGA');
@@ -628,7 +630,7 @@ function ProductFormModal({
   const [error, setError] = useState('');
 
   // Cálculos Automáticos de Lucro, Margem e Markup
-  const lucroUnitario = Math.max(0, precoVista - precoCusto);
+  const lucroUnitario = precoVista - precoCusto;
   const margemPercentual = precoVista > 0 ? ((lucroUnitario / precoVista) * 100).toFixed(1) : '0';
   const markup = precoCusto > 0 ? (precoVista / precoCusto).toFixed(2) : '—';
 
@@ -851,6 +853,7 @@ function ProductFormModal({
             <div>
               <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1">Custo de Aquisição (R$)</label>
               <input type="number" step="0.01" value={precoCusto} onChange={e => setPrecoCusto(parseFloat(e.target.value) || 0)} className="w-full px-3.5 py-2 bg-brand-cream text-xs font-bold text-brand-deep rounded-xl border border-brand-line outline-none" />
+              <p className="mt-1 text-[10px] text-brand-muted">Custo de referência para novas entradas manuais. Os lotes FIFO existentes mantêm os seus custos.</p>
             </div>
             <div>
               <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1">Preço de Venda (R$) *</label>
@@ -1019,7 +1022,7 @@ function ProductQuickViewModal({
   const fotos = product.fotos && product.fotos.length > 0 ? product.fotos : [];
   const currentPhotoUrl = fotos[activePhotoIdx]?.url;
 
-  const custo = product.precoCusto || 0;
+  const custo = getFifoNextCost(product);
   const venda = product.precoVista || 0;
   const lucro = venda - custo;
   const margem = venda > 0 ? ((lucro / venda) * 100).toFixed(1) : '0';
@@ -1315,7 +1318,7 @@ function ProductQuickViewModal({
                     <span className="text-[10px] text-brand-muted block">Estoque Físico</span>
                     <span className={`inline-block font-bold text-sm mt-0.5 ${
                       product.quantidade === 0 ? 'text-brand-chocolate' :
-                      product.quantidade <= (product.estoqueMinimo || 2) ? 'text-brand-chocolate' :
+                      product.quantidade <= (product.estoqueMinimo ?? 2) ? 'text-brand-chocolate' :
                       'text-brand-chocolate'
                     }`}>
                       {product.quantidade} un. {product.quantidade === 0 && '(Sem Estoque)'}
@@ -1324,7 +1327,7 @@ function ProductQuickViewModal({
                   <div className="bg-brand-card p-2.5 rounded-xl border border-brand-nude">
                     <span className="text-[10px] text-brand-muted block">Estoque Mínimo</span>
                     <span className="font-bold text-sm text-brand-chocolate mt-0.5 block">
-                      {product.estoqueMinimo || 2} un.
+                      {product.estoqueMinimo ?? 2} un.
                     </span>
                   </div>
                   <div className="bg-brand-card p-2.5 rounded-xl border border-brand-nude">

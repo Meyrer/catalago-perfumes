@@ -1,3 +1,4 @@
+import { changeFifoStock } from '@/lib/fifo-stock';
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import { apiError, apiSuccess, errorMessage, isAdminApiAuthorized, optionalNumber, positiveId, readJsonObject, requiredText } from "@/lib/admin-api";
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
     const result = await prisma.$transaction(async (tx) => {
       const product = await tx.produto.findUnique({ where: { id: productId } });
       if (!product) throw new Error("Produto não encontrado.");
+      await changeFifoStock(tx, product, newQuantity, 'API_ADJUSTMENT');
       const changed = await tx.produto.updateMany({ where: { id: productId, quantidade: product.quantidade }, data: { quantidade: newQuantity, ...(newQuantity === 0 ? { tipoDisponibilidade: "ENCOMENDA", previsaoEntrega: "Sob Encomenda • Próximo lote previsto em 7 a 12 dias" } : product.quantidade === 0 && product.tipoDisponibilidade === "ENCOMENDA" ? { tipoDisponibilidade: "PRONTA_ENTREGA", previsaoEntrega: "Disponível em estoque • Envio ou retirada imediata" } : {}) } });
       if (changed.count !== 1) throw new Error("Estoque alterado por outra operação. Consulte o saldo e tente novamente.");
       const updated = await tx.produto.findUniqueOrThrow({ where: { id: productId } });

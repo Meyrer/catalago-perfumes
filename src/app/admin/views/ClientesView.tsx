@@ -42,7 +42,7 @@ export default function ClientesView({ data }: Props) {
   const clientesComMetricas = useMemo(() => {
     const vendasPorCliente = new Map<number, typeof vendas>();
     for (const venda of vendas) {
-      if (venda.clienteId === null || !['PAGO', 'ENVIADO', 'ENTREGUE'].includes(venda.status)) continue;
+      if (venda.clienteId === null || venda.status === 'CANCELADO') continue;
       const grupo = vendasPorCliente.get(venda.clienteId);
       if (grupo) grupo.push(venda);
       else vendasPorCliente.set(venda.clienteId, [venda]);
@@ -224,7 +224,7 @@ export default function ClientesView({ data }: Props) {
           </select>
           <select aria-label="Ordenar clientes" value={sortBy} onChange={e => { setSortBy(e.target.value); setPage(1); }} className="px-3 py-2 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line">
             <option value="nome">Nome: A–Z</option>
-            <option value="total">Maior total gasto</option>
+            <option value="total">Maior total em compras</option>
             <option value="ultima">Compra mais recente</option>
           </select>
         </div>
@@ -243,7 +243,7 @@ export default function ClientesView({ data }: Props) {
                 <th scope="col" className="px-4 py-3 font-semibold">Cliente</th>
                 <th scope="col" className="hidden md:table-cell px-4 py-3 font-semibold">Contato</th>
                 <th scope="col" className="hidden sm:table-cell px-4 py-3 text-center font-semibold">Compras</th>
-                <th scope="col" className="px-4 py-3 text-right font-semibold whitespace-nowrap">Total gasto</th>
+                <th scope="col" className="px-4 py-3 text-right font-semibold whitespace-nowrap">Total em compras</th>
                 <th scope="col" className="hidden lg:table-cell px-4 py-3 font-semibold whitespace-nowrap">Última compra</th>
                 <th scope="col" className="px-4 py-3 text-right font-semibold">Ações</th>
               </tr>
@@ -404,7 +404,7 @@ export default function ClientesView({ data }: Props) {
               {selectedMetricas && (
                 <>
                   <dl className="grid grid-cols-3 gap-2 p-3 rounded-xl bg-brand-cream border border-brand-line text-xs">
-                    <div><dt className="text-[10px] text-brand-muted">Total gasto</dt><dd className="mt-1 font-bold text-brand-chocolate">{selectedMetricas.totalGasto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</dd></div>
+                    <div><dt className="text-[10px] text-brand-muted">Total em compras</dt><dd className="mt-1 font-bold text-brand-chocolate">{selectedMetricas.totalGasto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</dd></div>
                     <div><dt className="text-[10px] text-brand-muted">Compras</dt><dd className="mt-1 font-bold text-brand-chocolate">{selectedMetricas.qtdCompras}</dd></div>
                     <div><dt className="text-[10px] text-brand-muted">Ticket médio</dt><dd className="mt-1 font-bold text-brand-chocolate">{selectedMetricas.ticketMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</dd></div>
                   </dl>
@@ -412,13 +412,13 @@ export default function ClientesView({ data }: Props) {
                 </>
               )}
               {selectedCliente.observacoes && <p className="text-xs text-brand-muted whitespace-pre-wrap break-words p-3 rounded-xl bg-brand-cream border border-brand-line">{selectedCliente.observacoes}</p>}
-              <span className="text-[11px] font-bold text-brand-muted uppercase tracking-wider block">Pedidos Realizados ({selectedCliente.vendas?.length || 0})</span>
+              <span className="text-[11px] font-bold text-brand-muted uppercase tracking-wider block">Pedidos Realizados ({selectedMetricas?.cliVendas?.length || 0})</span>
               
-              {(!selectedCliente.vendas || selectedCliente.vendas.length === 0) ? (
-                <p className="text-xs text-brand-muted py-6 text-center">Nenhum pedido finalizado ainda.</p>
+              {(!selectedMetricas?.cliVendas || selectedMetricas?.cliVendas.length === 0) ? (
+                <p className="text-xs text-brand-muted py-6 text-center">Nenhum pedido não cancelado ainda.</p>
               ) : (
                 <div className="divide-y divide-brand-nude border border-brand-line rounded-2xl bg-brand-card overflow-hidden text-xs">
-                  {selectedCliente.vendas.map(v => (
+                  {selectedMetricas?.cliVendas.map(v => (
                     <div key={v.id} className="p-3">
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-mono font-bold text-brand-chocolate">{v.numero}</span>

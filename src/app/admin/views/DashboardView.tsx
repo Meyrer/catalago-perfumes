@@ -1,9 +1,13 @@
 "use client";
 
+import { getFifoStockValue } from '@/lib/fifo';
+
 import { useState, useMemo } from 'react';
 import type { ERPData } from '../types';
 import { normalizeImageUrl } from '@/lib/image-url';
-import { getSalePaymentStatus } from '@/lib/sale-payment';
+import { getMonthKey, isInMonth } from '../MonthFilter';
+import { getSaleItemNetAmounts } from '@/lib/sale-payment';
+import { fromCents, toCents } from '@/lib/money';
 import { 
   TrendingUp, DollarSign, Package, AlertTriangle, 
   ShoppingBag, Clock, ArrowUpRight, ArrowDownRight, 
@@ -43,36 +47,37 @@ export default function DashboardView({ data, onNavigate }: Props) {
   // Datas de referência
   const agora = new Date();
   const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
-  const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+  const fimHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1);
+  const mesAtual = getMonthKey();
 
   // Cálculos de Vendas
-  const vendasPagas = useMemo(() => {
-    return vendas.filter(v => getSalePaymentStatus(v) === 'PAGO');
+  const vendasValidas = useMemo(() => {
+    return vendas.filter(v => v.status !== 'CANCELADO');
   }, [vendas]);
 
   const faturamentoHoje = useMemo(() => {
-    return vendasPagas
-      .filter(v => new Date(v.data) >= inicioHoje)
+    return vendasValidas
+      .filter(v => new Date(v.data) >= inicioHoje && new Date(v.data) < fimHoje)
       .reduce((acc, v) => acc + v.valorTotal, 0);
-  }, [vendasPagas, inicioHoje]);
+  }, [vendasValidas, inicioHoje, fimHoje]);
 
   const faturamentoMes = useMemo(() => {
-    return vendasPagas
-      .filter(v => new Date(v.data) >= inicioMes)
+    return vendasValidas
+      .filter(v => isInMonth(v.data, mesAtual))
       .reduce((acc, v) => acc + v.valorTotal, 0);
-  }, [vendasPagas, inicioMes]);
+  }, [vendasValidas, mesAtual]);
 
   const lucroMes = useMemo(() => {
-    return vendasPagas
-      .filter(v => new Date(v.data) >= inicioMes)
-      .reduce((acc, v) => acc + v.lucroTotal, 0);
-  }, [vendasPagas, inicioMes]);
+    return vendasValidas
+      .filter(v => isInMonth(v.data, mesAtual))
+      .reduce((acc, v) => acc + v.valorTotal - v.custoTotal, 0);
+  }, [vendasValidas, mesAtual]);
 
   const margemLucroMes = faturamentoMes > 0 ? ((lucroMes / faturamentoMes) * 100).toFixed(1) : '0';
 
   const vendasMesCount = useMemo(() => {
-    return vendasPagas.filter(v => new Date(v.data) >= inicioMes).length;
-  }, [vendasPagas, inicioMes]);
+    return vendasValidas.filter(v => isInMonth(v.data, mesAtual)).length;
+  }, [vendasValidas, mesAtual]);
 
   const ticketMedioMes = vendasMesCount > 0 ? (faturamentoMes / vendasMesCount) : 0;
 
@@ -82,7 +87,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
   }, [produtos]);
 
   const valorTotalCustoEstoque = useMemo(() => {
-    return produtos.reduce((acc, p) => acc + (p.precoCusto || 0) * (p.quantidade || 0), 0);
+    return produtos.reduce((acc, p) => acc + getFifoStockValue(p), 0);
   }, [produtos]);
 
   const valorPotencialVenda = useMemo(() => {
@@ -96,7 +101,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
   }, [produtos]);
 
   const produtosEstoqueBaixo = useMemo(() => {
-    return produtos.filter(p => p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade <= (p.estoqueMinimo || 2) && p.quantidade > 0);
+    return produtos.filter(p => p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade <= (p.estoqueMinimo ?? 2) && p.quantidade > 0);
   }, [produtos]);
 
   const produtosSemEstoque = useMemo(() => {
@@ -114,30 +119,32 @@ export default function DashboardView({ data, onNavigate }: Props) {
   // Ranking de Produtos Mais Vendidos
   const topProdutosMaisVendidos = useMemo(() => {
     const map = new Map<number, { produto: typeof produtos[0]; qtd: number; totalVendas: number }>();
-    for (const v of vendasPagas) {
-      for (const item of v.itens) {
+    for (const v of vendasValidas) {
+      const netAmounts = getSaleItemNetAmounts(v);
+      for (const [index, item] of v.itens.entries()) {
         const prod = produtos.find(p => p.id === item.produtoId) || item.produto;
         if (!prod) continue;
         const current = map.get(prod.id) || { produto: prod as unknown as typeof produtos[0], qtd: 0, totalVendas: 0 };
         current.qtd += item.quantidade;
-        current.totalVendas += item.subtotal;
+        current.totalVendas = fromCents(toCents(current.totalVendas) + toCents(netAmounts[index]));
         map.set(prod.id, current);
       }
     }
     return Array.from(map.values())
       .sort((a, b) => b.qtd - a.qtd)
       .slice(0, 5);
-  }, [vendasPagas, produtos]);
+  }, [vendasValidas, produtos]);
 
   // Ranking de Categorias Mais Vendidas
   const categoriasMaisVendidas = useMemo(() => {
     const catMap = new Map<string, { nome: string; total: number; qtd: number }>();
-    for (const v of vendasPagas) {
-      for (const item of v.itens) {
+    for (const v of vendasValidas) {
+      const netAmounts = getSaleItemNetAmounts(v);
+      for (const [index, item] of v.itens.entries()) {
         const prod = produtos.find(p => p.id === item.produtoId);
         const catName = prod?.categoria?.nome || 'Outros';
         const current = catMap.get(catName) || { nome: catName, total: 0, qtd: 0 };
-        current.total += item.subtotal;
+        current.total = fromCents(toCents(current.total) + toCents(netAmounts[index]));
         current.qtd += item.quantidade;
         catMap.set(catName, current);
       }
@@ -148,7 +155,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
       ...c,
       percent: Math.round((c.total / totalVendasGeral) * 100)
     }));
-  }, [vendasPagas, produtos]);
+  }, [vendasValidas, produtos]);
 
   // Dados para Gráfico de Vendas
   const chartDaysCount = salesTimeframe === '7d' ? 7 : salesTimeframe === '30d' ? 30 : 90;
@@ -159,21 +166,21 @@ export default function DashboardView({ data, onNavigate }: Props) {
     for (let i = chartDaysCount - 1; i >= 0; i--) {
       const d = new Date(baseDate.getTime() - i * 24 * 60 * 60 * 1000);
       const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
+      const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
 
-      const daySales = vendasPagas.filter(v => {
+      const daySales = vendasValidas.filter(v => {
         const vDate = new Date(v.data);
-        return vDate >= dayStart && vDate <= dayEnd;
+        return vDate >= dayStart && vDate < dayEnd;
       });
 
       const dayTotal = daySales.reduce((acc, v) => acc + v.valorTotal, 0);
-      const dayLucro = daySales.reduce((acc, v) => acc + v.lucroTotal, 0);
+      const dayLucro = daySales.reduce((acc, v) => acc + v.valorTotal - v.custoTotal, 0);
 
       const label = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
       points.push({ label, dateStr: d.toISOString(), valor: dayTotal, lucro: dayLucro });
     }
     return points;
-  }, [vendasPagas, chartDaysCount]);
+  }, [vendasValidas, chartDaysCount]);
 
   const maxChartVal = useMemo(() => {
     const max = Math.max(...salesChartData.map(p => p.valor), 100);
@@ -250,29 +257,29 @@ export default function DashboardView({ data, onNavigate }: Props) {
       {/* 11 CARDS COMPACTOS DE KPIS */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-3.5">
         
-        {/* Faturamento Hoje */}
+        {/* Vendido Hoje */}
         <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs">
           <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
-            Faturamento Hoje
+            Vendido Hoje
           </span>
           <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {faturamentoHoje.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
           <span className="text-[10px] font-semibold text-brand-chocolate flex items-center gap-0.5 mt-1">
-            <ArrowUpRight size={12} /> Vendas quitadas de hoje
+            <ArrowUpRight size={12} /> Vendas não canceladas de hoje
           </span>
         </div>
 
-        {/* Faturamento no Mês */}
+        {/* Vendido no Mês */}
         <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs">
           <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
-            Faturamento no Mês
+            Vendido no Mês
           </span>
           <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {faturamentoMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
           <span className="text-[10px] text-brand-muted block mt-1">
-            {vendasMesCount} pedido(s) quitado(s)
+            {vendasMesCount} pedido(s) não cancelado(s)
           </span>
         </div>
 
@@ -400,13 +407,13 @@ export default function DashboardView({ data, onNavigate }: Props) {
         {/* Vendas no Mês */}
         <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs cursor-pointer hover:bg-brand-cream transition-colors" onClick={() => onNavigate('vendas')}>
           <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
-            Vendas Concluídas
+            Vendas Registradas
           </span>
           <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
-            {vendasPagas.length}
+            {vendasValidas.length}
           </p>
           <span className="text-[10px] text-brand-chocolate font-bold block mt-1">
-            Total histórico quitado
+            Total histórico sem canceladas
           </span>
         </div>
       </div>
@@ -593,7 +600,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
               Vendas por Categoria
             </h3>
             <p className="text-xs text-brand-muted mb-5">
-              Participação de cada linha de produtos nas vendas
+              Histórico sem canceladas, com descontos e sem frete
             </p>
 
             <div className="space-y-4">
@@ -643,7 +650,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
                 Produtos Mais Vendidos
               </h3>
               <p className="text-xs text-brand-muted">
-                Ranking dos campeões de venda da boutique
+                Histórico sem canceladas; valores com descontos e sem frete
               </p>
             </div>
             <button
@@ -753,7 +760,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
                           </span>
                           <span className="text-xs font-bold text-brand-chocolate">{p.nome}</span>
                         </div>
-                        <p className="text-[11px] text-brand-muted mt-0.5">{p.marca} (mínimo recomendado: {p.estoqueMinimo || 2} un.)</p>
+                        <p className="text-[11px] text-brand-muted mt-0.5">{p.marca} (mínimo recomendado: {p.estoqueMinimo ?? 2} un.)</p>
                       </div>
                       <button
                         onClick={() => onNavigate('estoque')}

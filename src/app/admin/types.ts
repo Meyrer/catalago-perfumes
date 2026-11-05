@@ -50,18 +50,7 @@ export type AdminEncomenda = Plain<Prisma.EncomendaGetPayload<{
   };
 }>>;
 
-export type AdminCliente = Plain<Prisma.ClienteGetPayload<{
-  include: {
-    vendas: {
-      include: {
-        itens: {
-          include: { produto: true };
-        };
-      };
-    };
-    encomendas: true;
-  };
-}>>;
+export type AdminCliente = Plain<Cliente>;
 
 export type AdminMovimentacao = Plain<Prisma.EstoqueMovimentacaoGetPayload<{
   include: {
@@ -75,7 +64,7 @@ export type ERPData = {
   categorias: Plain<Categoria>[];
   banners: Plain<Banner>[];
   fornecedores: Plain<Fornecedor>[];
-  movimentacoes: AdminMovimentacao[];
+  movimentacoesTotal: number;
   compras: AdminCompra[];
   vendas: AdminVenda[];
   clientes: AdminCliente[];

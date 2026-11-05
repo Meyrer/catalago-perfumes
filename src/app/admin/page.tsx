@@ -28,7 +28,7 @@ export default async function AdminPage() {
     categorias,
     banners,
     fornecedores,
-    movimentacoes,
+    movimentacoesTotal,
     compras,
     vendas,
     clientes,
@@ -52,10 +52,7 @@ export default async function AdminPage() {
     prisma.fornecedor.findMany({
       orderBy: { nome: 'asc' }
     }),
-    prisma.estoqueMovimentacao.findMany({
-      include: { produto: true },
-      orderBy: { createdAt: 'desc' }
-    }),
+    prisma.estoqueMovimentacao.count(),
     prisma.compra.findMany({
       include: {
         fornecedor: true,
@@ -78,19 +75,7 @@ export default async function AdminPage() {
       },
       orderBy: { data: 'desc' }
     }),
-    prisma.cliente.findMany({
-      include: {
-        vendas: {
-          include: {
-            itens: {
-              include: { produto: true }
-            }
-          }
-        },
-        encomendas: true
-      },
-      orderBy: { nome: 'asc' }
-    }),
+    prisma.cliente.findMany({ orderBy: { nome: 'asc' } }),
     prisma.encomenda.findMany({
       include: {
         cliente: true,
@@ -124,7 +109,7 @@ export default async function AdminPage() {
       imagemUrl: normalizeImageUrl(banner.imagemUrl),
     })),
     fornecedores,
-    movimentacoes,
+    movimentacoesTotal,
     compras,
     vendas: vendas.map(venda => ({
       ...venda,

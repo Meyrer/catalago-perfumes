@@ -9,6 +9,7 @@ import { join } from "path";
 import { searchPerfume } from "@/services/perfumeApi";
 import { loginAdmin, logoutAdmin, requireAdminAuth, changeAdminPassword } from "@/lib/auth";
 import { plainPrismaData } from "@/lib/admin-api";
+import { changeFifoStock, initialFifoStock } from "@/lib/fifo-stock";
 
 export async function loginAdminAction(formData: FormData) {
   const username = formData.get("username") as string;
@@ -107,27 +108,29 @@ export async function updateCategoria(id: number, data: FormData) {
 export async function deleteCategoria(id: number, targetCategoriaId?: number) {
   await requireAdminAuth();
 
-  const count = await prisma.produto.count({ where: { categoriaId: id } });
-  if (count > 0) {
-    if (targetCategoriaId && targetCategoriaId !== id) {
-      await prisma.produto.updateMany({
-        where: { categoriaId: id },
-        data: { categoriaId: targetCategoriaId }
-      });
-    } else {
-      const otherCat = await prisma.categoria.findFirst({ where: { id: { not: id } } });
-      if (otherCat) {
-        await prisma.produto.updateMany({
+  await prisma.$transaction(async tx => {
+    const count = await tx.produto.count({ where: { categoriaId: id } });
+    if (count > 0) {
+      if (targetCategoriaId && targetCategoriaId !== id) {
+        await tx.produto.updateMany({
           where: { categoriaId: id },
-          data: { categoriaId: otherCat.id }
+          data: { categoriaId: targetCategoriaId }
         });
       } else {
-        throw new Error('Não é possível excluir a única categoria existente enquanto houver produtos nela.');
+        const otherCat = await tx.categoria.findFirst({ where: { id: { not: id } } });
+        if (otherCat) {
+          await tx.produto.updateMany({
+            where: { categoriaId: id },
+            data: { categoriaId: otherCat.id }
+          });
+        } else {
+          throw new Error('Não é possível excluir a única categoria existente enquanto houver produtos nela.');
+        }
       }
     }
-  }
-
-  await prisma.categoria.delete({ where: { id } });
+  
+    await tx.categoria.delete({ where: { id } });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   revalidatePath('/');
   revalidatePath('/admin');
 }
@@ -207,6 +210,7 @@ export async function createProduto(data: FormData) {
       precoOriginal,
       precoCusto,
       quantidade,
+      lotesEstoque: initialFifoStock(quantidade, precoCusto ?? 0),
       estoqueMinimo,
       precoParcelado, 
       volume,
@@ -363,8 +367,9 @@ export async function updateProduto(id: number, data: FormData) {
   const descricaoFragrancia = (data.get('descricaoFragrancia') as string) || null;
 
   await prisma.$transaction(async (tx) => {
-    const current = await tx.produto.findUnique({ where: { id }, select: { quantidade: true } });
+    const current = await tx.produto.findUnique({ where: { id } });
     if (!current) throw new Error("Produto não encontrado.");
+    await changeFifoStock(tx, current, quantidade, 'AJUSTE_CADASTRO', precoCusto ?? Number(current.precoCusto ?? 0));
     const changed = await tx.produto.updateMany({
       where: { id, quantidade: current.quantidade },
       data: {
@@ -463,6 +468,7 @@ export async function duplicarProdutoAction(produtoId: number) {
       precoOriginal: original.precoOriginal,
       precoCusto: original.precoCusto,
       quantidade: 1,
+      lotesEstoque: initialFifoStock(1, Number(original.precoCusto ?? 0)),
       estoqueMinimo: original.estoqueMinimo,
       volume: original.volume,
       tipoDisponibilidade: original.tipoDisponibilidade,
@@ -515,6 +521,9 @@ export async function movimentarEstoqueAction(
   const produto = await prisma.produto.findUnique({ where: { id: produtoId } });
   if (!produto) throw new Error("Produto não encontrado.");
 
+  if (!Number.isSafeInteger(quantidade) || quantidade < (tipo === 'AJUSTE' ? 0 : 1)) throw new Error('Quantidade inválida.');
+  if (['SAIDA', 'VENDA', 'PERDA'].includes(tipo) && quantidade > produto.quantidade) throw new Error('Quantidade de saída maior que o estoque disponível.');
+
   const qtdAnterior = produto.quantidade;
   let qtdNova = qtdAnterior;
   let reservadaNova = produto.quantidadeReservada;
@@ -529,7 +538,7 @@ export async function movimentarEstoqueAction(
     reservadaNova = Math.min(qtdAnterior, produto.quantidadeReservada + Math.abs(quantidade));
   }
 
-  const diferenca = tipo === 'AJUSTE' ? qtdNova - qtdAnterior : (tipo === 'ENTRADA' || tipo === 'DEVOLUCAO' ? Math.abs(quantidade) : -Math.abs(quantidade));
+  const diferenca = qtdNova - qtdAnterior;
 
   const updateData: {
     quantidade: number;
@@ -552,6 +561,7 @@ export async function movimentarEstoqueAction(
   }
 
   await prisma.$transaction(async (tx) => {
+    await changeFifoStock(tx, produto, qtdNova, `MANUAL_${tipo}`);
     const changed = await tx.produto.updateMany({
       where: { id: produtoId, quantidade: qtdAnterior, quantidadeReservada: produto.quantidadeReservada },
       data: updateData
@@ -610,6 +620,7 @@ export async function createEncomendaAction(data: Parameters<typeof createCustom
 
 export async function updateEncomendaStatusAction(encomendaId: number, status: string) {
   await requireAdminAuth();
+  if (!['SOLICITACAO_RECEBIDA', 'AGUARDANDO_PAGAMENTO', 'PEDIDO_REALIZADO', 'EM_TRANSITO', 'RECEBIDO', 'PRONTO_ENTREGA', 'FINALIZADO', 'CANCELADO'].includes(status)) throw new Error('Status da encomenda inválido.');
   await prisma.encomenda.update({
     where: { id: encomendaId },
     data: { status }
@@ -640,7 +651,14 @@ export async function receberCompraAction(compraId: number) {
 
 export async function deleteCompraAction(compraId: number) {
   await requireAdminAuth();
-  await prisma.compra.delete({ where: { id: compraId } });
+  await prisma.$transaction(async tx => {
+    const compra = await tx.compra.findUnique({ where: { id: compraId } });
+    if (!compra) throw new Error('Compra não encontrada.');
+    const movimento = await tx.estoqueMovimentacao.findFirst({ where: { compraId } });
+    if (compra.status === 'RECEBIDO' || movimento) throw new Error('Compras com entrada no estoque não podem ser excluídas. O registro deve ser preservado para conferência.');
+    const deleted = await tx.compra.deleteMany({ where: { id: compraId, updatedAt: compra.updatedAt, status: compra.status } });
+    if (deleted.count !== 1) throw new Error('A compra foi alterada por outra operação. Atualize a página.');
+  });
   revalidatePath('/admin');
 }
 
@@ -769,6 +787,8 @@ export async function createDespesaAction(data: {
   observacoes?: string;
 }) {
   await requireAdminAuth();
+  if (!data.descricao?.trim() || !Number.isFinite(data.valor) || data.valor <= 0) throw new Error('Informe uma descrição e um valor positivo para a despesa.');
+  if (data.data && !Number.isFinite(new Date(data.data).getTime())) throw new Error('Data da despesa inválida.');
   const despesa = await prisma.despesaFinanceira.create({
     data: {
       descricao: data.descricao.trim(),

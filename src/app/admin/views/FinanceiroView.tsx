@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react';
 import type { ERPData } from '../types';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
-import { getSalePaymentStatus, summarizeSalePayments } from '@/lib/sale-payment';
+import { getSalePaymentAllocations, summarizeSalePayments } from '@/lib/sale-payment';
+import { fromCents, toCents } from '@/lib/money';
 import { 
   DollarSign, TrendingUp, TrendingDown, Plus, 
   Calendar, PieChart, CreditCard, ArrowUpRight, 
@@ -16,10 +17,11 @@ type Props = {
 };
 
 export default function FinanceiroView({ data }: Props) {
-  const { vendas, despesas, encomendas } = data;
+  const { vendas, despesas } = data;
 
   const [periodo, setPeriodo] = useState<'hoje' | '7d' | '30d' | 'mes' | 'todos'>('mes');
   const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
+  const [resumo, setResumo] = useState<'vendas' | 'recebimentos'>('vendas');
   const [isNewDespesaOpen, setIsNewDespesaOpen] = useState(false);
   const [descDespesa, setDescDespesa] = useState('');
   const [catDespesa, setCatDespesa] = useState('EMBALAGENS');
@@ -43,12 +45,11 @@ export default function FinanceiroView({ data }: Props) {
     return new Date(0); // todos
   }, [periodo, agora]);
 
-  // Vendas Pagas no Período
+  // Mesma base da tela de Vendas: período da venda, sem canceladas.
   const vendasFiltradas = useMemo(() => {
     return vendas.filter(v => {
       const vDate = new Date(v.data);
-      const isPaid = getSalePaymentStatus(v) === 'PAGO';
-      return isPaid && (periodo === 'mes' ? isInMonth(v.data, selectedMonth) : vDate >= dataCorte);
+      return v.status !== 'CANCELADO' && (periodo === 'mes' ? isInMonth(v.data, selectedMonth) : vDate >= dataCorte);
     });
   }, [vendas, dataCorte, periodo, selectedMonth]);
 
@@ -58,38 +59,39 @@ export default function FinanceiroView({ data }: Props) {
   }, [despesas, dataCorte, periodo, selectedMonth]);
 
   // Indicadores DRE
-  const receitaBruta = useMemo(() => vendasFiltradas.reduce((acc, v) => acc + v.valorTotal, 0), [vendasFiltradas]);
-  const cpvTotal = useMemo(() => vendasFiltradas.reduce((acc, v) => acc + v.custoTotal, 0), [vendasFiltradas]);
-  const lucroBruto = receitaBruta - cpvTotal;
-  const totalDespesas = useMemo(() => despesasFiltradas.reduce((acc, d) => acc + d.valor, 0), [despesasFiltradas]);
-  const lucroLiquido = lucroBruto - totalDespesas;
+  const paymentSummary = useMemo(() => summarizeSalePayments(vendasFiltradas), [vendasFiltradas]);
+  const receitaBruta = paymentSummary.total;
+  const cpvTotal = useMemo(() => fromCents(vendasFiltradas.reduce((acc, v) => acc + toCents(v.custoTotal), 0)), [vendasFiltradas]);
+  const lucroBruto = fromCents(toCents(receitaBruta) - toCents(cpvTotal));
+  const totalDespesas = useMemo(() => fromCents(despesasFiltradas.reduce((acc, d) => acc + toCents(d.valor), 0)), [despesasFiltradas]);
+  const lucroLiquido = fromCents(toCents(lucroBruto) - toCents(totalDespesas));
   const margemLiquida = receitaBruta > 0 ? ((lucroLiquido / receitaBruta) * 100).toFixed(1) : '0';
 
-  const paymentSummary = useMemo(() => summarizeSalePayments(vendas), [vendas]);
-  // Contas a Receber (Saldos confirmados + Saldo de Encomendas ativas)
-  const contasAReceber = useMemo(() => {
-    const vendasPendentes = paymentSummary.outstanding;
+  const recebimentos = useMemo(() => vendas.flatMap(venda => getSalePaymentAllocations(venda).map((entry, index) => ({
+    ...entry, vendaId: venda.id, numero: venda.numero, key: `${venda.id}-${index}`,
+  }))), [vendas]);
+  const recebimentosFiltrados = useMemo(() => recebimentos.filter(entry => entry.data !== null
+    && (periodo === 'mes' ? isInMonth(entry.data, selectedMonth) : new Date(entry.data) >= dataCorte)), [recebimentos, periodo, selectedMonth, dataCorte]);
+  const recebidoNoPeriodo = fromCents(recebimentosFiltrados.reduce((sum, entry) => sum + toCents(entry.valor), 0));
+  const semData = fromCents(recebimentos.filter(entry => entry.data === null).reduce((sum, entry) => sum + toCents(entry.valor), 0));
+  const despesasExibidas = resumo === 'recebimentos' ? despesasFiltradas.filter(despesa => despesa.pago) : despesasFiltradas;
+  const despesasPagas = fromCents(despesasExibidas.reduce((sum, despesa) => sum + toCents(despesa.valor), 0));
 
-    const saldoEncomendas = encomendas
-      .filter(e => e.status !== 'FINALIZADO' && e.status !== 'CANCELADO')
-      .reduce((acc, e) => acc + Math.max(0, (e.precoEstimado || 0) - (e.valorAdiantamento || 0)), 0);
-
-    return vendasPendentes + saldoEncomendas;
-  }, [paymentSummary, encomendas]);
-
-  // Formas de Pagamento
+  // Usar os meios registrados em cada parcela, nunca a forma atual da venda.
   const formasPagamentoStats = useMemo(() => {
     const map = new Map<string, number>();
-    for (const v of vendasFiltradas) {
-      map.set(v.formaPagamento, (map.get(v.formaPagamento) || 0) + v.valorTotal);
+    const entries = resumo === 'recebimentos' ? recebimentosFiltrados : vendasFiltradas.flatMap(getSalePaymentAllocations);
+    for (const entry of entries) {
+      const method = entry.formaPagamento || 'Sem forma informada';
+      map.set(method, (map.get(method) || 0) + toCents(entry.valor));
     }
-    const total = receitaBruta || 1;
-    return Array.from(map.entries()).map(([forma, valor]) => ({
+    const total = entries.reduce((sum, entry) => sum + toCents(entry.valor), 0) || 1;
+    return Array.from(map.entries()).map(([forma, cents]) => ({
       forma,
-      valor,
-      percent: Math.round((valor / total) * 100)
+      valor: fromCents(cents),
+      percent: Math.round((cents / total) * 100)
     }));
-  }, [vendasFiltradas, receitaBruta]);
+  }, [vendasFiltradas, recebimentosFiltrados, resumo]);
 
   const handleCreateDespesa = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,71 +189,45 @@ export default function FinanceiroView({ data }: Props) {
         </div>
       )}
 
-      {/* CARDS DO DRE */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-        <div className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs">
-          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
-            Receita Bruta
-          </span>
-          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
-            {receitaBruta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </p>
-          <span className="text-[10px] text-brand-muted block mt-1">{vendasFiltradas.length} pedidos quitados · sem pagamentos parciais</span>
-        </div>
-
-        <div className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs">
-          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
-            Custo Produtos (CPV)
-          </span>
-          <p className="text-lg sm:text-xl font-bold text-brand-deep">
-            {cpvTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </p>
-          <span className="text-[10px] text-brand-muted block mt-1">Custo dos perfumes vendidos</span>
-        </div>
-
-        <div className="bg-brand-card p-4 rounded-2xl border border-brand-line bg-brand-nude/20 shadow-xs">
-          <span className="text-[10px] font-bold text-brand-chocolate uppercase tracking-wider block mb-1">
-            Lucro Bruto Comercial
-          </span>
-          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
-            +{lucroBruto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </p>
-          <span className="text-[10px] text-brand-chocolate font-bold block mt-1">
-            {receitaBruta > 0 ? ((lucroBruto / receitaBruta) * 100).toFixed(1) : 0}% sobre vendas
-          </span>
-        </div>
-
-        <div className="bg-brand-card p-4 rounded-2xl border border-brand-terracotta bg-brand-rose-beige/20 shadow-xs">
-          <span className="text-[10px] font-bold text-brand-chocolate uppercase tracking-wider block mb-1">
-            Despesas Operacionais
-          </span>
-          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
-            -{totalDespesas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </p>
-          <span className="text-[10px] text-brand-chocolate block mt-1">{despesasFiltradas.length} lançamento(s)</span>
-        </div>
-
-        <div className="bg-brand-card p-4 rounded-2xl border border-brand-line bg-brand-nude/40 shadow-xs">
-          <span className="text-[10px] font-bold text-brand-chocolate uppercase tracking-wider block mb-1">
-            Lucro Líquido Real
-          </span>
-          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
-            {lucroLiquido >= 0 ? `+${lucroLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : lucroLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </p>
-          <span className="text-[10px] text-brand-chocolate font-bold block mt-1">Margem Líquida: {margemLiquida}%</span>
-        </div>
-
-        <div className="bg-brand-card p-4 rounded-2xl border border-brand-line bg-brand-nude/30 shadow-xs">
-          <span className="text-[10px] font-bold text-brand-chocolate uppercase tracking-wider block mb-1">
-            Contas a Receber
-          </span>
-          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
-            {contasAReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </p>
-          <span className="text-[10px] text-brand-chocolate block mt-1">Saldos confirmados de vendas e encomendas · todos os períodos</span>
-          {paymentSummary.unconfirmedCount > 0 && <p className="text-[11px] font-semibold text-brand-chocolate mt-2">{paymentSummary.unconfirmedCount} venda(s) com pagamento a conferir: {paymentSummary.unconfirmed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}. Confira na tela de Vendas.</p>}
-        </div>
+      {/* RESUMO DAS MESMAS VENDAS DO PERÍODO */}
+      <div className="flex flex-wrap gap-2" aria-label="Critério do resumo financeiro">
+        {(['vendas', 'recebimentos'] as const).map(mode => <button key={mode} type="button" onClick={() => setResumo(mode)} aria-pressed={resumo === mode} className={`rounded-xl border border-brand-line px-4 py-2 text-xs font-bold ${resumo === mode ? 'bg-brand-chocolate text-brand-cream' : 'bg-brand-card text-brand-chocolate'}`}>{mode === 'vendas' ? 'Vendas do período' : 'Recebimentos do período'}</button>)}
       </div>
+      <p className="text-xs text-brand-muted">{resumo === 'vendas' ? 'Valores das vendas do período selecionado, mesmo quando o pagamento acontece em outro mês.' : 'Entradas pela data de cada pagamento registrado. Despesas pagas pela data do lançamento. Cancelamento de venda não comprova devolução do dinheiro.'}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        {(resumo === 'vendas' ? [
+          { label: 'Total vendido', value: receitaBruta, detail: `${paymentSummary.count} venda(s) · canceladas excluídas` },
+          { label: 'Já recebido', value: paymentSummary.received, detail: 'Pagamentos confirmados, incluindo parciais' },
+          { label: 'Falta receber', value: paymentSummary.outstanding, detail: 'Saldo em aberto confirmado' },
+          { label: 'Custo dos produtos vendidos', value: -cpvTotal, detail: 'Custo dos produtos dessas vendas' },
+          { label: 'Despesas', value: -totalDespesas, detail: `${despesasFiltradas.length} lançamento(s) no período` },
+          { label: 'Resultado das vendas', value: lucroLiquido, detail: `Vendido − custo − despesas · margem ${margemLiquida}%` },
+        ] : [
+          { label: 'Recebido no período', value: recebidoNoPeriodo, detail: `${recebimentosFiltrados.length} recebimento(s) com data registrada` },
+          { label: 'Despesas pagas', value: -despesasPagas, detail: `${despesasExibidas.length} lançamento(s) pago(s)` },
+          { label: 'Saldo do período', value: fromCents(toCents(recebidoNoPeriodo) - toCents(despesasPagas)), detail: 'Recebimentos menos despesas pagas; não inclui saldo anterior' },
+        ]).map(card => (
+          <div key={card.label} className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs min-w-0">
+            <p className="text-xs font-semibold text-brand-muted">{card.label}</p>
+            <p className="text-xl font-bold text-brand-chocolate mt-2">{card.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+            <p className="text-[11px] text-brand-muted mt-1">{card.detail}</p>
+          </div>
+        ))}
+      </div>
+      {resumo === 'vendas' && paymentSummary.unconfirmedCount > 0 && (
+        <p className="text-[11px] text-brand-muted">
+          Pagamentos a conferir: {paymentSummary.unconfirmed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em {paymentSummary.unconfirmedCount} venda(s).
+          {' '}Total vendido = já recebido + falta receber + valores a conferir.
+        </p>
+      )}
+      {resumo === 'vendas' ? <p className="text-[11px] text-brand-muted">O resultado considera todas as vendas do período e não representa dinheiro disponível em caixa.</p> : semData > 0 && <p className="text-[11px] text-brand-muted">Recebimentos sem data comprovada, de todo o histórico: {semData.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}. Não entram nos totais por data.</p>}
+
+      {resumo === 'recebimentos' && <div className="overflow-x-auto rounded-2xl border border-brand-line bg-brand-card p-4">
+        <h3 className="mb-3 text-sm font-bold text-brand-chocolate">Pagamentos recebidos</h3>
+        <table className="w-full text-left text-xs"><thead><tr className="text-brand-muted"><th className="p-2">Data do pagamento</th><th className="p-2">Venda</th><th className="p-2">Forma</th><th className="p-2 text-right">Valor</th></tr></thead><tbody>
+          {recebimentosFiltrados.length === 0 ? <tr><td colSpan={4} className="p-4 text-brand-muted">Nenhum recebimento com data registrada neste período.</td></tr> : recebimentosFiltrados.map(entry => <tr key={entry.key} className="border-t border-brand-line"><td className="p-2">{new Date(entry.data!).toLocaleString('pt-BR')}</td><td className="p-2 font-mono">{entry.numero}</td><td className="p-2">{entry.formaPagamento?.replaceAll('_', ' ') || 'Sem forma informada'}</td><td className="p-2 text-right">{entry.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td></tr>)}
+        </tbody></table>
+      </div>}
 
       {/* DETALHAMENTO: FORMAS DE PAGAMENTO & LISTA DE DESPESAS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -260,10 +236,10 @@ export default function FinanceiroView({ data }: Props) {
         <div className="bg-brand-card rounded-3xl p-5 sm:p-6 border border-brand-line shadow-xs flex flex-col justify-between">
           <div>
             <h3 className="text-base sm:text-lg font-serif font-bold text-brand-chocolate mb-1">
-              Divisão por Forma de Pagamento
+              Recebido por forma de pagamento
             </h3>
             <p className="text-xs text-brand-muted mb-5">
-              Vendas quitadas em cada meio de pagamento
+              Meios registrados em cada parcela, incluindo pagamentos parciais. Saldos antigos sem comprovação aparecem separados.
             </p>
 
             <div className="space-y-4">
@@ -305,7 +281,7 @@ export default function FinanceiroView({ data }: Props) {
                 </p>
               </div>
               <span className="text-xs font-bold text-brand-chocolate">
-                Total: -{totalDespesas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                Total: -{despesasPagas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </span>
             </div>
 
@@ -322,14 +298,14 @@ export default function FinanceiroView({ data }: Props) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-brand-nude text-xs">
-                  {despesasFiltradas.length === 0 ? (
+                  {despesasExibidas.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="text-center py-8 text-xs text-brand-muted">
                         Nenhuma despesa registrada neste período.
                       </td>
                     </tr>
                   ) : (
-                    despesasFiltradas.map((d) => (
+                    despesasExibidas.map((d) => (
                       <tr key={d.id} className="hover:bg-brand-cream transition-colors">
                         <td className="py-2.5 px-3 text-brand-muted font-mono text-[11px]">
                           {new Date(d.data).toLocaleDateString('pt-BR')}
