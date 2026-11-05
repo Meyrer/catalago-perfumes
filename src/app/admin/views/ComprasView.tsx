@@ -106,6 +106,11 @@ export default function ComprasView({ data }: Props) {
   const handleAddItem = () => {
     if (!selectedAddProdId || itemValorMoeda <= 0) return;
     const prodId = parseInt(selectedAddProdId);
+    if (compraItens.some(item => item.produtoId === prodId)) {
+      setFormError('Este produto já foi adicionado. Remova a linha anterior e informe a quantidade total em uma única linha.');
+      return;
+    }
+    setFormError('');
     setCompraItens([...compraItens, { produtoId: prodId, quantidade: itemQtd, valorUnitarioMoeda: itemValorMoeda }]);
     setSelectedAddProdId('');
     setItemValorMoeda(0);

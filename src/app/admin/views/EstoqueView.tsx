@@ -1,8 +1,10 @@
 "use client";
 
+import { getFifoStockValue, getFifoLots, getFifoNextCost } from '@/lib/fifo';
+
 import { useState, useMemo, useRef } from 'react';
 import type { ERPData, AdminProduto } from '../types';
-import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
+import StockMovementHistory from '../StockMovementHistory';
 import { 
   Boxes, AlertTriangle, ArrowDownRight, ArrowUpRight, 
   Search, History, RefreshCw, X, Loader2,
@@ -20,12 +22,11 @@ type Props = {
 const STOCK_PAGE_SIZE = 20;
 
 export default function EstoqueView({ data }: Props) {
-  const { produtos, movimentacoes, user } = data;
+  const { produtos, movimentacoesTotal, user } = data;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'BAIXO' | 'ZERADO' | 'PRONTA_ENTREGA' | 'ENCOMENDA'>('ALL');
   const [activeSubTab, setActiveSubTab] = useState<'saldo' | 'historico'>('saldo');
-  const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
   const [page, setPage] = useState(1);
   const [previewProduct, setPreviewProduct] = useState<AdminProduto | null>(null);
   const photoDialogRef = useRef<HTMLDialogElement>(null);
@@ -47,9 +48,9 @@ export default function EstoqueView({ data }: Props) {
 
       let matchFilter = true;
       if (filterType === 'BAIXO') {
-        matchFilter = p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade <= (p.estoqueMinimo || 2) && p.quantidade > 0;
+        matchFilter = p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade <= (p.estoqueMinimo ?? 2) && p.quantidade > 0;
       } else if (filterType === 'ZERADO') {
-        matchFilter = p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade === 0;
+        matchFilter = p.quantidade === 0;
       } else if (filterType === 'PRONTA_ENTREGA') {
         matchFilter = p.tipoDisponibilidade === 'PRONTA_ENTREGA';
       } else if (filterType === 'ENCOMENDA') {
@@ -71,10 +72,9 @@ export default function EstoqueView({ data }: Props) {
   };
 
   // Totais de Estoque
-  const filteredMovimentacoes = useMemo(() => movimentacoes.filter(movimentacao => isInMonth(movimentacao.createdAt, selectedMonth)), [movimentacoes, selectedMonth]);
 
   const totalFisico = useMemo(() => produtos.reduce((acc, p) => acc + (p.quantidade || 0), 0), [produtos]);
-  const totalCusto = useMemo(() => produtos.reduce((acc, p) => acc + (p.precoCusto || 0) * (p.quantidade || 0), 0), [produtos]);
+  const totalCusto = useMemo(() => produtos.reduce((acc, p) => acc + getFifoStockValue(p), 0), [produtos]);
   const totalVenda = useMemo(() => produtos.reduce((acc, p) => acc + (p.precoVista || 0) * (p.quantidade || 0), 0), [produtos]);
   const totalReservado = useMemo(() => produtos.reduce((acc, p) => acc + (p.quantidadeReservada || 0), 0), [produtos]);
 
@@ -141,7 +141,7 @@ export default function EstoqueView({ data }: Props) {
               activeSubTab === 'historico' ? 'bg-brand-chocolate text-brand-cream shadow-xs' : 'text-brand-muted hover:text-brand-chocolate'
             }`}
           >
-            <History size={14} /> Histórico de Movimentações ({movimentacoes.length})
+            <History size={14} /> Histórico de Movimentações ({movimentacoesTotal})
           </button>
         </div>
       </div>
@@ -189,7 +189,7 @@ export default function EstoqueView({ data }: Props) {
             Alertas de Reposição
           </span>
           <p className="text-xl sm:text-2xl font-bold text-brand-chocolate">
-            {produtos.filter(p => p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade <= (p.estoqueMinimo || 2)).length} <span className="text-xs font-medium text-brand-chocolate">itens</span>
+            {produtos.filter(p => p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade <= (p.estoqueMinimo ?? 2)).length} <span className="text-xs font-medium text-brand-chocolate">itens</span>
           </p>
           <span className="text-[11px] text-brand-chocolate font-medium block mt-1">
             Estoque baixo ou zerado
@@ -289,9 +289,9 @@ export default function EstoqueView({ data }: Props) {
                   ) : (
                     paginatedProdutos.map((p) => {
                       const disponivel = Math.max(0, (p.quantidade || 0) - (p.quantidadeReservada || 0));
-                      const isBaixo = p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade <= (p.estoqueMinimo || 2) && p.quantidade > 0;
+                      const isBaixo = p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade <= (p.estoqueMinimo ?? 2) && p.quantidade > 0;
                       const isZerado = p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade === 0;
-                      const totalInv = (p.precoCusto || 0) * (p.quantidade || 0);
+                      const totalInv = getFifoStockValue(p);
                       const totalPotVenda = (p.precoVista || 0) * (p.quantidade || 0);
 
                       return (
@@ -321,6 +321,10 @@ export default function EstoqueView({ data }: Props) {
                                 <p className="text-[10px] text-brand-muted font-medium">
                                   {p.marca} {p.volume ? `• ${p.volume}` : ''}
                                 </p>
+                                {p.quantidade > 0 && <details className="mt-1 text-[10px] text-brand-muted">
+                                  <summary className="cursor-pointer">Lotes FIFO</summary>
+                                  <ul className="mt-1 space-y-1">{getFifoLots(p).filter(lot => lot.quantidade > 0).map(lot => <li key={lot.id}>{lot.quantidade} un. × {lot.custoUnitario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} · {lot.recebidoEm ? new Date(lot.recebidoEm).toLocaleDateString('pt-BR') : 'Saldo inicial'} · {lot.origem}</li>)}</ul>
+                                </details>}
                               </div>
                             </div>
                           </td>
@@ -350,7 +354,7 @@ export default function EstoqueView({ data }: Props) {
 
                           {/* Custo Unitário */}
                           <td className="py-3 px-3 text-right font-medium text-brand-muted">
-                            {(p.precoCusto || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            {getFifoNextCost(p).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </td>
 
                           {/* Investimento Total */}
@@ -422,88 +426,7 @@ export default function EstoqueView({ data }: Props) {
       {/* ========================================================= */}
       {/* ABA: HISTÓRICO DE MOVIMENTAÇÕES (AUDITORIA) */}
       {/* ========================================================= */}
-      {activeSubTab === 'historico' && (
-        <div className="bg-brand-card rounded-2xl border border-brand-line shadow-xs overflow-hidden">
-          <MonthFilter value={selectedMonth} onChange={setSelectedMonth} />
-          <div className="p-4 border-b border-brand-line flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-brand-chocolate">Registro Geral de Auditoria de Estoque</h3>
-              <p className="text-[11px] text-brand-muted">Todas as entradas, saídas, vendas e ajustes manuais registrados no sistema.</p>
-            </div>
-            <span className="text-xs font-bold text-brand-muted">
-              {filteredMovimentacoes.length} registros
-            </span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-brand-cream border-b border-brand-line text-[10px] font-bold text-brand-muted uppercase tracking-wider">
-                  <th className="py-3 px-4">Data & Hora</th>
-                  <th className="py-3 px-3">Produto</th>
-                  <th className="py-3 px-3 text-center">Tipo</th>
-                  <th className="py-3 px-3 text-center">Variação</th>
-                  <th className="py-3 px-3 text-center">Saldo Anterior &rarr; Novo</th>
-                  <th className="py-3 px-4">Motivo / Descrição</th>
-                  <th className="py-3 px-3">Responsável</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-brand-nude text-xs">
-                {filteredMovimentacoes.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-10 text-xs text-brand-muted">
-                      Nenhuma movimentação de estoque registrada neste período.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredMovimentacoes.map((m) => {
-                    const dataFormatada = new Date(m.createdAt).toLocaleString('pt-BR', {
-                      day: '2-digit', month: '2-digit', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit'
-                    });
-
-                    const isPositivo = m.tipo === 'ENTRADA' || m.tipo === 'DEVOLUCAO';
-
-                    return (
-                      <tr key={m.id} className="hover:bg-brand-cream transition-colors">
-                        <td className="py-3 px-4 text-[11px] font-mono text-brand-muted">
-                          {dataFormatada}
-                        </td>
-                        <td className="py-3 px-3 font-bold text-brand-chocolate">
-                          {m.produto?.nome || `Produto #${m.produtoId}`}
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            m.tipo === 'ENTRADA' ? 'bg-brand-nude text-brand-chocolate' :
-                            m.tipo === 'SAIDA' ? 'bg-brand-rose-beige text-brand-chocolate' :
-                            m.tipo === 'VENDA' ? 'bg-brand-nude text-brand-chocolate' :
-                            m.tipo === 'PERDA' ? 'bg-brand-nude text-brand-chocolate' :
-                            'bg-brand-nude text-brand-chocolate'
-                          }`}>
-                            {m.tipo}
-                          </span>
-                        </td>
-                        <td className={`py-3 px-3 text-center font-bold ${isPositivo ? 'text-brand-chocolate' : 'text-brand-chocolate'}`}>
-                          {m.quantidade > 0 ? `+${m.quantidade}` : m.quantidade} un.
-                        </td>
-                        <td className="py-3 px-3 text-center text-brand-muted font-mono text-[11px]">
-                          {m.quantidadeAnterior} &rarr; <strong className="text-brand-chocolate">{m.quantidadeNova}</strong>
-                        </td>
-                        <td className="py-3 px-4 text-brand-muted">
-                          {m.motivo || '—'}
-                        </td>
-                        <td className="py-3 px-3 font-semibold text-brand-muted">
-                          👤 {m.usuarioResponsavel || 'Sistema'}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {activeSubTab === 'historico' && <StockMovementHistory />}
 
       <dialog
         ref={photoDialogRef}

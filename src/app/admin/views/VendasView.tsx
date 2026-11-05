@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react';
 import type { ERPData, AdminVenda, AdminProduto } from '../types';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
-import { getSalePaymentStatus, getSaleReceivedAmount, summarizeSalePayments } from '@/lib/sale-payment';
+import { getSalePaymentHistory, getSalePaymentStatus, getSaleReceivedAmount, summarizeSalePayments } from '@/lib/sale-payment';
+import { getFifoLots, takeFifo, fifoCost, releaseFifo, saleFifoAllocations } from '@/lib/fifo';
 import { 
   ShoppingBag, Plus, Search, CheckCircle2, Clock, 
   X, Loader2, DollarSign, Calendar, User, Truck, 
@@ -14,6 +15,44 @@ import { createVendaAction, updateVendaStatusAction, deleteVendaAction } from '.
 type Props = {
   data: ERPData;
 };
+
+function PaymentBadge({ sale }: { sale: Parameters<typeof getSalePaymentStatus>[0] }) {
+  const status = getSalePaymentStatus(sale);
+  const labels = { PAGO: 'Pago', PARCIAL: 'Parcial', PENDENTE: 'Pendente', A_CONFERIR: 'A conferir', CANCELADO: 'Cancelado' };
+  return <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold whitespace-nowrap ${status === 'PARCIAL' ? 'bg-amber-50 text-amber-800 border-amber-300' : status === 'PAGO' ? 'bg-green-50 text-green-800 border-green-300' : 'bg-brand-cream text-brand-muted border-brand-line'}`}>{labels[status]}</span>;
+}
+
+function PaymentHistory({ sale }: { sale: AdminVenda }) {
+  const history = getSalePaymentHistory(sale);
+  return (
+    <div className="rounded-xl border border-brand-line bg-brand-card p-3 space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="text-xs font-bold text-brand-chocolate">Histórico de pagamentos</h4>
+        <PaymentBadge sale={sale} />
+      </div>
+      {history.length === 0 ? <p className="text-[11px] text-brand-muted">Nenhum recebimento registrado.</p> : (
+        <ol className="divide-y divide-brand-line">
+          {history.map((entry, index) => (
+            <li key={index} className="py-2 text-[11px] text-brand-muted space-y-1">
+              <div className="flex flex-wrap justify-between gap-2 font-semibold text-brand-chocolate">
+                <span>{entry.tipo === 'SALDO_INICIAL' ? 'Saldo anterior' : entry.tipo === 'CONFERENCIA' ? 'Pagamento marcado para conferência' : entry.tipo === 'AJUSTE' ? 'Correção do valor recebido' : 'Recebimento'}</span>
+                {entry.valor !== null && <span>{entry.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
+              </div>
+              <p>{entry.data ? new Date(entry.data).toLocaleString('pt-BR') : 'Data do pagamento não informada'}{entry.formaPagamento ? ` · ${entry.formaPagamento.replaceAll('_', ' ')}` : ''}</p>
+              {entry.tipo === 'SALDO_INICIAL' && <p>Valor já informado antes do início do histórico; parcelas e formas de pagamento anteriores não foram registradas.</p>}
+              {entry.registradoEm && <p>Registrado em {new Date(entry.registradoEm).toLocaleString('pt-BR')}{entry.responsavel ? ` por ${entry.responsavel}` : ''}. Total recebido: {entry.totalRecebido === null ? 'a conferir' : entry.totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.</p>}
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+function localPaymentDate() {
+  const date = new Date();
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
 
 export default function VendasView({ data }: Props) {
   const { vendas, produtos, clientes, user } = data;
@@ -43,6 +82,8 @@ export default function VendasView({ data }: Props) {
   const [frete, setFrete] = useState<number>(0);
   const [observacoes, setObservacoes] = useState('');
   const [valorRecebido, setValorRecebido] = useState<number | ''>(0);
+  const [dataPagamento, setDataPagamento] = useState(localPaymentDate);
+  const [formaRecebimento, setFormaRecebimento] = useState('PIX');
   const [cartItens, setCartItens] = useState<Array<{ produtoId: number; quantidade: number; precoUnitario: number }>>([]);
   const [productSearch, setProductSearch] = useState('');
   const [showAllProducts, setShowAllProducts] = useState(false);
@@ -76,8 +117,15 @@ export default function VendasView({ data }: Props) {
     const itensDetalhados = cartItens.map(item => {
       const p = produtos.find(prod => prod.id === item.produtoId);
       const sub = item.precoUnitario * item.quantidade;
-      const custoUnitario = editingVenda?.itens.find(it => it.produtoId === item.produtoId)?.custoUnitario ?? p?.precoCusto ?? 0;
-      const cst = custoUnitario * item.quantidade;
+      const previousItem = editingVenda?.itens.find(it => it.produtoId === item.produtoId);
+      let cst = (previousItem?.custoUnitario ?? p?.precoCusto ?? 0) * item.quantidade;
+      if (p && statusVenda !== 'CANCELADO') {
+        if (previousItem && editingVenda?.status !== 'CANCELADO') {
+          const original = saleFifoAllocations(previousItem, editingVenda!.id);
+          if (item.quantidade < previousItem.quantidade) cst = fifoCost(releaseFifo(original, previousItem.quantidade - item.quantidade).kept);
+          else if (item.quantidade > previousItem.quantidade && item.quantidade - previousItem.quantidade <= p.quantidade) cst = fifoCost(original) + fifoCost(takeFifo(getFifoLots(p), item.quantidade - previousItem.quantidade).taken);
+        } else if (item.quantidade <= p.quantidade) cst = fifoCost(takeFifo(getFifoLots(p), item.quantidade).taken);
+      }
       subtotal += sub;
       custoTotal += cst;
       return { ...item, produto: p, subtotal: sub, custoTotal: cst };
@@ -87,7 +135,10 @@ export default function VendasView({ data }: Props) {
     const lucroTotal = (subtotal - (desconto || 0)) - custoTotal;
 
     return { subtotal, custoTotal, valorTotal, lucroTotal, itensDetalhados };
-  }, [cartItens, produtos, desconto, frete, editingVenda]);
+  }, [cartItens, produtos, desconto, frete, editingVenda, statusVenda]);
+
+  const previousReceived = editingVenda ? getSaleReceivedAmount(editingVenda) : 0;
+  const hasNewReceipt = valorRecebido !== '' && previousReceived !== null && valorRecebido > previousReceived;
 
   const estoqueParaVenda = (produto: AdminProduto) => produto.quantidade + (
     editingVenda && editingVenda.status !== 'CANCELADO'
@@ -107,6 +158,8 @@ export default function VendasView({ data }: Props) {
     setFrete(venda.frete);
     setObservacoes(venda.observacoes || '');
     setValorRecebido(getSaleReceivedAmount(venda) ?? '');
+    setDataPagamento(localPaymentDate());
+    setFormaRecebimento(venda.formaPagamento);
     setCartItens(venda.itens.map(it => ({ produtoId: it.produtoId, quantidade: it.quantidade, precoUnitario: it.precoUnitario })));
     const date = new Date(venda.data);
     setDataVenda(new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19));
@@ -187,6 +240,10 @@ export default function VendasView({ data }: Props) {
         status: statusVenda,
         observacoes,
         valorRecebido: valorRecebido === '' ? null : valorRecebido,
+        ...(hasNewReceipt ? {
+          dataPagamento: new Date(dataPagamento).toISOString(),
+          formaRecebimento: editingVenda ? formaRecebimento : formaPagamento,
+        } : {}),
       };
       if (editingVenda) {
         const response = await fetch(`/api/erp/sales/${editingVenda.id}`, {
@@ -275,6 +332,8 @@ export default function VendasView({ data }: Props) {
             setFrete(0);
             setObservacoes('');
             setValorRecebido(0);
+            setDataPagamento(localPaymentDate());
+            setFormaRecebimento('PIX');
           }}
           className="px-5 py-2.5 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer self-start sm:self-auto"
         >
@@ -288,21 +347,25 @@ export default function VendasView({ data }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" aria-label="Resumo financeiro das vendas filtradas">
         {[
           { label: 'Total vendido', value: paymentSummary.total, detail: `${paymentSummary.count} venda(s) · canceladas excluídas` },
-          { label: 'Já recebido', value: paymentSummary.received, detail: 'Recebimentos confirmados destas vendas' },
-          { label: 'Falta receber', value: paymentSummary.unconfirmedCount ? null : paymentSummary.outstanding, detail: paymentSummary.unconfirmedCount ? `${paymentSummary.outstanding.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} de saldo já confirmado` : 'Saldo em aberto destas vendas' },
+          { label: 'Já recebido', value: paymentSummary.received, detail: 'Pagamentos confirmados' },
+          { label: 'Falta receber', value: paymentSummary.outstanding, detail: 'Saldo em aberto confirmado' },
         ].map(card => (
           <div key={card.label} className="bg-brand-card border border-brand-line rounded-2xl p-4 sm:p-5 shadow-xs min-w-0">
             <p className="text-xs font-semibold text-brand-muted">{card.label}</p>
-            <p className="text-xl sm:text-2xl font-bold text-brand-chocolate mt-2">{card.value === null ? 'A conferir' : card.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+            <p className="text-xl sm:text-2xl font-bold text-brand-chocolate mt-2">{card.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
             <p className="text-[11px] text-brand-muted mt-1">{card.detail}</p>
           </div>
         ))}
       </div>
       {paymentSummary.unconfirmedCount > 0 && (
-        <div className="rounded-2xl border border-brand-terracotta bg-brand-nude p-4 text-xs text-brand-chocolate" role="status">
-          <strong>{paymentSummary.unconfirmedCount} venda(s), totalizando {paymentSummary.unconfirmed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}, precisam de conferência do pagamento.</strong>
-          {' '}Esses valores ainda não entram em “Já recebido” nem em “Falta receber”. Edite as vendas e informe quanto foi recebido; envio e entrega não confirmam pagamento.
-        </div>
+        <button
+          type="button"
+          onClick={() => setSelectedPayment('A_CONFERIR')}
+          title="Essas vendas ainda não têm o pagamento informado. Seus valores não entram em Já recebido nem no saldo confirmado de Falta receber."
+          className="text-[11px] text-brand-muted underline underline-offset-2 cursor-pointer"
+        >
+          Pagamentos a conferir: {paymentSummary.unconfirmedCount} venda(s) · {paymentSummary.unconfirmed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+        </button>
       )}
 
       {feedback && (
@@ -419,6 +482,7 @@ export default function VendasView({ data }: Props) {
                       </td>
 
                       <td className="py-3 px-2 text-center min-w-[132px]">
+                        <div className="mb-1"><PaymentBadge sale={v} /></div>
                         <span className="inline-block max-w-[124px] truncate align-middle px-2 py-0.5 rounded-md bg-brand-nude text-[10px] font-bold text-brand-chocolate border border-brand-line" title={v.formaPagamento}>
                           {v.formaPagamento.replaceAll('_', ' ')}
                         </span>
@@ -800,11 +864,33 @@ export default function VendasView({ data }: Props) {
                 <div className="border-t border-brand-line pt-3">
                   <label htmlFor="venda-valor-recebido" className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Valor já recebido (R$)</label>
                   <div className="flex flex-wrap gap-2">
-                    <input id="venda-valor-recebido" type="number" min="0" max={carrinhoCalculado.valorTotal} step="0.01" value={valorRecebido} onChange={event => setValorRecebido(event.target.value === '' ? '' : Number(event.target.value))} placeholder="Pagamento ainda não conferido" className="min-w-0 flex-1 px-3 py-2 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none" />
+                    <input id="venda-valor-recebido" type="number" min="0" max={carrinhoCalculado.valorTotal} step="0.01" value={valorRecebido} onChange={event => {
+                      const value = event.target.value === '' ? '' : Number(event.target.value);
+                      setValorRecebido(value);
+                      if (statusVenda === 'PAGO' && (value === '' || value < carrinhoCalculado.valorTotal)) setStatusVenda('AGUARDANDO_PAGAMENTO');
+                    }} placeholder="Pagamento ainda não conferido" className="min-w-0 flex-1 px-3 py-2 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none" />
                     <button type="button" onClick={() => setValorRecebido(carrinhoCalculado.valorTotal)} className="px-3 py-2 rounded-xl border border-brand-line bg-brand-card text-xs font-semibold text-brand-chocolate cursor-pointer">Recebi tudo</button>
                   </div>
                   <p className="text-[11px] text-brand-muted mt-1">Informe zero se ainda não recebeu. Deixe em branco somente se o pagamento precisa ser conferido. A entrega não altera esse valor.</p>
                   {valorRecebido !== '' && <p className="text-xs font-semibold text-brand-chocolate mt-2">Falta receber: {Math.max(0, carrinhoCalculado.valorTotal - valorRecebido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
+                  <div className="mt-2"><PaymentBadge sale={{ status: statusVenda, valorTotal: carrinhoCalculado.valorTotal, valorRecebido: valorRecebido === '' ? null : valorRecebido }} /></div>
+                  {valorRecebido !== '' && previousReceived === null && <p className="mt-2 text-[11px] text-brand-muted">O valor informado será registrado como confirmação do saldo recebido, sem presumir datas ou parcelas anteriores.</p>}
+                  {hasNewReceipt && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-semibold text-brand-chocolate">Ao salvar, registrar {Math.max(0, Number(valorRecebido) - (previousReceived ?? 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} no histórico como novo recebimento.</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label className="text-[10px] font-bold text-brand-muted uppercase">Data e hora do recebimento
+                          <input type="datetime-local" required value={dataPagamento} onChange={e => setDataPagamento(e.target.value)} className="mt-1 w-full min-w-0 px-3 py-2 rounded-xl bg-brand-card border border-brand-line text-xs text-brand-chocolate" />
+                        </label>
+                        {editingVenda && <label className="text-[10px] font-bold text-brand-muted uppercase">Forma deste recebimento
+                          <select value={formaRecebimento} onChange={e => setFormaRecebimento(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-xl bg-brand-card border border-brand-line text-xs text-brand-chocolate">
+                            <option value="PIX">PIX</option><option value="CARTAO_CREDITO">Cartão de crédito</option><option value="CARTAO_DEBITO">Cartão de débito</option><option value="DINHEIRO">Dinheiro</option><option value="LINK_PAGAMENTO">Link de pagamento</option>
+                          </select>
+                        </label>}
+                      </div>
+                    </div>
+                  )}
+                  {editingVenda && <div className="mt-3"><PaymentHistory sale={editingVenda} /></div>}
                 </div>
                 {/* Resumo Final da Venda */}
                 <div className="pt-3 border-t border-brand-line flex flex-wrap items-center justify-between gap-3">
@@ -867,7 +953,7 @@ export default function VendasView({ data }: Props) {
       {/* ========================================================================= */}
       {viewingVenda && (
         <div className="fixed inset-0 bg-brand-deep/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-brand-card w-full max-w-lg rounded-3xl border border-brand-line shadow-2xl p-6 relative overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-brand-card w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-3xl border border-brand-line shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-150">
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-caramel to-brand-caramel" />
 
             <div className="flex items-center justify-between pb-3 border-b border-brand-line mb-4">
@@ -915,6 +1001,7 @@ export default function VendasView({ data }: Props) {
               )}
 
               {/* Totais */}
+              <PaymentHistory sale={viewingVenda} />
               <div className="p-3.5 rounded-xl bg-brand-nude border border-brand-line space-y-1.5">
                 <div className="flex justify-between text-brand-muted">
                   <span>Subtotal:</span>

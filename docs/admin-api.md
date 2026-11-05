@@ -118,7 +118,9 @@ PUT exige os campos do cadastro, `data` em ISO UTC e o `updatedAt` exato retorna
 
 `valorRecebido` registra o valor efetivamente recebido, independentemente de envio ou entrega. Aceita número entre zero e o total da venda; zero significa não recebido e `null` significa pagamento a conferir. No POST, omitir o campo registra zero, exceto quando o status explicitamente informado é `PAGO`, que registra o total. No PUT, omitir o campo preserva o recebimento conhecido; informar `null` mantém a pendência de conferência. Para marcar `PAGO`, o recebimento deve corresponder ao total. A ação de status `PAGO` confirma o total recebido; os demais status preservam o recebimento.
 
-Nas vendas antigas sem esse campo, somente `PAGO` confirma recebimento integral e `AGUARDANDO_PAGAMENTO` indica zero. `PREPARANDO`, `ENVIADO` e `ENTREGUE` permanecem a conferir. O resumo de Vendas exclui canceladas e separa total vendido, recebimentos confirmados, saldo confirmado e valores a conferir. Financeiro e indicadores de vendas pagas consideram apenas pedidos quitados; pagamentos parciais aparecem no resumo de recebimentos da tela de Vendas.
+Nas vendas antigas sem esse campo, somente `PAGO` confirma recebimento integral e `AGUARDANDO_PAGAMENTO` indica zero. `PREPARANDO`, `ENVIADO` e `ENTREGUE` permanecem a conferir. O resumo de Vendas exclui canceladas e separa total vendido, recebimentos confirmados, saldo confirmado e valores a conferir. O Financeiro usa as mesmas vendas não canceladas do período selecionado que a tela de Vendas: total vendido, recebimentos confirmados (inclusive parciais), saldo confirmado e valores a conferir. O saldo de encomendas e vendas de outros períodos não entra nesse resumo. Custos e resultado são calculados sobre todas essas vendas; resultado não representa caixa disponível. A conciliação é total vendido = recebido + saldo confirmado + valores a conferir. Os filtros usam a data da venda, não a data do recebimento.
+
+O servidor mantém `historicoPagamentos` automaticamente, sem permitir reescrever eventos pelo payload. Cada aumento de `valorRecebido` registra somente a diferença como recebimento, com responsável, data e forma de pagamento. Envie opcionalmente `dataPagamento` (ISO UTC) e `formaRecebimento` (mesmos valores de `formaPagamento`); os padrões são o momento do registro e a forma da venda. Reduções são correções, não estornos; confirmar um valor antes desconhecido gera ajuste de conferência. Valores antigos conhecidos aparecem como saldo inicial, sem atribuir uma data ou forma de pagamento que não foi registrada. A ação de status `PAGO` também registra o saldo restante recebido. A interface mostra `Parcial` quando há recebimento maior que zero e menor que o total, independentemente do status de entrega.
 
 ## Encomendas
 
@@ -140,7 +142,7 @@ As listagens de compras, vendas e encomendas retornam `{ "items": [...], "nextCu
 
 `POST /uploads`, com a mesma autenticação Bearer, recebe `multipart/form-data` com o campo `file`. Aceita JPEG, PNG e WebP até 10 MB; o MIME deve corresponder à assinatura do arquivo. SVG e nomes/caminhos fornecidos pelo cliente não são usados para salvar o arquivo.
 
-Retorna `{ "path": "/uploads/api-....png", "url": "https://perfumio.app/api/uploads/api-....png", "contentType": "image/png", "size": 12345 }`. Use **`url`** em `PUT /products/{id}/photos`, no cadastro de produto ou em banners/categorias. Enviar arquivo não altera nenhum cadastro. O armazenamento usa `public/uploads`, o mesmo diretório persistido pelo Docker Compose do projeto.
+Retorna `{ "path": "/uploads/api-....png", "url": "https://perfumio.app/api/uploads/api-....png", "contentType": "image/png", "size": 12345 }`. Use **`url`** em `PUT /products/{id}/photos`, no cadastro de produto ou em banners/categorias. Enviar arquivo não altera nenhum cadastro. O armazenamento usa `public/uploads`. O Compose do projeto monta esse diretório; deployments pelo Dockerfile no Coolify precisam de uma montagem própria em `/app/public/uploads`. Em 05/11/2026, a montagem de produção foi ativada no Coolify: `/data/coolify/applications/cqppw9xque03vw2r9wt9hk1q/uploads` → `/app/public/uploads`. Os 169 MB de arquivos foram preservados e tiveram integridade confirmada após o deploy.
 
 `GET /api/uploads/{filename}` serve publicamente somente imagens com os nomes aleatórios gerados pelo upload autenticado. Isso permite mostrar fotos recém-enviadas sem reiniciar o Next.js para atualizar o inventário de arquivos estáticos. `path` identifica onde o arquivo foi salvo; não use esse campo como URL pública imediata.
 
@@ -223,3 +225,14 @@ curl -X POST "https://perfumio.app/api/admin/products" \
 ```
 
 IDs de categoria e fornecedor podem ser consultados pelos respectivos endpoints `GET`. Exclusões sempre exigem `confirm=true`.
+
+
+## FIFO e recebimentos por data
+
+O estoque passou a usar FIFO, com saldo inicial ao custo cadastrado aprovado pela administração. `lotesEstoque` no produto e `lotesCusto` no item da venda são mantidos pelo servidor e não devem ser enviados em cadastros/PATCH. Compras recebidas e entradas criam lotes; vendas e saídas consomem os mais antigos. Alterações, cancelamentos e exclusões de venda devolvem os lotes correspondentes na mesma transação do estoque. Custos de vendas antigas permanecem registrados; a reativação de uma venda cancelada representa uma nova saída pelos lotes disponíveis.
+
+O custo unitário de uma linha pode representar a média dos lotes efetivamente consumidos por essa linha. Para totalizar, arredonde `custoUnitario * quantidade`, e não o custo unitário antes de multiplicar. A avaliação do estoque deve somar os saldos e custos de cada lote, sem multiplicar o saldo inteiro pelo último custo de compra. Consulte [fifo-inventory.md](fifo-inventory.md).
+
+O resumo financeiro tem dois critérios explícitos: vendas pela data da venda e recebimentos pela data de cada pagamento. O segundo inclui somente pagamentos com data registrada; valores antigos sem data ficam separados. As formas de pagamento são obtidas das parcelas do histórico, preservando os meios diferentes usados na mesma venda. Correções de valores não criam uma entrada/saída de caixa presumida.
+
+`GET /api/erp/stock/history?month=2026-11&page=1&size=20` é o endpoint interno da tela de estoque, com autenticação por sessão administrativa. `month` vazio consulta todos os meses; `size` aceita 20 ou 50. Retorna os registros daquela página e o total filtrado. A autenticação Bearer de `/api/admin` permanece independente.

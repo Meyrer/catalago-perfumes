@@ -1,10 +1,13 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
+import { changeFifoStock } from "@/lib/fifo-stock";
+import { fifoCost, releaseFifo, saleFifoAllocations, type FifoLot } from "@/lib/fifo";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { plainPrismaData } from "@/lib/admin-api";
 import { fromCents, roundMoney, toCents } from "@/lib/money";
-import { getSaleReceivedAmount, validateSaleReceivedAmount } from "@/lib/sale-payment";
+import { getSaleReceivedAmount, recordSalePayment, validateSaleReceivedAmount } from "@/lib/sale-payment";
 
 export async function createSale(data: {
   clienteId?: number;
@@ -17,20 +20,27 @@ export async function createSale(data: {
   observacoes?: string;
   status?: string;
   valorRecebido?: number | null;
+  dataPagamento?: string;
+  formaRecebimento?: string;
 }, actor: string) {
   const { clienteId, nomeClienteAvulso, contatoClienteAvulso, itens, formaPagamento, observacoes } = data;
-  const desconto = data.desconto || 0;
-  const frete = data.frete || 0;
+  const desconto = data.desconto ?? 0;
+  const frete = data.frete ?? 0;
   const status = data.status || "PREPARANDO";
+  if (!['AGUARDANDO_PAGAMENTO', 'PAGO', 'PREPARANDO', 'ENVIADO', 'ENTREGUE', 'CANCELADO'].includes(status)) throw new Error('Status inválido.');
+  if (!['PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'DINHEIRO', 'LINK_PAGAMENTO'].includes(formaPagamento)) throw new Error('Forma de pagamento inválida.');
 
   if (!itens || itens.length === 0) {
     throw new Error("Selecione pelo menos um produto para registrar a venda.");
   }
+  const produtosSelecionados = new Set<number>();
   for (const item of itens) {
-    if (!Number.isInteger(item.quantidade) || item.quantidade < 1) throw new Error("A quantidade dos itens deve ser um inteiro positivo.");
+    if (!Number.isSafeInteger(item.produtoId) || item.produtoId < 1 || produtosSelecionados.has(item.produtoId)) throw new Error('Produto inválido ou duplicado na venda.');
+    produtosSelecionados.add(item.produtoId);
+    if (!Number.isSafeInteger(item.quantidade) || item.quantidade < 1) throw new Error("A quantidade dos itens deve ser um inteiro positivo.");
     if (!Number.isFinite(item.precoUnitario) || item.precoUnitario < 0) throw new Error("Preço unitário inválido.");
   }
-  if (desconto < 0 || frete < 0) throw new Error("Desconto e frete não podem ser negativos.");
+  if (![desconto, frete].every(Number.isFinite) || desconto < 0 || frete < 0) throw new Error("Desconto e frete devem ser valores válidos e não negativos.");
 
   // Buscar produtos no banco para checar estoque e custo
   const produtosIds = itens.map(i => i.produtoId);
@@ -60,14 +70,24 @@ export async function createSale(data: {
   }
 
   const subtotal = fromCents(subtotalCents);
+  if (toCents(desconto) > subtotalCents) throw new Error('Desconto não pode superar o subtotal.');
   const custoTotal = fromCents(custoTotalCents);
   const valorTotal = fromCents(Math.max(0, subtotalCents - toCents(desconto) + toCents(frete)));
   const lucroTotal = fromCents(subtotalCents - toCents(desconto) - custoTotalCents);
   const valorRecebido = validateSaleReceivedAmount(data.valorRecebido === undefined ? (status === 'PAGO' ? valorTotal : 0) : data.valorRecebido, valorTotal);
   if (status === 'PAGO' && valorRecebido !== valorTotal) throw new Error('Para marcar a venda como Pago, confirme o recebimento do valor total.');
-  const numeroVenda = `VND-${Date.now().toString().slice(-5)}`;
+  const numeroVenda = `VND-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 8).toUpperCase()}`;
 
   const venda = await prisma.$transaction(async (tx) => {
+  const custosFIFO = new Map<number, { unitCost: number; allocations: FifoLot[] }>();
+  for (const item of itens) {
+    const product = produtosMap.get(item.produtoId)!;
+    const result = status === 'CANCELADO' ? { cost: Number(product.precoCusto ?? 0) * item.quantidade, taken: [] }
+      : await changeFifoStock(tx, product, product.quantidade - item.quantidade, `VENDA ${numeroVenda}`);
+    custosFIFO.set(item.produtoId, { unitCost: result.cost / item.quantidade, allocations: result.taken });
+  }
+  const custoTotal = roundMoney(itens.reduce((sum, item) => sum + custosFIFO.get(item.produtoId)!.unitCost * item.quantidade, 0));
+  const lucroTotal = roundMoney(subtotal - desconto - custoTotal);
   const venda = await tx.venda.create({
     data: {
       numero: numeroVenda,
@@ -81,6 +101,7 @@ export async function createSale(data: {
       frete,
       valorTotal,
       valorRecebido,
+      historicoPagamentos: recordSalePayment({ status: 'PREPARANDO', valorTotal, valorRecebido: 0 }, valorRecebido, data.formaRecebimento || formaPagamento, actor, data.dataPagamento),
       custoTotal,
       lucroTotal,
       observacoes: observacoes || null,
@@ -89,12 +110,13 @@ export async function createSale(data: {
         create: itens.map(item => {
           const p = produtosMap.get(item.produtoId)!;
           const precoUnit = item.precoUnitario;
-          const custoUnit = Number(p.precoCusto || 0);
+          const custoUnit = custosFIFO.get(item.produtoId)!.unitCost;
           return {
             produtoId: item.produtoId,
             quantidade: item.quantidade,
             precoUnitario: precoUnit,
             custoUnitario: custoUnit,
+            lotesCusto: custosFIFO.get(item.produtoId)!.allocations,
             lucroUnitario: precoUnit - custoUnit,
             subtotal: fromCents(toCents(precoUnit) * item.quantidade)
           };
@@ -190,14 +212,15 @@ export async function updateSale(vendaId: number, data: Parameters<typeof create
       const produto = produtosMap.get(item.produtoId);
       if (!produto) throw new Error(`Produto #${item.produtoId} não encontrado.`);
       const anterior = venda.itens.find(it => it.produtoId === item.produtoId);
-      const custoUnitario = roundMoney(Number(anterior?.custoUnitario ?? produto.precoCusto ?? 0));
+      const custoUnitario = Number(anterior?.custoUnitario ?? produto.precoCusto ?? 0);
       const precoUnitario = roundMoney(item.precoUnitario);
       return {
         produtoId: item.produtoId,
         quantidade: item.quantidade,
         precoUnitario,
         custoUnitario,
-        lucroUnitario: fromCents(toCents(precoUnitario) - toCents(custoUnitario)),
+        lucroUnitario: precoUnitario - custoUnitario,
+        lotesCusto: anterior ? saleFifoAllocations(anterior, vendaId) : [] as FifoLot[],
         subtotal: fromCents(toCents(precoUnitario) * item.quantidade),
       };
     });
@@ -208,6 +231,23 @@ export async function updateSale(vendaId: number, data: Parameters<typeof create
       if (diferenca === 0) continue;
       const quantidadeNova = produto.quantidade - diferenca;
       if (quantidadeNova < 0) throw new Error(`Estoque insuficiente para "${produto.nome}". Disponível para esta venda: ${produto.quantidade + (deduzidos.get(produto.id) || 0)} un.`);
+      const previousItem = venda.itens.find(item => item.produtoId === produto.id);
+      const targetItem = itens.find(item => item.produtoId === produto.id);
+      let allocations = previousItem && (deduzidos.get(produto.id) || 0) > 0 ? saleFifoAllocations(previousItem, vendaId) : [];
+      if (diferenca < 0) {
+        const released = releaseFifo(allocations, -diferenca);
+        await changeFifoStock(tx, produto, quantidadeNova, `DEVOLUCAO ${venda.numero}`, undefined, released.returned);
+        allocations = released.kept;
+      } else {
+        const consumed = await changeFifoStock(tx, produto, quantidadeNova, `VENDA ${venda.numero}`);
+        allocations = [...allocations, ...consumed.taken];
+      }
+      if (targetItem) {
+        targetItem.lotesCusto = allocations;
+        targetItem.custoUnitario = fifoCost(allocations) / targetItem.quantidade;
+        targetItem.lucroUnitario = targetItem.precoUnitario - targetItem.custoUnitario;
+      }
+
       const changed = await tx.produto.updateMany({
         where: { id: produto.id, quantidade: produto.quantidade },
         data: {
@@ -235,7 +275,8 @@ export async function updateSale(vendaId: number, data: Parameters<typeof create
     }
 
     const subtotalCents = itens.reduce((sum, item) => sum + toCents(item.subtotal), 0);
-    const custoTotalCents = itens.reduce((sum, item) => sum + toCents(item.custoUnitario) * item.quantidade, 0);
+    if (toCents(desconto) > subtotalCents) throw new Error('Desconto não pode superar o subtotal.');
+    const custoTotalCents = itens.reduce((sum, item) => sum + toCents(item.custoUnitario * item.quantidade), 0);
     const valorTotal = fromCents(Math.max(0, subtotalCents - toCents(desconto) + toCents(frete)));
     const valorRecebido = validateSaleReceivedAmount(data.valorRecebido === undefined ? getSaleReceivedAmount(venda) : data.valorRecebido, valorTotal);
     if (status === 'PAGO' && valorRecebido !== valorTotal) throw new Error('Para marcar a venda como Pago, confirme o recebimento do valor total.');
@@ -253,6 +294,7 @@ export async function updateSale(vendaId: number, data: Parameters<typeof create
       custoTotal: fromCents(custoTotalCents),
       valorTotal,
       valorRecebido,
+      historicoPagamentos: recordSalePayment(venda, valorRecebido, data.formaRecebimento || data.formaPagamento, actor, data.dataPagamento),
       lucroTotal: fromCents(subtotalCents - toCents(desconto) - custoTotalCents),
       itens: { deleteMany: {}, create: itens },
     } });
@@ -264,6 +306,7 @@ export async function updateSale(vendaId: number, data: Parameters<typeof create
 }
 
 export async function updateSaleStatus(vendaId: number, novoStatus: string, actor: string) {
+  if (!['AGUARDANDO_PAGAMENTO', 'PAGO', 'PREPARANDO', 'ENVIADO', 'ENTREGUE', 'CANCELADO'].includes(novoStatus)) throw new Error('Status inválido.');
   await prisma.$transaction(async (tx) => {
     const venda = await tx.venda.findUnique({
       where: { id: vendaId },
@@ -292,6 +335,7 @@ export async function updateSaleStatus(vendaId: number, novoStatus: string, acto
         if (p) {
           const qtdAnterior = p.quantidade;
           const qtdNova = qtdAnterior + item.quantidade;
+          await changeFifoStock(tx, p, qtdNova, `DEVOLUCAO ${venda.numero}`, undefined, saleFifoAllocations(item, venda.id));
 
           const updateData: {
             quantidade: number;
@@ -326,8 +370,10 @@ export async function updateSaleStatus(vendaId: number, novoStatus: string, acto
       }
     }
 
+    let custoReativado: number | undefined;
     // 2. Se está saindo de CANCELADO (ou é uma venda legada que ainda não teve baixa) para qualquer status ativo, deduz do estoque
     if (novoStatus !== 'CANCELADO' && !estoqueAtualmenteDeduzido) {
+      custoReativado = 0;
       for (const item of venda.itens) {
         const p = await tx.produto.findUnique({ where: { id: item.produtoId } });
         if (p) {
@@ -336,6 +382,10 @@ export async function updateSaleStatus(vendaId: number, novoStatus: string, acto
             throw new Error(`Estoque insuficiente para "${p.nome}". Disponível: ${qtdAnterior} un, necessário: ${item.quantidade} un.`);
           }
           const qtdNova = qtdAnterior - item.quantidade;
+          const consumed = await changeFifoStock(tx, p, qtdNova, `REATIVACAO ${venda.numero}`);
+          const custoUnitario = consumed.cost / item.quantidade;
+          custoReativado = roundMoney((custoReativado ?? 0) + consumed.cost);
+          await tx.vendaItem.update({ where: { id: item.id }, data: { custoUnitario, lucroUnitario: item.precoUnitario - custoUnitario, lotesCusto: consumed.taken } });
 
           const updateData: {
             quantidade: number;
@@ -372,7 +422,12 @@ export async function updateSaleStatus(vendaId: number, novoStatus: string, acto
 
     const statusUpdated = await tx.venda.updateMany({
       where: { id: vendaId, status: statusAnterior, updatedAt: venda.updatedAt },
-      data: { status: novoStatus, valorRecebido: novoStatus === 'PAGO' ? venda.valorTotal : getSaleReceivedAmount(venda) }
+      data: {
+        status: novoStatus,
+        ...(custoReativado === undefined ? {} : { custoTotal: custoReativado, lucroTotal: roundMoney(venda.subtotal - venda.desconto - custoReativado) }),
+        valorRecebido: novoStatus === 'PAGO' ? venda.valorTotal : getSaleReceivedAmount(venda),
+        historicoPagamentos: recordSalePayment(venda, novoStatus === 'PAGO' ? venda.valorTotal : getSaleReceivedAmount(venda), venda.formaPagamento, actor),
+      }
     });
     if (statusUpdated.count !== 1) throw new Error("O status da venda foi alterado por outra operação. Atualize os dados e tente novamente.");
   });
@@ -407,6 +462,7 @@ export async function deleteSale(vendaId: number, actor: string) {
         if (p) {
           const qtdAnterior = p.quantidade;
           const qtdNova = qtdAnterior + item.quantidade;
+          await changeFifoStock(tx, p, qtdNova, `DEVOLUCAO ${venda.numero}`, undefined, saleFifoAllocations(item, venda.id));
 
           const updateData: {
             quantidade: number;
@@ -460,6 +516,8 @@ export async function createPurchase(data: {
 }, actor: string) {
   const { fornecedorId, moeda, cotacao, frete, taxas, outrosCustos, observacoes, itens } = data;
   const status = data.status || 'RECEBIDO';
+  if (!['PENDENTE', 'EM_TRANSITO', 'RECEBIDO', 'CANCELADO'].includes(status)) throw new Error('Status da compra inválido.');
+  if (!['BRL', 'USD', 'EUR'].includes(moeda) || (moeda === 'BRL' && cotacao !== 1)) throw new Error('Moeda inválida ou cotação do real diferente de 1.');
 
   if (!itens || itens.length === 0) {
     throw new Error("Adicione pelo menos um item à compra.");
@@ -467,8 +525,11 @@ export async function createPurchase(data: {
   if (![cotacao, frete, taxas, outrosCustos].every(Number.isFinite) || cotacao <= 0 || frete < 0 || taxas < 0 || outrosCustos < 0) {
     throw new Error("Cotação deve ser positiva e custos não podem ser negativos.");
   }
+  const produtosDaCompra = new Set<number>();
   for (const item of itens) {
-    if (!Number.isInteger(item.quantidade) || item.quantidade < 1 || !Number.isFinite(item.valorUnitarioMoeda) || item.valorUnitarioMoeda < 0) {
+    if (!Number.isSafeInteger(item.produtoId) || item.produtoId < 1 || produtosDaCompra.has(item.produtoId)) throw new Error('Produto inválido ou duplicado na compra. Consolide a quantidade em uma única linha.');
+    produtosDaCompra.add(item.produtoId);
+    if (!Number.isSafeInteger(item.quantidade) || item.quantidade < 1 || !Number.isFinite(item.valorUnitarioMoeda) || item.valorUnitarioMoeda < 0) {
       throw new Error("Itens da compra devem ter quantidade inteira positiva e valor unitário válido.");
     }
   }
@@ -483,7 +544,7 @@ export async function createPurchase(data: {
   const subtotalBRL = roundMoney(subtotalMoeda * cotacao);
   const custosExtrasBRL = roundMoney(frete + taxas + outrosCustos);
   const custoTotalBRL = roundMoney(subtotalBRL + custosExtrasBRL);
-  const numero = `COMP-${Date.now().toString().slice(-5)}`;
+  const numero = `COMP-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 8).toUpperCase()}`;
 
   // Rateio proporcional dos custos extras
   const compra = await prisma.$transaction(async (tx) => {
@@ -526,6 +587,7 @@ export async function createPurchase(data: {
       if (p) {
         const qtdAnterior = p.quantidade;
         const qtdNova = qtdAnterior + item.quantidade;
+        await changeFifoStock(tx, p, qtdNova, `COMPRA ${compra.numero}`, Number(item.custoUnitarioBRL));
 
         const updateData: {
           quantidade: number;
@@ -588,6 +650,7 @@ export async function receivePurchase(compraId: number, actor: string) {
     if (p) {
       const qtdAnterior = p.quantidade;
       const qtdNova = qtdAnterior + item.quantidade;
+      await changeFifoStock(tx, p, qtdNova, `COMPRA ${compra.numero}`, Number(item.custoUnitarioBRL));
 
       const updateData: {
         quantidade: number;
@@ -653,7 +716,10 @@ export async function createCustomOrder(data: {
   previsaoChegada?: string;
   observacoes?: string;
 }) {
-  const numero = `ENC-${Date.now().toString().slice(-4)}`;
+  if (!data.nomeCliente?.trim() || !data.descricaoItem?.trim()) throw new Error('Informe cliente e descrição da encomenda.');
+  if (!Number.isSafeInteger(data.quantidade) || data.quantidade < 1) throw new Error('Quantidade deve ser um inteiro positivo.');
+  if (![data.precoEstimado ?? 0, data.custoEstimado ?? 0, data.valorAdiantamento ?? 0].every(value => Number.isFinite(value) && value >= 0)) throw new Error('Valores da encomenda devem ser válidos e não negativos.');
+  const numero = `ENC-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 8).toUpperCase()}`;
 
   const enc = await prisma.encomenda.create({
     data: {

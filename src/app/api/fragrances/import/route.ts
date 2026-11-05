@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { getAdminSession } from '@/lib/auth';
+import { initialFifoStock } from '@/lib/fifo-stock';
 
 export async function POST(request: NextRequest) {
+  const session = await getAdminSession();
+  if (!session || session.mustChangePassword) return NextResponse.json({ error: 'Autenticação administrativa necessária.' }, { status: 401 });
   try {
     const body = await request.json();
     const {
@@ -69,6 +73,7 @@ export async function POST(request: NextRequest) {
         precoOriginal: typeof precoOriginal === 'number' ? precoOriginal : null,
         precoCusto: typeof precoCusto === 'number' ? precoCusto : null,
         quantidade: typeof quantidade === 'number' ? quantidade : 1,
+        lotesEstoque: initialFifoStock(typeof quantidade === 'number' ? quantidade : 1, typeof precoCusto === 'number' ? precoCusto : 0),
         badge: (badge && !/^\d+\s*ml$/i.test(badge.trim()) && badge.trim().toLowerCase() !== (volume || '').trim().toLowerCase()) ? badge.trim() : null,
         disponivel: typeof disponivel === 'boolean' ? disponivel : true,
         tipoDisponibilidade: tipoDisponibilidade || 'ENCOMENDA',

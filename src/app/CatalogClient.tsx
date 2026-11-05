@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { 
   Search, ShoppingBag, Heart, X, Check, ArrowRight, Sparkles, MessageCircle, Truck, SlidersHorizontal, ChevronRight, ChevronLeft, Plus, Minus,
   ArrowUpRight, CheckCircle2, Clock, CalendarCheck, Home, ShieldCheck, ZoomIn, ZoomOut
@@ -197,6 +198,23 @@ function renderGuiaRendimento(selectedProduct: Produto) {
   );
 }
 
+const PRODUCTS_PER_PAGE = 12;
+
+function useCatalogFilter<T extends string>(name: string, fallback: T, options?: readonly T[]) {
+  const params = useSearchParams();
+  const read = (raw: string | null): T => raw !== null && (!options || options.includes(raw as T)) ? raw as T : fallback;
+  const value = read(params.get(name));
+  const setValue = (next: T | ((previous: T) => T)) => {
+    const url = new URL(window.location.href);
+    const updated = typeof next === 'function' ? next(read(url.searchParams.get(name))) : next;
+    if (updated === fallback) url.searchParams.delete(name);
+    else url.searchParams.set(name, updated);
+    url.searchParams.delete('pagina');
+    window.history.replaceState(null, '', url.toString());
+  };
+  return [value, setValue] as const;
+}
+
 export default function CatalogClient({
   initialProdutos,
   categorias,
@@ -207,13 +225,15 @@ export default function CatalogClient({
   banners: Banner[];
 }) {
   // Navigation & Filter States
-  const [activeCategory, setActiveCategory] = useState<string>('todos');
-  const [selectedBrand, setSelectedBrand] = useState<string>('todas');
-  const [selectedGender, setSelectedGender] = useState<ProductGender | 'Todos'>('Todos');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [availabilityFilter, setAvailabilityFilter] = useState<'TODOS' | 'PRONTA_ENTREGA' | 'ENCOMENDA'>('TODOS');
-  const [onlyPromos, setOnlyPromos] = useState(false);
-  const [sortBy, setSortBy] = useState<'padrao' | 'mais-vendidos' | 'menor-preco' | 'maior-preco' | 'novidades'>('padrao');
+  const [activeCategory, setActiveCategory] = useCatalogFilter<string>('categoria', 'todos', ['todos', 'promocoes', ...categorias.map(c => c.nome)]);
+  const [selectedBrand, setSelectedBrand] = useCatalogFilter<string>('marca', 'todas', ['todas', ...initialProdutos.map(p => p.marca)]);
+  const [selectedGender, setSelectedGender] = useCatalogFilter<ProductGender | 'Todos'>('genero', 'Todos', ['Todos', ...PRODUCT_GENDERS]);
+  const [searchTerm, setSearchTerm] = useCatalogFilter<string>('busca', '');
+  const [availabilityFilter, setAvailabilityFilter] = useCatalogFilter<'TODOS' | 'PRONTA_ENTREGA' | 'ENCOMENDA'>('disponibilidade', 'TODOS', ['TODOS', 'PRONTA_ENTREGA', 'ENCOMENDA']);
+  const [promoFilter, setPromoFilter] = useCatalogFilter('ofertas', '0', ['0', '1'] as const);
+  const onlyPromos = promoFilter === '1';
+  const setOnlyPromos = (next: boolean | ((previous: boolean) => boolean)) => setPromoFilter(previous => (typeof next === 'function' ? next(previous === '1') : next) ? '1' : '0');
+  const [sortBy, setSortBy] = useCatalogFilter<'padrao' | 'mais-vendidos' | 'menor-preco' | 'maior-preco' | 'novidades'>('ordem', 'padrao', ['padrao', 'mais-vendidos', 'menor-preco', 'maior-preco', 'novidades']);
   const [customEncomendaQuery, setCustomEncomendaQuery] = useState('');
   const [isCustomOrderOpen, setIsCustomOrderOpen] = useState(false);
   const [customOrderInitialValue, setCustomOrderInitialValue] = useState('');
@@ -224,8 +244,8 @@ export default function CatalogClient({
     setIsCustomOrderOpen(true);
   };
 
-  const [priceRange, setPriceRange] = useState('todos');
-  const [visibleCount, setVisibleCount] = useState(12);
+  const [priceRange, setPriceRange] = useCatalogFilter<string>('preco', 'todos', ['todos', 'ate-100', '100-200', 'acima-200']);
+  const catalogParams = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
@@ -285,7 +305,7 @@ export default function CatalogClient({
 
   const clearFilters = () => {
     setActiveCategory('todos'); setSelectedBrand('todas'); setSearchTerm('');
-    setAvailabilityFilter('TODOS'); setOnlyPromos(false); setPriceRange('todos'); setSelectedGender('Todos'); setVisibleCount(12);
+    setAvailabilityFilter('TODOS'); setOnlyPromos(false); setPriceRange('todos'); setSelectedGender('Todos');
   };
   const scrollToCatalog = () => requestAnimationFrame(() => document.getElementById('produtos')?.scrollIntoView({ behavior: 'smooth' }));
 
@@ -410,7 +430,6 @@ export default function CatalogClient({
     if (hasMovedNavRef.current) return;
     setActiveCategory(catName);
     setSelectedBrand('todas');
-    setVisibleCount(12);
     scrollToCatalog();
   };
 
@@ -692,6 +711,49 @@ export default function CatalogClient({
 
     return sortProductsWithStockFirst(result);
   }, [initialProdutos, availabilityFilter, activeCategory, selectedBrand, selectedGender, searchTerm, onlyPromos, sortBy, priceRange]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProdutos.length / PRODUCTS_PER_PAGE));
+  const requestedPage = Number(catalogParams.get('pagina') || 1);
+  const currentPage = Math.min(totalPages, Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1);
+  const pageStart = (currentPage - 1) * PRODUCTS_PER_PAGE;
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1)
+    .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1);
+
+  const changePage = (page: number) => {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    const url = new URL(window.location.href);
+    if (page === 1) url.searchParams.delete('pagina');
+    else url.searchParams.set('pagina', String(page));
+    url.hash = 'produtos';
+    window.history.pushState(null, '', url.toString());
+    scrollToCatalog();
+  };
+
+  const renderPagination = (position: string) => filteredProdutos.length > 0 && (
+    <nav aria-label={`Paginação do catálogo — ${position}`} className="my-6 flex flex-col items-center gap-3">
+      <p className="text-xs text-brand-muted" role="status">
+        Mostrando {pageStart + 1}–{Math.min(pageStart + PRODUCTS_PER_PAGE, filteredProdutos.length)} de {filteredProdutos.length} produtos · Página {currentPage} de {totalPages}
+      </p>
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <button type="button" onClick={() => changePage(currentPage - 1)} disabled={currentPage === 1} className="flex items-center gap-1 rounded-xl border border-brand-line px-3 py-2 text-xs font-semibold text-brand-chocolate disabled:opacity-40 disabled:cursor-default cursor-pointer">
+            <ChevronLeft size={14} /> Anterior
+          </button>
+          {pageNumbers.map((page, index) => (
+            <span key={page} className="inline-flex items-center gap-2">
+              {index > 0 && page - pageNumbers[index - 1] > 1 && <span aria-hidden="true" className="text-brand-muted">…</span>}
+              <button type="button" aria-label={`Página ${page}`} aria-current={page === currentPage ? 'page' : undefined} onClick={() => changePage(page)} className={`min-w-9 rounded-xl border border-brand-line px-3 py-2 text-xs font-semibold cursor-pointer ${page === currentPage ? 'bg-brand-chocolate text-brand-cream' : 'bg-brand-card text-brand-chocolate'}`}>
+                {page}
+              </button>
+            </span>
+          ))}
+          <button type="button" onClick={() => changePage(currentPage + 1)} disabled={currentPage === totalPages} className="flex items-center gap-1 rounded-xl border border-brand-line px-3 py-2 text-xs font-semibold text-brand-chocolate disabled:opacity-40 disabled:cursor-default cursor-pointer">
+            Próxima <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
+    </nav>
+  );
 
   // Related products for detail modal
   const relatedProducts = useMemo(() => {
@@ -1141,7 +1203,6 @@ export default function CatalogClient({
                 className="filter-chip"
                 onClick={() => {
                   setAvailabilityFilter(value);
-                  setVisibleCount(12);
                 }}
               >
                 {value === 'TODOS' ? (
@@ -1184,7 +1245,7 @@ export default function CatalogClient({
         <div id="catalog-filters" className={'catalog-filters hidden md:flex ' + (filtersOpen ? 'is-open' : '')}>
           <label>
             Categoria
-            <select className="filter-select" value={activeCategory} onChange={e => { setActiveCategory(e.target.value); setVisibleCount(12); }}>
+            <select className="filter-select" value={activeCategory} onChange={e => setActiveCategory(e.target.value)}>
               <option value="todos">Todas as categorias</option>
               {sortedCategorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
               <option value="promocoes">Ofertas</option>
@@ -1192,14 +1253,14 @@ export default function CatalogClient({
           </label>
           <label>
             Marca
-            <select className="filter-select" value={selectedBrand} onChange={e => { setSelectedBrand(e.target.value); setVisibleCount(12); }}>
+            <select className="filter-select" value={selectedBrand} onChange={e => setSelectedBrand(e.target.value)}>
               <option value="todas">Todas as marcas</option>
               {brandsList.map(b => <option key={b}>{b}</option>)}
             </select>
           </label>
           <label>
             Faixa de preço
-            <select className="filter-select" value={priceRange} onChange={e => { setPriceRange(e.target.value); setVisibleCount(12); }}>
+            <select className="filter-select" value={priceRange} onChange={e => setPriceRange(e.target.value)}>
               <option value="todos">Todos os preços</option>
               <option value="ate-100">Até R$ 100</option>
               <option value="100-200">R$ 100 a R$ 200</option>
@@ -1208,7 +1269,7 @@ export default function CatalogClient({
           </label>
           <label>
             Gênero
-            <select className="filter-select" value={selectedGender} onChange={e => { setSelectedGender(e.target.value as ProductGender | 'Todos'); setVisibleCount(12); }}>
+            <select className="filter-select" value={selectedGender} onChange={e => setSelectedGender(e.target.value as ProductGender | 'Todos')}>
               <option value="Todos">Todos ({genderCounts.Todos})</option>
               {PRODUCT_GENDERS.map(gender => (
                 <option key={gender} value={gender}>
@@ -1243,10 +1304,11 @@ export default function CatalogClient({
             </button>
           </div>
         )}
+        {totalPages > 1 && renderPagination('início')}
         {/* GRID DE PRODUTOS */}
         {filteredProdutos.length > 0 ? (
           <div className="product-grid">
-            {filteredProdutos.slice(0,visibleCount).map(produto => (
+            {filteredProdutos.slice(pageStart, pageStart + PRODUCTS_PER_PAGE).map(produto => (
               <ProductCard 
                 key={produto.id}
                 produto={produto}
@@ -1276,7 +1338,7 @@ export default function CatalogClient({
           </div>
         )}
 
-        {filteredProdutos.length > visibleCount && <div className="load-more"><p>Mostrando {visibleCount} de {filteredProdutos.length} produtos</p><button className="button-secondary" onClick={()=>setVisibleCount(n=>n+12)}>Ver mais produtos <Plus size={16}/></button></div>}
+        {renderPagination('fim')}
       </section>
 
       <section id="secao-encomenda-customizada" className="order-section shell">
@@ -1942,7 +2004,7 @@ export default function CatalogClient({
                           key={gender}
                           type="button"
                           aria-pressed={selectedGender === gender}
-                          onClick={() => { setSelectedGender(gender); setVisibleCount(12); }}
+                          onClick={() => setSelectedGender(gender)}
                           className="filter-chip"
                         >
                           {gender} ({count})

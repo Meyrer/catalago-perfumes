@@ -21,7 +21,7 @@ export default async function Home() {
   ]);
 
   const publicProdutos = produtos.map(produto => {
-    const { precoCusto: _precoCusto, ...publicProduto } = produto;
+    const { precoCusto: _precoCusto, lotesEstoque: _lotesEstoque, ...publicProduto } = produto;
     return plainPrismaData({
       ...publicProduto,
       fotos: publicProduto.fotos.map(foto => ({
