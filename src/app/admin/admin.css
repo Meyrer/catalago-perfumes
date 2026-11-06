@@ -63,6 +63,12 @@ html:has(.admin-theme) { scrollbar-color: #94a3b8 #f8fafc; }
 .admin-theme .admin-app :is(input, textarea)::placeholder { color: #64748b; opacity: 1; }
 .admin-theme .admin-app :is(input, select, textarea):focus-visible { outline: 2px solid #2563eb !important; outline-offset: 1px; }
 .admin-theme .admin-app :is(input:disabled, select:disabled, textarea:disabled) { background: #f1f5f9; }
+.admin-theme .admin-app select.bg-green-50 {
+  background-color: #dcfce7 !important;
+  color: #166534 !important;
+  border-color: #86efac !important;
+  font-weight: 600;
+}
 .admin-theme .admin-app input[type="checkbox"] { accent-color: var(--admin-primary); }
 
 .admin-theme .admin-app .admin-sidebar { background: var(--admin-sidebar); border-color: #253044; color: #f8fafc; }
