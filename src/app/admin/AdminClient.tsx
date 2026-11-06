@@ -18,7 +18,7 @@ import { ConfiguracoesView } from './views/ConfiguracoesView';
 
 import {
   LayoutDashboard,
-  Sparkles,
+  Package,
   Boxes,
   Tags,
   Image as ImageIcon,
@@ -32,6 +32,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  X,
   ExternalLink,
   Plus,
   Bell,
@@ -65,6 +66,15 @@ export default function AdminClient({ data }: AdminClientProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMobileMenuOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isMobileMenuOpen]);
 
   // Carrega / Salva preferência de aba no localStorage
   useEffect(() => {
@@ -127,7 +137,7 @@ export default function AdminClient({ data }: AdminClientProps) {
     {
       group: 'CATÁLOGO & ESTOQUE',
       items: [
-        { id: 'produtos' as AdminTab, label: 'Produtos', icon: Sparkles, badge: data.produtos.length, badgeColor: 'bg-brand-chocolate text-brand-cream' },
+        { id: 'produtos' as AdminTab, label: 'Produtos', icon: Package, badge: data.produtos.length, badgeColor: 'bg-brand-chocolate text-brand-cream' },
         { id: 'categorias' as AdminTab, label: 'Categorias', icon: Tags, badge: null },
         { id: 'estoque' as AdminTab, label: 'Gestão de Estoque', icon: Boxes, badge: lowStockCount > 0 ? lowStockCount : null, badgeColor: 'bg-brand-chocolate text-brand-cream' },
         { id: 'banners' as AdminTab, label: 'Banners Vitrine', icon: ImageIcon, badge: null }
@@ -164,10 +174,12 @@ export default function AdminClient({ data }: AdminClientProps) {
           />
         )}
 
-        {/* SIDEBAR LUXUOSA */}
+        {/* NAVEGAÇÃO ADMINISTRATIVA */}
         <aside 
+          id="admin-navigation"
+          data-open={isMobileMenuOpen}
           className={`
-            fixed lg:sticky top-0 h-dvh z-50 bg-brand-deep text-brand-cream border-r border-brand-rose-beige/25
+            admin-sidebar fixed lg:sticky top-0 h-dvh z-50 bg-brand-deep text-brand-cream border-r border-brand-rose-beige/25
             flex flex-col justify-between transition-all duration-300 ease-in-out shrink-0
             ${isSidebarCollapsed ? 'w-20' : 'w-64'}
             ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -175,22 +187,16 @@ export default function AdminClient({ data }: AdminClientProps) {
         >
           {/* TOPO DA SIDEBAR: LOGO & BRAND */}
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="p-4 border-b border-brand-muted flex shrink-0 items-center justify-between">
+            <div className="admin-brand p-4 border-b border-brand-muted flex shrink-0 items-center justify-between">
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-caramel via-brand-caramel to-brand-deep p-[1px] shrink-0 shadow-lg shadow-brand-deep/40">
-                  <div className="w-full h-full bg-brand-deep rounded-[11px] flex items-center justify-center">
-                    <span className="font-serif text-lg font-bold bg-gradient-to-r from-brand-nude to-brand-caramel bg-clip-text text-transparent">
-                      P
-                    </span>
-                  </div>
-                </div>
+                <div className="admin-brand-mark" aria-hidden="true">P</div>
 
                 {!isSidebarCollapsed && (
                   <div className="min-w-0 transition-opacity duration-200">
                     <h1 className="font-serif font-bold text-sm tracking-wide text-brand-cream uppercase leading-none">
                       Perfumio
                     </h1>
-                    <span className="text-[10px] text-brand-rose-beige uppercase tracking-wider block mt-1 font-mono">
+                    <span className="admin-brand-caption text-[10px] text-brand-rose-beige uppercase tracking-wider block mt-1 font-mono">
                       Boutique ERP
                     </span>
                   </div>
@@ -205,6 +211,7 @@ export default function AdminClient({ data }: AdminClientProps) {
               >
                 {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
               </button>
+              <button type="button" className="lg:hidden p-1.5 text-brand-rose-beige" aria-label="Fechar menu" onClick={() => setIsMobileMenuOpen(false)}><X size={18} /></button>
             </div>
 
             {/* ITENS DE NAVEGAÇÃO */}
@@ -212,7 +219,7 @@ export default function AdminClient({ data }: AdminClientProps) {
               {navGroups.map((group, gIdx) => (
                 <div key={gIdx} className="space-y-1">
                   {!isSidebarCollapsed && (
-                    <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-brand-rose-beige block mb-2 font-mono">
+                    <span className="admin-nav-group px-3 text-[10px] font-bold uppercase tracking-wider text-brand-rose-beige block mb-2 font-mono">
                       {group.group}
                     </span>
                   )}
@@ -225,20 +232,16 @@ export default function AdminClient({ data }: AdminClientProps) {
                       <button
                         key={item.id}
                         onClick={() => handleSelectTab(item.id)}
+                        aria-current={isActive ? "page" : undefined}
                         title={isSidebarCollapsed ? item.label : undefined}
                         className={`
-                          w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all relative group
+                          admin-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all relative group
                           ${isActive 
                             ? 'bg-brand-chocolate text-brand-cream font-semibold shadow-xs border border-brand-rose-beige/30'
                             : 'text-brand-rose-beige hover:text-brand-cream hover:bg-brand-chocolate'}
                           ${isSidebarCollapsed ? 'justify-center px-0' : ''}
                         `}
                       >
-                        {/* Linha indicadora dourada na aba ativa */}
-                        {isActive && (
-                          <div className="absolute left-0 top-2 bottom-2 w-1 bg-gradient-to-b from-brand-caramel to-brand-caramel rounded-r" />
-                        )}
-
                         <Icon 
                           size={18} 
                           className={`shrink-0 transition-colors ${
@@ -252,7 +255,7 @@ export default function AdminClient({ data }: AdminClientProps) {
 
                         {/* Badges */}
                         {item.badge !== null && !isSidebarCollapsed && (
-                          <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.2 rounded-full ${item.badgeColor || 'bg-brand-chocolate text-brand-rose-beige'}`}>
+                          <span className={`admin-nav-badge shrink-0 text-[10px] font-bold px-1.5 py-0.2 rounded-full ${item.badgeColor || 'bg-brand-chocolate text-brand-rose-beige'}`}>
                             {item.badge}
                           </span>
                         )}
@@ -270,7 +273,7 @@ export default function AdminClient({ data }: AdminClientProps) {
           </div>
 
           {/* RODAPÉ DA SIDEBAR: USUÁRIO E LOGOUT */}
-          <div className="shrink-0 p-3 border-t border-brand-rose-beige/25 bg-brand-chocolate/80">
+          <div className="admin-profile shrink-0 p-3 border-t border-brand-rose-beige/25 bg-brand-chocolate/80">
             <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} gap-2`}>
               <div className="flex items-center gap-2.5 overflow-hidden">
                 <div className="w-8 h-8 rounded-lg bg-brand-deep border border-brand-rose-beige/30 text-brand-cream flex items-center justify-center font-bold text-xs shrink-0">
@@ -304,13 +307,15 @@ export default function AdminClient({ data }: AdminClientProps) {
         {/* ÁREA PRINCIPAL */}
         <div className="flex-1 flex flex-col min-w-0">
           
-          {/* TOPBAR LUXUOSA */}
-          <header className="sticky top-0 z-30 bg-brand-card/95 backdrop-blur-md border-b border-brand-line px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+          {/* CABEÇALHO ADMINISTRATIVO */}
+          <header className="admin-topbar sticky top-0 z-30 bg-brand-card/95 backdrop-blur-md border-b border-brand-line px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-3 shadow-xs">
             <div className="flex min-w-0 flex-1 items-center gap-3">
               {/* Botão de abrir menu no mobile */}
               <button
-                onClick={() => setIsMobileMenuOpen(true)}
+                onClick={() => { setIsSidebarCollapsed(false); setIsMobileMenuOpen(true); }}
                 aria-label="Abrir menu"
+                aria-expanded={isMobileMenuOpen}
+                aria-controls="admin-navigation"
                 className="lg:hidden shrink-0 p-2 rounded-xl text-brand-chocolate hover:bg-brand-nude transition-colors"
               >
                 <div className="w-5 h-4 flex flex-col justify-between">
