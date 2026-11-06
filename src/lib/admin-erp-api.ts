@@ -94,7 +94,7 @@ export function saleFields(body: Record<string, unknown>) {
     dataPagamento: body.dataPagamento === undefined ? undefined : dateField(body.dataPagamento, "dataPagamento").toISOString(),
     formaRecebimento: body.formaRecebimento === undefined ? undefined : enumField(body.formaRecebimento, "formaRecebimento", paymentMethods),
     ...(body.valorRecebido === undefined ? {} : {
-      valorRecebido: body.valorRecebido === null ? null : numberField(body.valorRecebido, "valorRecebido", 0),
+      valorRecebido: body.valorRecebido === null ? 0 : numberField(body.valorRecebido, "valorRecebido", 0),
     }),
   };
 }

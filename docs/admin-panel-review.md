@@ -42,7 +42,13 @@ Após autorização, `node --test tests/fifo-payments.test.cjs` passou: 7 testes
 ## Critérios financeiros preservados
 
 - Entrega não comprova pagamento.
-- Total vendido = recebido confirmado + saldo confirmado + valores a conferir, para o mesmo conjunto de vendas.
+- Total vendido = já recebido + falta receber, para o mesmo conjunto de vendas. Valores vazios de recebimento ficam pendentes com zero recebido; pagamentos legados explicitamente marcados como PAGO são preservados.
 - Canceladas ficam fora dos totais de vendas e compras.
 - O resultado financeiro considera vendas e custos do período, não representa caixa disponível.
 - Valores antigos sem comprovação não foram preenchidos por suposição.
+
+## Simplificação posterior aprovada
+
+A administração confirmou que vendas entregues sem valor recebido ainda não foram pagas. A classificação e os avisos de pagamentos a conferir foram removidos; valores vazios passam a zero recebido e entram integralmente em falta receber. As duas vendas de novembro confirmadas como não pagas foram atualizadas pela API, preservando entrega, itens e valores. Conferência: R$ 1.112,73 vendidos = R$ 393,73 recebidos + R$ 719,00 pendentes.
+
+A Dashboard ganhou filtro de mês da venda, os três cartões de total vendido/recebido/pendente e rankings/gráfico no mesmo período. Foram removidas as legendas de contagem sob vendido hoje/no mês. Checagem TypeScript e 11 testes focados aprovados.

@@ -197,7 +197,7 @@ model Venda {
   desconto             Float       @default(0.0)
   frete                Float       @default(0.0)
   valorTotal           Float
-  valorRecebido        Decimal?     @db.Decimal(12, 2) // null: recebimento ainda não conferido
+  valorRecebido        Decimal?     @db.Decimal(12, 2) // null legado: zero recebido, salvo PAGO histórico confirmado
   historicoPagamentos  Json         @default("[]")
   custoTotal           Float       @default(0.0)
   lucroTotal           Float       @default(0.0)

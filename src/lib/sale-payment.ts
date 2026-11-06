@@ -74,6 +74,7 @@ export function recordSalePayment(
   actor: string,
   paymentDate?: string,
 ): SalePaymentEntry[] {
+  received = received ?? 0;
   const history = getSalePaymentHistory(sale);
   const previous = getSaleReceivedAmount(sale);
   if (previous === received) return history;
@@ -85,59 +86,48 @@ export function recordSalePayment(
   }
   const now = new Date().toISOString();
   const date = paymentDate === undefined ? now : new Date(paymentDate).toISOString();
-  const difference = received === null ? null : fromCents(toCents(received) - toCents(previous ?? 0));
+  const difference = fromCents(toCents(received) - toCents(previous));
   return [...history, {
-    tipo: received === null ? 'CONFERENCIA' : previous === null || (difference ?? 0) < 0 ? 'AJUSTE' : 'RECEBIMENTO',
+    tipo: difference < 0 ? 'AJUSTE' : 'RECEBIMENTO',
     valor: difference, totalRecebido: received,
-    data: previous === null || difference === null || difference < 0 ? null : date,
-    registradoEm: now, formaPagamento: previous === null || difference === null || difference < 0 ? null : method,
+    data: difference < 0 ? null : date,
+    registradoEm: now, formaPagamento: difference < 0 ? null : method,
     responsavel: actor,
   }];
 }
 
-export function getSaleReceivedAmount(sale: PaymentSale): number | null {
-  if (Array.isArray(sale.historicoPagamentos)) {
-    const last = sale.historicoPagamentos[sale.historicoPagamentos.length - 1] as SalePaymentEntry | undefined;
-    if (sale.valorRecebido == null && last?.tipo === 'CONFERENCIA' && last.totalRecebido === null) return null;
-  }
+export function getSaleReceivedAmount(sale: PaymentSale): number {
   if (sale.valorRecebido !== null && sale.valorRecebido !== undefined) {
     return roundMoney(typeof sale.valorRecebido === 'number' ? sale.valorRecebido : sale.valorRecebido.toNumber());
   }
-  // Only legacy statuses that explicitly describe payment provide evidence.
+  // Preserve explicitly confirmed legacy payments; other empty amounts mean unpaid.
   if (sale.status === 'PAGO') return roundMoney(sale.valorTotal);
-  if (sale.status === 'AGUARDANDO_PAGAMENTO') return 0;
-  return null;
+  return 0;
 }
 
-export function getSalePaymentStatus(sale: PaymentSale): 'PAGO' | 'PARCIAL' | 'PENDENTE' | 'A_CONFERIR' | 'CANCELADO' {
+export function getSalePaymentStatus(sale: PaymentSale): 'PAGO' | 'PARCIAL' | 'PENDENTE' | 'CANCELADO' {
   if (sale.status === 'CANCELADO') return 'CANCELADO';
   const received = getSaleReceivedAmount(sale);
-  if (received === null) return 'A_CONFERIR';
   if (toCents(received) >= toCents(sale.valorTotal)) return 'PAGO';
   return received > 0 ? 'PARCIAL' : 'PENDENTE';
 }
 
 export function summarizeSalePayments(sales: PaymentSale[]) {
-  let total = 0, received = 0, outstanding = 0, unconfirmed = 0, unconfirmedCount = 0, count = 0;
+  let total = 0, received = 0, outstanding = 0, count = 0;
   for (const sale of sales) {
     if (sale.status === 'CANCELADO') continue;
     count++;
     const amount = toCents(sale.valorTotal);
+    const paid = toCents(getSaleReceivedAmount(sale));
     total += amount;
-    const paid = getSaleReceivedAmount(sale);
-    if (paid === null) {
-      unconfirmed += amount;
-      unconfirmedCount++;
-    } else {
-      received += toCents(paid);
-      outstanding += Math.max(0, amount - toCents(paid));
-    }
+    received += paid;
+    outstanding += amount - paid;
   }
-  return { total: fromCents(total), received: fromCents(received), outstanding: fromCents(outstanding), unconfirmed: fromCents(unconfirmed), unconfirmedCount, count };
+  return { total: fromCents(total), received: fromCents(received), outstanding: fromCents(outstanding), count };
 }
 
-export function validateSaleReceivedAmount(value: number | null, total: number): number | null {
-  if (value === null) return null;
+export function validateSaleReceivedAmount(value: number | null, total: number): number {
+  if (value === null) return 0;
   if (!Number.isFinite(value) || value < 0 || toCents(value) > toCents(total) || toCents(value) > 999999999999) {
     throw new Error('O valor recebido deve estar entre zero e o total da venda.');
   }
