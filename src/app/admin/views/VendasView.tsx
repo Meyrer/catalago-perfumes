@@ -346,14 +346,14 @@ export default function VendasView({ data }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" aria-label="Resumo financeiro das vendas filtradas">
         {[
-          { label: 'Total vendido', value: paymentSummary.total, detail: `${paymentSummary.count} venda(s) · canceladas excluídas` },
+          { label: 'Total vendido', value: paymentSummary.total },
           { label: 'Já recebido', value: paymentSummary.received, detail: 'Pagamentos confirmados' },
           { label: 'Falta receber', value: paymentSummary.outstanding, detail: 'Saldo pendente de pagamento' },
         ].map(card => (
           <div key={card.label} className="bg-brand-card border border-brand-line rounded-2xl p-4 sm:p-5 shadow-xs min-w-0">
             <p className="text-xs font-semibold text-brand-muted">{card.label}</p>
             <p className="text-xl sm:text-2xl font-bold text-brand-chocolate mt-2">{card.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-            <p className="text-[11px] text-brand-muted mt-1">{card.detail}</p>
+            {card.detail && <p className="text-[11px] text-brand-muted mt-1">{card.detail}</p>}
           </div>
         ))}
       </div>
