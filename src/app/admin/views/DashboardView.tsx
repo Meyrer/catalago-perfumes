@@ -5,6 +5,7 @@ import { getFifoStockValue } from '@/lib/fifo';
 import { useState, useMemo } from 'react';
 import type { ERPData } from '../types';
 import { normalizeImageUrl } from '@/lib/image-url';
+import StatCard from '../StatCard';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
 import { summarizeSalePayments, getSaleItemNetAmounts } from '@/lib/sale-payment';
 import { fromCents, toCents } from '@/lib/money';
@@ -245,10 +246,10 @@ export default function DashboardView({ data, onNavigate }: Props) {
       <MonthFilter value={selectedMonth} onChange={setSelectedMonth} />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" aria-label="Resumo das vendas do período">
         {[
-          { label: 'Total vendido', value: paymentSummary.total },
-          { label: 'Já recebido', value: paymentSummary.received },
-          { label: 'Falta receber', value: paymentSummary.outstanding },
-        ].map(card => <div key={card.label} className="rounded-2xl border border-brand-line bg-brand-card p-5 shadow-xs"><p className="text-xs font-semibold text-brand-muted">{card.label}</p><p className="mt-2 text-2xl font-bold text-brand-chocolate">{card.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p></div>)}
+          { label: 'Total vendido', value: paymentSummary.total, icon: ShoppingBag },
+          { label: 'Já recebido', value: paymentSummary.received, icon: CheckCircle2 },
+          { label: 'Falta receber', value: paymentSummary.outstanding, icon: Clock },
+        ].map(card => <StatCard key={card.label} label={card.label} value={card.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} icon={card.icon} />)}
       </div>
       <p className="text-xs text-brand-muted">Vendas agrupadas pelo mês da venda. Total vendido = já recebido + falta receber.</p>
       <p className="text-[11px] text-brand-muted">Recebido considera os pagamentos registrados dessas vendas, antes de despesas e taxas. O estoque abaixo mostra o saldo atual.</p>

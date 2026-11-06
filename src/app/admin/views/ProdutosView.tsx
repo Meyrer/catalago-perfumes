@@ -1,16 +1,17 @@
 "use client";
 
+import StatCard from '../StatCard';
 import { getFifoNextCost } from '@/lib/fifo';
 
 import { useState, useMemo, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import type { ERPData, AdminProduto } from '../types';
 import { 
-  Package, Search, Plus, Sparkles, Edit3, Copy, Trash2, 
-  Eye, EyeOff, Check, X, Loader2, ArrowUpDown, ChevronDown, 
+  Package, Boxes as BoxesIcon, Search, Plus, Sparkles, Edit3, Copy, Trash2,
+  Eye, EyeOff, Check, X, Loader2, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown,
   ExternalLink, DollarSign, Percent, Tag, SlidersHorizontal,
   ZoomIn, ZoomOut, Clock, CalendarCheck, CheckCircle2, AlertTriangle, Layers,
-  Maximize2, RotateCcw, ChevronRight, CircleHelp
+  Maximize2, RotateCcw, ChevronLeft, ChevronRight, CircleHelp
 } from 'lucide-react';
 import { 
   createProduto, updateProduto, deleteProduto, duplicarProdutoAction, 
@@ -23,6 +24,11 @@ import { sortBrandCollectionProducts, sortProductsWithStockFirst } from '@/lib/p
 type Props = {
   data: ERPData;
 };
+
+function SortIndicator({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) {
+  const Icon = active ? (direction === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return <Icon size={12} aria-hidden="true" />;
+}
 
 function ColumnHelp({ label, explanation }: { label: string; explanation: string }) {
   const id = useId();
@@ -85,6 +91,8 @@ export default function ProdutosView({ data }: Props) {
   const { produtos, categorias, fornecedores } = data;
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [selectedMarca, setSelectedMarca] = useState<string>('ALL');
   const [selectedDisponibilidade, setSelectedDisponibilidade] = useState<'ALL' | 'PRONTA_ENTREGA' | 'ENCOMENDA'>('ALL');
   const [selectedEstoqueFiltro, setSelectedEstoqueFiltro] = useState<'ALL' | 'BAIXO' | 'ZERADO'>('ALL');
@@ -170,6 +178,16 @@ export default function ProdutosView({ data }: Props) {
       ? sortBrandCollectionProducts(result, sortDirection) : sortProductsWithStockFirst(result);
   }, [produtos, searchTerm, selectedMarca, selectedDisponibilidade, selectedEstoqueFiltro, sortField, sortDirection]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredSortedProdutos.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const visibleProdutos = filteredSortedProdutos.slice(pageStart, pageStart + pageSize);
+  const stockModels = produtos.filter(p => p.quantidade > 0).length;
+  const stockUnits = produtos.reduce((total, p) => total + (p.quantidade || 0), 0);
+  const orderModels = produtos.filter(p => p.tipoDisponibilidade === 'ENCOMENDA').length;
+
+  useEffect(() => { setPage(1); }, [searchTerm, selectedMarca, selectedDisponibilidade, selectedEstoqueFiltro, sortField, sortDirection, pageSize]);
+
   const handleSort = (field: typeof sortField) => {
     if (sortField === field) {
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -234,9 +252,16 @@ export default function ProdutosView({ data }: Props) {
 
   return (
     <div className="space-y-5">
+      <div className="admin-stats" aria-label="Resumo do catálogo">
+        <StatCard label="Total de produtos" value={produtos.length} icon={Package} />
+        <StatCard label="Modelos em estoque" value={stockModels} icon={Layers} />
+        <StatCard label="Unidades em estoque" value={stockUnits} icon={BoxesIcon} />
+        <StatCard label="Sob encomenda" value={orderModels} icon={Clock} />
+      </div>
       
+      <section className="admin-products-panel">
       {/* HEADER & BARRA DE AÇÃO */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-brand-card p-5 sm:p-6 rounded-3xl border border-brand-line shadow-xs">
+      <div className="admin-products-heading flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-brand-card p-5 sm:p-6 rounded-3xl border border-brand-line shadow-xs">
         <div>
           <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand-chocolate flex items-center gap-2.5">
             <Package size={22} className="text-brand-muted" />
@@ -264,13 +289,14 @@ export default function ProdutosView({ data }: Props) {
       )}
 
       {/* FILTROS AVANÇADOS E BUSCA */}
-      <div className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs space-y-3">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+      <div className="admin-products-filter-panel bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs space-y-3">
+        <div className="admin-products-filters">
           {/* Campo de Busca */}
           <div className="flex-1 relative">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-muted" />
             <input
               type="text"
+              aria-label="Buscar produtos"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar por nome, marca, SKU ou código de barras..."
@@ -280,6 +306,7 @@ export default function ProdutosView({ data }: Props) {
 
           {/* Filtro por Marca */}
           <select
+            aria-label="Marca"
             value={selectedMarca}
             onChange={(e) => setSelectedMarca(e.target.value)}
             className="px-3 py-2 bg-brand-nude text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none cursor-pointer"
@@ -292,6 +319,7 @@ export default function ProdutosView({ data }: Props) {
 
           {/* Filtro Pronta Entrega vs Encomenda */}
           <select
+            aria-label="Disponibilidade"
             value={selectedDisponibilidade}
             onChange={(e) => setSelectedDisponibilidade(e.target.value as typeof selectedDisponibilidade)}
             className="px-3 py-2 bg-brand-nude text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none cursor-pointer"
@@ -303,6 +331,7 @@ export default function ProdutosView({ data }: Props) {
 
           {/* Filtro de Estoque */}
           <select
+            aria-label="Estoque"
             value={selectedEstoqueFiltro}
             onChange={(e) => setSelectedEstoqueFiltro(e.target.value as typeof selectedEstoqueFiltro)}
             className="px-3 py-2 bg-brand-nude text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none cursor-pointer"
@@ -332,34 +361,49 @@ export default function ProdutosView({ data }: Props) {
       </div>
 
       {/* TABELA DENSE MODERNA DE PRODUTOS */}
-      <div className="bg-brand-card rounded-2xl border border-brand-line shadow-xs overflow-hidden">
+      <div className="admin-products-list bg-brand-card rounded-2xl border border-brand-line shadow-xs overflow-hidden">
         <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de produtos e preços">
-          <table className="w-full min-w-[1480px] text-left border-collapse">
+          <table className="w-full admin-products-table min-w-[1400px] text-left border-collapse">
             <thead>
               <tr className="bg-brand-cream border-b border-brand-line text-[10px] font-bold text-brand-muted uppercase tracking-wider">
-                <th className="min-w-[340px] py-3 px-4 cursor-pointer select-none hover:text-brand-chocolate" onClick={() => handleSort('nome')}>
-                  <span className="flex items-center gap-1">Produto <ArrowUpDown size={11} /></span>
+                <th className="min-w-[300px] py-3 px-4 cursor-pointer select-none hover:text-brand-chocolate" aria-sort={sortField === 'nome' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button type="button" className="admin-sort-button" onClick={() => handleSort('nome')}>
+                  <span className="flex items-center gap-1">Produto <SortIndicator active={sortField === 'nome'} direction={sortDirection} /></span>
+                </button>
                 </th>
-                <th className="py-3 px-3 cursor-pointer select-none hover:text-brand-chocolate" onClick={() => handleSort('marca')}>
-                  <span className="flex items-center gap-1">Marca <ArrowUpDown size={11} /></span>
+                <th className="py-3 px-3 cursor-pointer select-none hover:text-brand-chocolate" aria-sort={sortField === 'marca' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button type="button" className="admin-sort-button" onClick={() => handleSort('marca')}>
+                  <span className="flex items-center gap-1">Marca <SortIndicator active={sortField === 'marca'} direction={sortDirection} /></span>
+                </button>
                 </th>
-                <th className="py-3 px-3 text-center cursor-pointer select-none hover:text-brand-chocolate" onClick={() => handleSort('quantidade')}>
-                  <span className="flex items-center justify-center gap-1">Estoque <ArrowUpDown size={11} /></span>
+                <th className="py-3 px-3 text-center cursor-pointer select-none hover:text-brand-chocolate" aria-sort={sortField === 'quantidade' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button type="button" className="admin-sort-button" onClick={() => handleSort('quantidade')}>
+                  <span className="flex items-center justify-center gap-1">Estoque <SortIndicator active={sortField === 'quantidade'} direction={sortDirection} /></span>
+                </button>
                 </th>
-                <th className="py-3 px-3 text-right cursor-pointer select-none hover:text-brand-chocolate" onClick={() => handleSort('precoCusto')}>
-                  <span className="flex items-center justify-end gap-1">Custo <ArrowUpDown size={11} /></span>
+                <th className="py-3 px-3 text-right cursor-pointer select-none hover:text-brand-chocolate" aria-sort={sortField === 'precoCusto' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button type="button" className="admin-sort-button" onClick={() => handleSort('precoCusto')}>
+                  <span className="flex items-center justify-end gap-1">Custo <SortIndicator active={sortField === 'precoCusto'} direction={sortDirection} /></span>
+                </button>
                 </th>
-                <th className="py-3 px-3 text-right cursor-pointer select-none hover:text-brand-chocolate" onClick={() => handleSort('precoVista')}>
-                  <span className="flex items-center justify-end gap-1">Venda <ArrowUpDown size={11} /></span>
+                <th className="py-3 px-3 text-right cursor-pointer select-none hover:text-brand-chocolate" aria-sort={sortField === 'precoVista' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button type="button" className="admin-sort-button" onClick={() => handleSort('precoVista')}>
+                  <span className="flex items-center justify-end gap-1">Venda <SortIndicator active={sortField === 'precoVista'} direction={sortDirection} /></span>
+                </button>
                 </th>
-                <th className="py-3 px-3 text-right cursor-pointer select-none hover:text-brand-chocolate" onClick={() => handleSort('lucro')}>
-                  <span className="flex items-center justify-end gap-1">Lucro (R$) <ArrowUpDown size={11} /></span>
+                <th className="py-3 px-3 text-right cursor-pointer select-none hover:text-brand-chocolate" aria-sort={sortField === 'lucro' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button type="button" className="admin-sort-button" onClick={() => handleSort('lucro')}>
+                  <span className="flex items-center justify-end gap-1">Lucro (R$) <SortIndicator active={sortField === 'lucro'} direction={sortDirection} /></span>
+                </button>
                 </th>
-                <th className="py-3 px-3 text-center cursor-pointer select-none hover:text-brand-chocolate" onClick={() => handleSort('margem')}>
+                <th className="py-3 px-3 text-center cursor-pointer select-none hover:text-brand-chocolate" aria-sort={sortField === 'margem' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button type="button" className="admin-sort-button" onClick={() => handleSort('margem')}>
                   <span className="flex items-center justify-center gap-1">
-                    Margem % <ArrowUpDown size={11} />
-                    <ColumnHelp label="Margem" explanation="Percentual do preço de venda que sobra após descontar o custo do produto, antes das demais despesas. Ex.: venda de R$ 50 e custo de R$ 20 resultam em margem de 60%." />
+                    Margem % <SortIndicator active={sortField === 'margem'} direction={sortDirection} />
+
                   </span>
+                  </button>
+                  <ColumnHelp label="Margem" explanation="Percentual do preço de venda que sobra após descontar o custo do produto, antes das demais despesas. Ex.: venda de R$ 50 e custo de R$ 20 resultam em margem de 60%." />
                 </th>
                 <th className="py-3 px-3 text-center">
                   <span className="flex items-center justify-center gap-1">
@@ -368,7 +412,7 @@ export default function ProdutosView({ data }: Props) {
                   </span>
                 </th>
                 <th className="py-3 px-3 text-center whitespace-nowrap">Status</th>
-                <th className="min-w-[260px] py-3 px-4 text-right">Ações</th>
+                <th className="min-w-[240px] py-3 px-4 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-nude text-xs">
@@ -379,7 +423,7 @@ export default function ProdutosView({ data }: Props) {
                   </td>
                 </tr>
               ) : (
-                filteredSortedProdutos.map((p) => {
+                visibleProdutos.map((p) => {
                   const custo = getFifoNextCost(p);
                   const venda = p.precoVista || 0;
                   const lucro = venda - custo;
@@ -390,12 +434,12 @@ export default function ProdutosView({ data }: Props) {
                   return (
                     <tr key={p.id} className="hover:bg-brand-cream transition-colors">
                       {/* Produto */}
-                      <td className="min-w-[340px] py-3 px-4">
+                      <td className="min-w-[300px] py-3 px-4">
                         <div className="flex items-center gap-3">
                           <button
                             type="button"
                             onClick={() => setViewingQuickProduct(p)}
-                            className="group relative w-11 h-11 rounded-xl bg-brand-cream border border-brand-line overflow-hidden shrink-0 flex items-center justify-center cursor-pointer hover:border-brand-caramel hover:shadow-xs transition-all"
+                            className="admin-product-image group relative w-11 h-11 rounded-xl bg-brand-cream border border-brand-line overflow-hidden shrink-0 flex items-center justify-center cursor-pointer hover:border-brand-caramel hover:shadow-xs transition-all"
                             title="Clique para ampliar foto e abrir dossiê"
                           >
                             {p.fotos && p.fotos[0] ? (
@@ -411,7 +455,7 @@ export default function ProdutosView({ data }: Props) {
                             <button
                               type="button"
                               onClick={() => setViewingQuickProduct(p)}
-                              className="text-left font-bold text-brand-chocolate leading-tight hover:text-brand-muted transition-colors truncate block max-w-[280px] cursor-pointer"
+                              className="admin-product-name text-left font-bold text-brand-chocolate leading-tight hover:text-brand-muted transition-colors truncate block max-w-[280px] cursor-pointer"
                               style={{ overflowWrap: 'normal', whiteSpace: 'normal' }}
                               title={p.nome}
                             >
@@ -434,11 +478,7 @@ export default function ProdutosView({ data }: Props) {
 
                       {/* Estoque */}
                       <td className="py-3 px-3 text-center whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          p.quantidade === 0 ? 'bg-brand-rose-beige text-brand-chocolate' :
-                          p.quantidade <= (p.estoqueMinimo ?? 2) ? 'bg-brand-nude text-brand-chocolate' :
-                          'bg-brand-nude text-brand-chocolate'
-                        }`}>
+                        <span className={`admin-badge ${p.quantidade > 0 ? 'admin-badge-stock' : 'admin-badge-neutral'}`}>
                           {p.quantidade} un.
                         </span>
                       </td>
@@ -454,13 +494,13 @@ export default function ProdutosView({ data }: Props) {
                       </td>
 
                       {/* Lucro */}
-                      <td className="py-3 px-3 text-right font-bold text-brand-chocolate whitespace-nowrap">
+                      <td className={`py-3 px-3 text-right font-bold whitespace-nowrap ${lucro >= 0 ? "admin-profit" : "text-red-600"}`}>
                         +{lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </td>
 
                       {/* Margem % */}
                       <td className="py-3 px-3 text-center whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded-md bg-brand-nude text-brand-chocolate font-bold text-[11px] border border-brand-line">
+                        <span className={`admin-badge ${lucro >= 0 ? "admin-badge-success" : "admin-badge-warning"}`}>
                           {margem}%
                         </span>
                       </td>
@@ -472,11 +512,8 @@ export default function ProdutosView({ data }: Props) {
 
                       {/* Status / Disponibilidade */}
                       <td className="py-3 px-3 text-center whitespace-nowrap">
-                        <span className={`inline-block whitespace-nowrap px-2.5 py-1 rounded-md text-[10px] font-bold border ${
-                          isEncomenda 
-                            ? 'bg-brand-nude border-brand-line text-brand-muted'
-                            : 'bg-brand-nude border-brand-line text-brand-chocolate'
-                        }`}>
+                        <span className={`admin-badge ${isEncomenda ? 'admin-badge-neutral' : 'admin-badge-success'}`}>
+                          {!isEncomenda && <CheckCircle2 size={12} aria-hidden="true" />}
                           {isEncomenda ? 'Sob Encomenda' : 'Pronta Entrega'}
                         </span>
                         <span className="mt-1.5 flex items-center justify-center gap-1 text-[10px] font-semibold text-brand-muted">
@@ -486,8 +523,8 @@ export default function ProdutosView({ data }: Props) {
                       </td>
 
                       {/* Ações */}
-                      <td className="min-w-[260px] py-3 px-4 text-right whitespace-nowrap">
-                        <div className="inline-flex flex-nowrap items-center gap-1 [&>button]:shrink-0">
+                      <td className="min-w-[240px] py-3 px-4 text-right whitespace-nowrap">
+                        <div className="admin-product-actions inline-flex flex-nowrap items-center gap-1 [&>button]:shrink-0">
                           <button
                             type="button"
                             onClick={() => handleToggleActive(p)}
@@ -539,7 +576,21 @@ export default function ProdutosView({ data }: Props) {
             </tbody>
           </table>
         </div>
+        <nav className="admin-pagination" aria-label="Paginação de produtos">
+          <span>{filteredSortedProdutos.length === 0 ? 'Nenhum produto' : `Mostrando ${pageStart + 1}–${Math.min(pageStart + pageSize, filteredSortedProdutos.length)} de ${filteredSortedProdutos.length} produtos`}</span>
+          <div className="admin-pagination-controls">
+            <label htmlFor="product-page-size">Por página</label>
+            <select id="product-page-size" value={pageSize} onChange={e => setPageSize(Number(e.target.value))} className="px-2 py-1">
+              <option value={20}>20</option><option value={50}>50</option><option value={100}>100</option>
+            </select>
+            <button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} aria-label="Página anterior"><ChevronLeft size={16} /></button>
+            <span aria-live="polite">{currentPage} de {totalPages}</span>
+            <button type="button" disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)} aria-label="Próxima página"><ChevronRight size={16} /></button>
+          </div>
+        </nav>
       </div>
+
+      </section>
 
       {/* ========================================================================= */}
       {/* MODAL DE VISUALIZAÇÃO AMPLIADA & DOSSIÊ TÉCNICO COM ZOOM NA FOTO */}
