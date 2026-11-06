@@ -8,11 +8,12 @@ const ts = require('typescript');
 const cache = new Map();
 function load(name) {
   if (name === 'server-only') return {};
-  if (!name.startsWith('@/lib/')) return require(name);
+  if (!name.startsWith('@/lib/') && name !== '@/app/admin/MonthFilter') return require(name);
   if (cache.has(name)) return cache.get(name).exports;
-  const filename = path.resolve(__dirname, '../src', name.slice(2) + '.ts');
+  const sourcePath = path.resolve(__dirname, '../src', name.slice(2));
+  const filename = fs.existsSync(sourcePath + '.ts') ? sourcePath + '.ts' : sourcePath + '.tsx';
   const compiled = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2017 },
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2017, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
   const module = { exports: {} }; cache.set(name, module);
   new Function('require', 'module', 'exports', compiled)(load, module, module.exports);
@@ -20,7 +21,7 @@ function load(name) {
 }
 const { getFifoLots, takeFifo, fifoCost, releaseFifo } = load('@/lib/fifo');
 const { changeFifoStock } = load('@/lib/fifo-stock');
-const { getSalePaymentAllocations, recordSalePayment, getSaleReceivedAmount, summarizeSalePayments } = load('@/lib/sale-payment');
+const { getSalePaymentAllocations, recordSalePayment, getSaleReceivedAmount, getSalePaymentStatus, summarizeSalePayments } = load('@/lib/sale-payment');
 const { toCents } = load('@/lib/money');
 
 function inventory(quantity = 2, cost = 30.25) {
@@ -96,15 +97,53 @@ test('corrections do not invent payment dates or preserve an unsupported payment
   const corrected = { ...paid, valorRecebido: 120, historicoPagamentos: recordSalePayment(paid, 120, 'PIX', 'Meyrer') };
   assert.deepEqual(getSalePaymentAllocations(corrected), [{ valor: 120, data: null, formaPagamento: null }]);
   const unconfirmed = { ...corrected, status: 'AGUARDANDO_PAGAMENTO', valorRecebido: null, historicoPagamentos: recordSalePayment(corrected, null, 'PIX', 'Meyrer') };
-  assert.equal(getSaleReceivedAmount(unconfirmed), null);
+  assert.equal(getSaleReceivedAmount(unconfirmed), 0);
 });
 
-test('mixed payment methods remain separate and sale totals reconcile with unconfirmed amounts', () => {
+test('mixed payment methods remain separate and empty receipts count as unpaid', () => {
   const base = { status: 'ENTREGUE', valorTotal: 200, valorRecebido: 0, historicoPagamentos: [] };
   const first = { ...base, valorRecebido: 50, historicoPagamentos: recordSalePayment(base, 50, 'PIX', 'Meyrer') };
   const sale = { ...first, valorRecebido: 80, historicoPagamentos: recordSalePayment(first, 80, 'DINHEIRO', 'Meyrer') };
   assert.deepEqual(getSalePaymentAllocations(sale).map(entry => [entry.formaPagamento, entry.valor]), [['PIX', 50], ['DINHEIRO', 30]]);
   const summary = summarizeSalePayments([sale, { status: 'ENTREGUE', valorTotal: 25, valorRecebido: null }, { ...sale, status: 'CANCELADO' }]);
   assert.equal(summary.total, 225);
-  assert.equal(summary.total, summary.received + summary.outstanding + summary.unconfirmed);
+  assert.equal(summary.total, summary.received + summary.outstanding);
+});
+
+
+test('delivered or shipped with an empty received amount remains unpaid', () => {
+  for (const status of ['ENTREGUE', 'ENVIADO', 'PREPARANDO', 'AGUARDANDO_PAGAMENTO']) {
+    for (const valorRecebido of [null, undefined, 0]) {
+      const sale = { status, valorTotal: 79.9, valorRecebido };
+      assert.equal(getSaleReceivedAmount(sale), 0);
+      assert.equal(getSalePaymentStatus(sale), 'PENDENTE');
+      assert.deepEqual(summarizeSalePayments([sale]), { total: 79.9, received: 0, outstanding: 79.9, count: 1 });
+    }
+  }
+});
+
+test('the three screenshot totals close exactly to the cent', () => {
+  const summary = summarizeSalePayments([
+    { status: 'ENTREGUE', valorTotal: 393.73, valorRecebido: 393.73 },
+    { status: 'ENTREGUE', valorTotal: 559.2, valorRecebido: 0 },
+    { status: 'ENTREGUE', valorTotal: 159.8, valorRecebido: null },
+  ]);
+  assert.deepEqual(summary, { total: 1112.73, received: 393.73, outstanding: 719, count: 3 });
+  assert.equal(toCents(summary.total), toCents(summary.received) + toCents(summary.outstanding));
+});
+
+test('legacy explicitly paid sales remain confirmed and are not erased by the new blank rule', () => {
+  assert.equal(getSaleReceivedAmount({ status: 'PAGO', valorTotal: 79.9, valorRecebido: null }), 79.9);
+});
+
+test('monthly totals use the sale month even when its payment arrived in another month', () => {
+  const { isInMonth } = load('@/app/admin/MonthFilter');
+  const sales = [
+    { status: 'ENTREGUE', data: '2026-11-01T02:30:00Z', valorTotal: 100, valorRecebido: 40 },
+    { status: 'ENTREGUE', data: '2026-11-01T03:00:00Z', valorTotal: 200, valorRecebido: null },
+  ];
+  const october = summarizeSalePayments(sales.filter(sale => isInMonth(sale.data, '2026-10')));
+  const november = summarizeSalePayments(sales.filter(sale => isInMonth(sale.data, '2026-11')));
+  assert.deepEqual(october, { total: 100, received: 40, outstanding: 60, count: 1 });
+  assert.deepEqual(november, { total: 200, received: 0, outstanding: 200, count: 1 });
 });

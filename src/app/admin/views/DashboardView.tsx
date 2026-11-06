@@ -5,8 +5,8 @@ import { getFifoStockValue } from '@/lib/fifo';
 import { useState, useMemo } from 'react';
 import type { ERPData } from '../types';
 import { normalizeImageUrl } from '@/lib/image-url';
-import { getMonthKey, isInMonth } from '../MonthFilter';
-import { getSaleItemNetAmounts } from '@/lib/sale-payment';
+import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
+import { summarizeSalePayments, getSaleItemNetAmounts } from '@/lib/sale-payment';
 import { fromCents, toCents } from '@/lib/money';
 import { 
   TrendingUp, DollarSign, Package, AlertTriangle, 
@@ -41,6 +41,7 @@ function DashboardProductThumbnail({ fotoUrl, nome }: { fotoUrl?: string; nome: 
 
 export default function DashboardView({ data, onNavigate }: Props) {
   const [salesTimeframe, setSalesTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
+  const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
 
   const { produtos, vendas, encomendas } = data;
 
@@ -48,7 +49,6 @@ export default function DashboardView({ data, onNavigate }: Props) {
   const agora = new Date();
   const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
   const fimHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1);
-  const mesAtual = getMonthKey();
 
   // Cálculos de Vendas
   const vendasValidas = useMemo(() => {
@@ -61,25 +61,12 @@ export default function DashboardView({ data, onNavigate }: Props) {
       .reduce((acc, v) => acc + v.valorTotal, 0);
   }, [vendasValidas, inicioHoje, fimHoje]);
 
-  const faturamentoMes = useMemo(() => {
-    return vendasValidas
-      .filter(v => isInMonth(v.data, mesAtual))
-      .reduce((acc, v) => acc + v.valorTotal, 0);
-  }, [vendasValidas, mesAtual]);
-
-  const lucroMes = useMemo(() => {
-    return vendasValidas
-      .filter(v => isInMonth(v.data, mesAtual))
-      .reduce((acc, v) => acc + v.valorTotal - v.custoTotal, 0);
-  }, [vendasValidas, mesAtual]);
-
+  const vendasDoPeriodo = useMemo(() => vendasValidas.filter(venda => isInMonth(venda.data, selectedMonth)), [vendasValidas, selectedMonth]);
+  const paymentSummary = useMemo(() => summarizeSalePayments(vendasDoPeriodo), [vendasDoPeriodo]);
+  const faturamentoMes = paymentSummary.total;
+  const lucroMes = useMemo(() => fromCents(vendasDoPeriodo.reduce((sum, venda) => sum + toCents(venda.valorTotal) - toCents(venda.custoTotal), 0)), [vendasDoPeriodo]);
   const margemLucroMes = faturamentoMes > 0 ? ((lucroMes / faturamentoMes) * 100).toFixed(1) : '0';
-
-  const vendasMesCount = useMemo(() => {
-    return vendasValidas.filter(v => isInMonth(v.data, mesAtual)).length;
-  }, [vendasValidas, mesAtual]);
-
-  const ticketMedioMes = vendasMesCount > 0 ? (faturamentoMes / vendasMesCount) : 0;
+  const ticketMedioMes = paymentSummary.count > 0 ? faturamentoMes / paymentSummary.count : 0;
 
   // Cálculos de Estoque
   const totalItensEstoque = useMemo(() => {
@@ -109,8 +96,8 @@ export default function DashboardView({ data, onNavigate }: Props) {
   }, [produtos]);
 
   const pedidosPendentesCount = useMemo(() => {
-    return vendas.filter(v => v.status === 'AGUARDANDO_PAGAMENTO' || v.status === 'PREPARANDO').length;
-  }, [vendas]);
+    return vendasDoPeriodo.filter(v => v.status === 'AGUARDANDO_PAGAMENTO' || v.status === 'PREPARANDO').length;
+  }, [vendasDoPeriodo]);
 
   const encomendasAtivasCount = useMemo(() => {
     return encomendas.filter(e => e.status !== 'FINALIZADO' && e.status !== 'CANCELADO').length;
@@ -119,7 +106,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
   // Ranking de Produtos Mais Vendidos
   const topProdutosMaisVendidos = useMemo(() => {
     const map = new Map<number, { produto: typeof produtos[0]; qtd: number; totalVendas: number }>();
-    for (const v of vendasValidas) {
+    for (const v of vendasDoPeriodo) {
       const netAmounts = getSaleItemNetAmounts(v);
       for (const [index, item] of v.itens.entries()) {
         const prod = produtos.find(p => p.id === item.produtoId) || item.produto;
@@ -133,12 +120,12 @@ export default function DashboardView({ data, onNavigate }: Props) {
     return Array.from(map.values())
       .sort((a, b) => b.qtd - a.qtd)
       .slice(0, 5);
-  }, [vendasValidas, produtos]);
+  }, [vendasDoPeriodo, produtos]);
 
   // Ranking de Categorias Mais Vendidas
   const categoriasMaisVendidas = useMemo(() => {
     const catMap = new Map<string, { nome: string; total: number; qtd: number }>();
-    for (const v of vendasValidas) {
+    for (const v of vendasDoPeriodo) {
       const netAmounts = getSaleItemNetAmounts(v);
       for (const [index, item] of v.itens.entries()) {
         const prod = produtos.find(p => p.id === item.produtoId);
@@ -155,13 +142,14 @@ export default function DashboardView({ data, onNavigate }: Props) {
       ...c,
       percent: Math.round((c.total / totalVendasGeral) * 100)
     }));
-  }, [vendasValidas, produtos]);
+  }, [vendasDoPeriodo, produtos]);
 
   // Dados para Gráfico de Vendas
-  const chartDaysCount = salesTimeframe === '7d' ? 7 : salesTimeframe === '30d' ? 30 : 90;
+  const monthEnd = selectedMonth ? new Date(Date.UTC(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5)), 0, 12)) : null;
+  const chartDaysCount = monthEnd ? monthEnd.getUTCDate() : salesTimeframe === '7d' ? 7 : salesTimeframe === '30d' ? 30 : 90;
   const salesChartData = useMemo(() => {
     const points: Array<{ label: string; dateStr: string; valor: number; lucro: number }> = [];
-    const baseDate = new Date();
+    const baseDate = selectedMonth ? new Date(Date.UTC(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5)), 0, 12)) : new Date();
 
     for (let i = chartDaysCount - 1; i >= 0; i--) {
       const d = new Date(baseDate.getTime() - i * 24 * 60 * 60 * 1000);
@@ -180,7 +168,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
       points.push({ label, dateStr: d.toISOString(), valor: dayTotal, lucro: dayLucro });
     }
     return points;
-  }, [vendasValidas, chartDaysCount]);
+  }, [vendasValidas, chartDaysCount, selectedMonth]);
 
   const maxChartVal = useMemo(() => {
     const max = Math.max(...salesChartData.map(p => p.valor), 100);
@@ -254,7 +242,18 @@ export default function DashboardView({ data, onNavigate }: Props) {
         </div>
       </div>
 
-      {/* 11 CARDS COMPACTOS DE KPIS */}
+      <MonthFilter value={selectedMonth} onChange={setSelectedMonth} />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" aria-label="Resumo das vendas do período">
+        {[
+          { label: 'Total vendido', value: paymentSummary.total },
+          { label: 'Já recebido', value: paymentSummary.received },
+          { label: 'Falta receber', value: paymentSummary.outstanding },
+        ].map(card => <div key={card.label} className="rounded-2xl border border-brand-line bg-brand-card p-5 shadow-xs"><p className="text-xs font-semibold text-brand-muted">{card.label}</p><p className="mt-2 text-2xl font-bold text-brand-chocolate">{card.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p></div>)}
+      </div>
+      <p className="text-xs text-brand-muted">Vendas agrupadas pelo mês da venda. Total vendido = já recebido + falta receber.</p>
+      <p className="text-[11px] text-brand-muted">Recebido considera os pagamentos registrados dessas vendas, antes de despesas e taxas. O estoque abaixo mostra o saldo atual.</p>
+
+      {/* INDICADORES COMPLEMENTARES */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-3.5">
         
         {/* Vendido Hoje */}
@@ -265,28 +264,12 @@ export default function DashboardView({ data, onNavigate }: Props) {
           <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             {faturamentoHoje.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
-          <span className="text-[10px] font-semibold text-brand-chocolate flex items-center gap-0.5 mt-1">
-            <ArrowUpRight size={12} /> Vendas não canceladas de hoje
-          </span>
-        </div>
-
-        {/* Vendido no Mês */}
-        <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs">
-          <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
-            Vendido no Mês
-          </span>
-          <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
-            {faturamentoMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </p>
-          <span className="text-[10px] text-brand-muted block mt-1">
-            {vendasMesCount} pedido(s) não cancelado(s)
-          </span>
         </div>
 
         {/* Lucro Bruto no Mês */}
         <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line bg-brand-nude/20 shadow-xs">
           <span className="text-[10px] font-bold text-brand-chocolate uppercase tracking-wider block mb-1">
-            Lucro Bruto (Mês)
+            Lucro Bruto (Período)
           </span>
           <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
             +{lucroMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -410,10 +393,10 @@ export default function DashboardView({ data, onNavigate }: Props) {
             Vendas Registradas
           </span>
           <p className="text-lg sm:text-xl font-bold text-brand-chocolate">
-            {vendasValidas.length}
+            {paymentSummary.count}
           </p>
           <span className="text-[10px] text-brand-chocolate font-bold block mt-1">
-            Total histórico sem canceladas
+            No período selecionado
           </span>
         </div>
       </div>
@@ -435,7 +418,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
             </div>
 
             {/* Toggle de Período */}
-            <div className="flex items-center gap-1 bg-brand-nude p-1 rounded-xl border border-brand-line self-start sm:self-auto">
+            {!selectedMonth && <div className="flex items-center gap-1 bg-brand-nude p-1 rounded-xl border border-brand-line self-start sm:self-auto">
               <button
                 onClick={() => setSalesTimeframe('7d')}
                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
@@ -460,7 +443,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
               >
                 90 dias
               </button>
-            </div>
+            </div>}
           </div>
 
           {/* Canvas SVG do Gráfico */}
@@ -600,7 +583,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
               Vendas por Categoria
             </h3>
             <p className="text-xs text-brand-muted mb-5">
-              Histórico sem canceladas, com descontos e sem frete
+              Período selecionado, com descontos e sem frete
             </p>
 
             <div className="space-y-4">
@@ -650,7 +633,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
                 Produtos Mais Vendidos
               </h3>
               <p className="text-xs text-brand-muted">
-                Histórico sem canceladas; valores com descontos e sem frete
+                Período selecionado; valores com descontos e sem frete
               </p>
             </div>
             <button

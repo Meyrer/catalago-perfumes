@@ -198,7 +198,7 @@ export default function FinanceiroView({ data }: Props) {
         {(resumo === 'vendas' ? [
           { label: 'Total vendido', value: receitaBruta, detail: `${paymentSummary.count} venda(s) · canceladas excluídas` },
           { label: 'Já recebido', value: paymentSummary.received, detail: 'Pagamentos confirmados, incluindo parciais' },
-          { label: 'Falta receber', value: paymentSummary.outstanding, detail: 'Saldo em aberto confirmado' },
+          { label: 'Falta receber', value: paymentSummary.outstanding, detail: 'Saldo pendente de pagamento' },
           { label: 'Custo dos produtos vendidos', value: -cpvTotal, detail: 'Custo dos produtos dessas vendas' },
           { label: 'Despesas', value: -totalDespesas, detail: `${despesasFiltradas.length} lançamento(s) no período` },
           { label: 'Resultado das vendas', value: lucroLiquido, detail: `Vendido − custo − despesas · margem ${margemLiquida}%` },
@@ -214,12 +214,6 @@ export default function FinanceiroView({ data }: Props) {
           </div>
         ))}
       </div>
-      {resumo === 'vendas' && paymentSummary.unconfirmedCount > 0 && (
-        <p className="text-[11px] text-brand-muted">
-          Pagamentos a conferir: {paymentSummary.unconfirmed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em {paymentSummary.unconfirmedCount} venda(s).
-          {' '}Total vendido = já recebido + falta receber + valores a conferir.
-        </p>
-      )}
       {resumo === 'vendas' ? <p className="text-[11px] text-brand-muted">O resultado considera todas as vendas do período e não representa dinheiro disponível em caixa.</p> : semData > 0 && <p className="text-[11px] text-brand-muted">Recebimentos sem data comprovada, de todo o histórico: {semData.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}. Não entram nos totais por data.</p>}
 
       {resumo === 'recebimentos' && <div className="overflow-x-auto rounded-2xl border border-brand-line bg-brand-card p-4">

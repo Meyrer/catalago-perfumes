@@ -18,7 +18,7 @@ type Props = {
 
 function PaymentBadge({ sale }: { sale: Parameters<typeof getSalePaymentStatus>[0] }) {
   const status = getSalePaymentStatus(sale);
-  const labels = { PAGO: 'Pago', PARCIAL: 'Parcial', PENDENTE: 'Pendente', A_CONFERIR: 'A conferir', CANCELADO: 'Cancelado' };
+  const labels = { PAGO: 'Pago', PARCIAL: 'Parcial', PENDENTE: 'Pendente', CANCELADO: 'Cancelado' };
   return <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold whitespace-nowrap ${status === 'PARCIAL' ? 'bg-amber-50 text-amber-800 border-amber-300' : status === 'PAGO' ? 'bg-green-50 text-green-800 border-green-300' : 'bg-brand-cream text-brand-muted border-brand-line'}`}>{labels[status]}</span>;
 }
 
@@ -35,12 +35,12 @@ function PaymentHistory({ sale }: { sale: AdminVenda }) {
           {history.map((entry, index) => (
             <li key={index} className="py-2 text-[11px] text-brand-muted space-y-1">
               <div className="flex flex-wrap justify-between gap-2 font-semibold text-brand-chocolate">
-                <span>{entry.tipo === 'SALDO_INICIAL' ? 'Saldo anterior' : entry.tipo === 'CONFERENCIA' ? 'Pagamento marcado para conferência' : entry.tipo === 'AJUSTE' ? 'Correção do valor recebido' : 'Recebimento'}</span>
+                <span>{entry.tipo === 'SALDO_INICIAL' ? 'Saldo anterior' : entry.tipo === 'CONFERENCIA' ? 'Registro anterior de pagamento' : entry.tipo === 'AJUSTE' ? 'Correção do valor recebido' : 'Recebimento'}</span>
                 {entry.valor !== null && <span>{entry.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
               </div>
               <p>{entry.data ? new Date(entry.data).toLocaleString('pt-BR') : 'Data do pagamento não informada'}{entry.formaPagamento ? ` · ${entry.formaPagamento.replaceAll('_', ' ')}` : ''}</p>
               {entry.tipo === 'SALDO_INICIAL' && <p>Valor já informado antes do início do histórico; parcelas e formas de pagamento anteriores não foram registradas.</p>}
-              {entry.registradoEm && <p>Registrado em {new Date(entry.registradoEm).toLocaleString('pt-BR')}{entry.responsavel ? ` por ${entry.responsavel}` : ''}. Total recebido: {entry.totalRecebido === null ? 'a conferir' : entry.totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.</p>}
+              {entry.registradoEm && <p>Registrado em {new Date(entry.registradoEm).toLocaleString('pt-BR')}{entry.responsavel ? ` por ${entry.responsavel}` : ''}. Total recebido: {entry.totalRecebido === null ? 'não informado no registro antigo' : entry.totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.</p>}
             </li>
           ))}
         </ol>
@@ -239,7 +239,7 @@ export default function VendasView({ data }: Props) {
         frete,
         status: statusVenda,
         observacoes,
-        valorRecebido: valorRecebido === '' ? null : valorRecebido,
+        valorRecebido: valorRecebido === '' ? 0 : valorRecebido,
         ...(hasNewReceipt ? {
           dataPagamento: new Date(dataPagamento).toISOString(),
           formaRecebimento: editingVenda ? formaRecebimento : formaPagamento,
@@ -348,7 +348,7 @@ export default function VendasView({ data }: Props) {
         {[
           { label: 'Total vendido', value: paymentSummary.total, detail: `${paymentSummary.count} venda(s) · canceladas excluídas` },
           { label: 'Já recebido', value: paymentSummary.received, detail: 'Pagamentos confirmados' },
-          { label: 'Falta receber', value: paymentSummary.outstanding, detail: 'Saldo em aberto confirmado' },
+          { label: 'Falta receber', value: paymentSummary.outstanding, detail: 'Saldo pendente de pagamento' },
         ].map(card => (
           <div key={card.label} className="bg-brand-card border border-brand-line rounded-2xl p-4 sm:p-5 shadow-xs min-w-0">
             <p className="text-xs font-semibold text-brand-muted">{card.label}</p>
@@ -357,17 +357,6 @@ export default function VendasView({ data }: Props) {
           </div>
         ))}
       </div>
-      {paymentSummary.unconfirmedCount > 0 && (
-        <button
-          type="button"
-          onClick={() => setSelectedPayment('A_CONFERIR')}
-          title="Essas vendas ainda não têm o pagamento informado. Seus valores não entram em Já recebido nem no saldo confirmado de Falta receber."
-          className="text-[11px] text-brand-muted underline underline-offset-2 cursor-pointer"
-        >
-          Pagamentos a conferir: {paymentSummary.unconfirmedCount} venda(s) · {paymentSummary.unconfirmed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-        </button>
-      )}
-
       {feedback && (
         <div className="p-3.5 rounded-2xl bg-brand-nude border border-brand-line text-brand-chocolate text-xs font-bold flex items-center justify-between">
           <span>{feedback}</span>
@@ -418,7 +407,6 @@ export default function VendasView({ data }: Props) {
           <option value="ALL">Todos os pagamentos</option>
           <option value="PAGO">Quitados</option>
           <option value="ABERTO">Com saldo a receber</option>
-          <option value="A_CONFERIR">Pagamento a conferir</option>
         </select>
       </div>
 
@@ -451,7 +439,6 @@ export default function VendasView({ data }: Props) {
                   const received = getSaleReceivedAmount(v);
                   const paymentStatus = getSalePaymentStatus(v);
                   const paymentLabel = paymentStatus === 'CANCELADO' ? 'Cancelada'
-                    : received === null ? 'Pagamento a conferir'
                     : paymentStatus === 'PAGO' ? 'Quitado'
                     : `Falta ${Math.max(0, v.valorTotal - received).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
                   const dataFormatada = new Date(v.data).toLocaleDateString('pt-BR', {
@@ -868,13 +855,12 @@ export default function VendasView({ data }: Props) {
                       const value = event.target.value === '' ? '' : Number(event.target.value);
                       setValorRecebido(value);
                       if (statusVenda === 'PAGO' && (value === '' || value < carrinhoCalculado.valorTotal)) setStatusVenda('AGUARDANDO_PAGAMENTO');
-                    }} placeholder="Pagamento ainda não conferido" className="min-w-0 flex-1 px-3 py-2 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none" />
+                    }} placeholder="0,00 — ainda não recebido" className="min-w-0 flex-1 px-3 py-2 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none" />
                     <button type="button" onClick={() => setValorRecebido(carrinhoCalculado.valorTotal)} className="px-3 py-2 rounded-xl border border-brand-line bg-brand-card text-xs font-semibold text-brand-chocolate cursor-pointer">Recebi tudo</button>
                   </div>
-                  <p className="text-[11px] text-brand-muted mt-1">Informe zero se ainda não recebeu. Deixe em branco somente se o pagamento precisa ser conferido. A entrega não altera esse valor.</p>
+                  <p className="text-[11px] text-brand-muted mt-1">Em branco ou zero significa que ainda não recebeu. Entregar a venda não confirma pagamento.</p>
                   {valorRecebido !== '' && <p className="text-xs font-semibold text-brand-chocolate mt-2">Falta receber: {Math.max(0, carrinhoCalculado.valorTotal - valorRecebido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
-                  <div className="mt-2"><PaymentBadge sale={{ status: statusVenda, valorTotal: carrinhoCalculado.valorTotal, valorRecebido: valorRecebido === '' ? null : valorRecebido }} /></div>
-                  {valorRecebido !== '' && previousReceived === null && <p className="mt-2 text-[11px] text-brand-muted">O valor informado será registrado como confirmação do saldo recebido, sem presumir datas ou parcelas anteriores.</p>}
+                  <div className="mt-2"><PaymentBadge sale={{ status: statusVenda, valorTotal: carrinhoCalculado.valorTotal, valorRecebido: valorRecebido === '' ? 0 : valorRecebido }} /></div>
                   {hasNewReceipt && (
                     <div className="mt-3 space-y-2">
                       <p className="text-xs font-semibold text-brand-chocolate">Ao salvar, registrar {Math.max(0, Number(valorRecebido) - (previousReceived ?? 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} no histórico como novo recebimento.</p>
