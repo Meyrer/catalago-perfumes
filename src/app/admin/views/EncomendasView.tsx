@@ -1,14 +1,11 @@
 "use client";
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import type { ERPData, AdminEncomenda } from '../types';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
-import { 
-  Clock, Plus, Search, MessageCircle, ChevronRight, 
-  CheckCircle2, AlertCircle, X, Loader2, DollarSign, 
-  Truck, ArrowRight, User
-} from 'lucide-react';
-import { createEncomendaAction, updateEncomendaStatusAction, deleteEncomendaAction } from '../../actions';
+import { Clock, Plus, Search, MessageCircle, Pencil, X, Loader2 } from 'lucide-react';
+import { createEncomendaAction, updateEncomendaStatusAction } from '../../actions';
 
 type Props = {
   data: ERPData;
@@ -26,14 +23,16 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 };
 
 export default function EncomendasView({ data }: Props) {
-  const { encomendas, clientes, fornecedores, produtos } = data;
+  const router = useRouter();
+  const { encomendas, clientes, fornecedores } = data;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
 
-  // Modal Nova Encomenda
-  const [isNewOpen, setIsNewOpen] = useState(false);
+  // Formulário compartilhado entre cadastro e edição
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<AdminEncomenda | null>(null);
   const [clienteId, setClienteId] = useState('');
   const [nomeCliente, setNomeCliente] = useState('');
   const [whatsappCliente, setWhatsappCliente] = useState('');
@@ -41,8 +40,8 @@ export default function EncomendasView({ data }: Props) {
   const [marca, setMarca] = useState('');
   const [volume, setVolume] = useState('');
   const [quantidade, setQuantidade] = useState<number>(1);
-  const [precoEstimado, setPrecoEstimado] = useState<number>(0);
-  const [custoEstimado, setCustoEstimado] = useState<number>(0);
+  const [precoEstimado, setPrecoEstimado] = useState<number | ''>('');
+  const [custoEstimado, setCustoEstimado] = useState<number | ''>('');
   const [valorAdiantamento, setValorAdiantamento] = useState<number>(0);
   const [fornecedorId, setFornecedorId] = useState('');
   const [previsaoChegada, setPrevisaoChegada] = useState('');
@@ -65,8 +64,28 @@ export default function EncomendasView({ data }: Props) {
     });
   }, [encomendas, searchTerm, filterStatus, selectedMonth]);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const openOrderForm = (order: AdminEncomenda | null) => {
+    setEditingOrder(order);
+    setClienteId(order?.clienteId?.toString() ?? '');
+    setNomeCliente(order?.nomeCliente ?? '');
+    setWhatsappCliente(order?.whatsappCliente ?? '');
+    setDescricaoItem(order?.descricaoItem ?? '');
+    setMarca(order?.marca ?? '');
+    setVolume(order?.volume ?? '');
+    setQuantidade(order?.quantidade ?? 1);
+    setPrecoEstimado(order?.precoEstimado ?? '');
+    setCustoEstimado(order?.custoEstimado ?? '');
+    setValorAdiantamento(order?.valorAdiantamento ?? 0);
+    setFornecedorId(order?.fornecedorId?.toString() ?? '');
+    setPrevisaoChegada(order?.previsaoChegada ?? '');
+    setObservacoes(order?.observacoes ?? '');
+    setFormError('');
+    setIsFormOpen(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!nomeCliente.trim() || !descricaoItem.trim()) {
       setFormError('Informe o nome do cliente e o item encomendado.');
       return;
@@ -76,7 +95,7 @@ export default function EncomendasView({ data }: Props) {
     setFormError('');
 
     try {
-      await createEncomendaAction({
+      const payload = {
         clienteId: clienteId ? parseInt(clienteId) : undefined,
         nomeCliente,
         whatsappCliente,
@@ -84,20 +103,42 @@ export default function EncomendasView({ data }: Props) {
         marca,
         volume,
         quantidade,
-        precoEstimado,
-        custoEstimado,
+        precoEstimado: precoEstimado === '' ? undefined : precoEstimado,
+        custoEstimado: custoEstimado === '' ? undefined : custoEstimado,
         valorAdiantamento,
         fornecedorId: fornecedorId ? parseInt(fornecedorId) : undefined,
         previsaoChegada,
         observacoes
-      });
+      };
 
+      if (editingOrder) {
+        const response = await fetch(`/api/erp/orders/${editingOrder.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...payload,
+            precoEstimado: payload.precoEstimado ?? null,
+            custoEstimado: payload.custoEstimado ?? null,
+            updatedAt: new Date(editingOrder.updatedAt).toISOString(),
+          }),
+        });
+        const result: { success?: boolean; error?: string } | null = await response.json().catch(() => null);
+        if (!response.ok || !result?.success) {
+          throw new Error(result?.error || 'Não foi possível salvar a encomenda. Tente novamente.');
+        }
+        setFeedback('Encomenda atualizada com sucesso!');
+        setIsFormOpen(false);
+        router.refresh();
+        return;
+      }
+
+      await createEncomendaAction(payload);
       setFeedback('Encomenda registrada com sucesso!');
-      setIsNewOpen(false);
+      setIsFormOpen(false);
       window.location.reload();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao cadastrar encomenda.';
-      setFormError(msg);
+      setFormError(err instanceof Error ? err.message : 'Não foi possível salvar a encomenda.');
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -144,7 +185,7 @@ export default function EncomendasView({ data }: Props) {
         </div>
 
         <button
-          onClick={() => { setIsNewOpen(true); setFormError(''); }}
+          onClick={() => openOrderForm(null)}
           className="px-5 py-2.5 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer self-start sm:self-auto"
         >
           <Plus size={16} className="text-brand-caramel" />
@@ -263,6 +304,16 @@ export default function EncomendasView({ data }: Props) {
 
                       <td className="py-3 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openOrderForm(enc)}
+                            aria-label={`Editar encomenda ${enc.numero}`}
+                            title="Editar encomenda"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-line bg-brand-card px-2.5 py-1 text-brand-chocolate hover:bg-brand-nude"
+                          >
+                            <Pencil size={14} aria-hidden="true" />
+                            Editar
+                          </button>
                           {(enc.whatsappCliente || enc.cliente?.whatsapp) && (
                             <a
                               href={getWhatsAppMessageUrl(enc)}
@@ -286,30 +337,30 @@ export default function EncomendasView({ data }: Props) {
       </div>
 
       {/* ========================================================================= */}
-      {/* MODAL: REGISTRAR NOVA ENCOMENDA */}
+      {/* MODAL: CADASTRO E EDIÇÃO DE ENCOMENDA */}
       {/* ========================================================================= */}
-      {isNewOpen && (
+      {isFormOpen && (
         <div className="fixed inset-0 bg-brand-deep/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-          <div className="bg-brand-card w-full max-w-xl rounded-3xl border border-brand-line shadow-2xl p-6 relative my-8 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+          <div role="dialog" aria-modal="true" aria-labelledby="order-form-title" className="bg-brand-card w-full max-w-xl rounded-3xl border border-brand-line shadow-2xl p-6 relative my-8 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-caramel to-brand-caramel" />
 
             <div className="flex items-center justify-between pb-3 border-b border-brand-line mb-4">
               <div>
-                <h3 className="text-xl font-serif font-bold text-brand-chocolate">Registrar Nova Encomenda</h3>
-                <p className="text-xs text-brand-muted">Cadastro de solicitação sob encomenda com previsão e sinal</p>
+                <h3 id="order-form-title" className="text-xl font-serif font-bold text-brand-chocolate">{editingOrder ? 'Editar Encomenda' : 'Registrar Nova Encomenda'}</h3>
+                <p className="text-xs text-brand-muted">{editingOrder ? editingOrder.numero : 'Cadastro de solicitação sob encomenda com previsão e sinal'}</p>
               </div>
-              <button onClick={() => setIsNewOpen(false)} className="p-1 text-brand-muted hover:text-brand-chocolate rounded-full hover:bg-brand-nude cursor-pointer">
+              <button type="button" aria-label="Fechar formulário" disabled={isSubmitting} onClick={() => setIsFormOpen(false)} className="p-1 text-brand-muted hover:text-brand-chocolate rounded-full hover:bg-brand-nude cursor-pointer">
                 <X size={20} />
               </button>
             </div>
 
             {formError && (
-              <div className="mb-4 p-3 rounded-xl bg-brand-rose-beige border border-brand-terracotta text-brand-chocolate text-xs font-semibold">
+              <div role="alert" className="mb-4 p-3 rounded-xl bg-brand-rose-beige border border-brand-terracotta text-brand-chocolate text-xs font-semibold">
                 {formError}
               </div>
             )}
 
-            <form onSubmit={handleCreate} className="space-y-4">
+            <form onSubmit={handleSave} className="space-y-4">
               {/* DADOS DO CLIENTE */}
               <div className="p-3.5 rounded-2xl bg-brand-cream border border-brand-line space-y-3">
                 <span className="text-[11px] font-bold text-brand-muted uppercase tracking-wider block">1. Cliente</span>
@@ -394,15 +445,15 @@ export default function EncomendasView({ data }: Props) {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Preço Venda Estimado</label>
-                  <input type="number" step="0.01" value={precoEstimado} onChange={e => setPrecoEstimado(parseFloat(e.target.value) || 0)} className="w-full px-3 py-1.5 bg-brand-nude text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none" />
+                  <input type="number" min="0" step="0.01" value={precoEstimado} onChange={e => setPrecoEstimado(e.target.value === '' ? '' : e.target.valueAsNumber)} className="w-full px-3 py-1.5 bg-brand-nude text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Custo Estimado</label>
-                  <input type="number" step="0.01" value={custoEstimado} onChange={e => setCustoEstimado(parseFloat(e.target.value) || 0)} className="w-full px-3 py-1.5 bg-brand-nude text-xs font-bold text-brand-deep rounded-xl border border-brand-line outline-none" />
+                  <input type="number" min="0" step="0.01" value={custoEstimado} onChange={e => setCustoEstimado(e.target.value === '' ? '' : e.target.valueAsNumber)} className="w-full px-3 py-1.5 bg-brand-nude text-xs font-bold text-brand-deep rounded-xl border border-brand-line outline-none" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Valor do Sinal / Pago</label>
-                  <input type="number" step="0.01" value={valorAdiantamento} onChange={e => setValorAdiantamento(parseFloat(e.target.value) || 0)} className="w-full px-3 py-1.5 bg-brand-nude text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none" />
+                  <input type="number" min="0" step="0.01" value={valorAdiantamento} onChange={e => setValorAdiantamento(parseFloat(e.target.value) || 0)} className="w-full px-3 py-1.5 bg-brand-nude text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none" />
                 </div>
               </div>
 
@@ -420,12 +471,17 @@ export default function EncomendasView({ data }: Props) {
                 </div>
               </div>
 
+              <div>
+                <label htmlFor="order-notes" className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Observações</label>
+                <textarea id="order-notes" value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={3} maxLength={5000} className="w-full px-3 py-1.5 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line outline-none" />
+              </div>
+
               {/* BOTÕES */}
               <div className="pt-3 border-t border-brand-line flex items-center justify-end gap-2.5">
                 <button
                   type="button"
                   disabled={isSubmitting}
-                  onClick={() => setIsNewOpen(false)}
+                  onClick={() => setIsFormOpen(false)}
                   className="px-4 py-2.5 rounded-xl border border-brand-line text-xs font-bold text-brand-muted hover:bg-brand-nude transition-colors cursor-pointer"
                 >
                   Cancelar
@@ -441,7 +497,7 @@ export default function EncomendasView({ data }: Props) {
                       <span>Salvando...</span>
                     </>
                   ) : (
-                    <span>Registrar Encomenda</span>
+                    <span>{editingOrder ? 'Salvar Alterações' : 'Registrar Encomenda'}</span>
                   )}
                 </button>
               </div>
