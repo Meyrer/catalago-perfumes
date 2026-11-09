@@ -2,9 +2,10 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ERPData, AdminEncomenda } from '../types';
+import type { ERPData, AdminEncomenda, AdminProduto } from '../types';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
-import { Clock, Plus, Search, MessageCircle, Pencil, X, Loader2 } from 'lucide-react';
+import { normalizeImageUrl } from '@/lib/image-url';
+import { Clock, Download, Package, Plus, Search, MessageCircle, Pencil, X, Loader2 } from 'lucide-react';
 import { createEncomendaAction, updateEncomendaStatusAction } from '../../actions';
 
 type Props = {
@@ -24,7 +25,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 
 export default function EncomendasView({ data }: Props) {
   const router = useRouter();
-  const { encomendas, clientes, fornecedores } = data;
+  const { encomendas, clientes, fornecedores, produtos } = data;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -36,6 +37,9 @@ export default function EncomendasView({ data }: Props) {
   const [clienteId, setClienteId] = useState('');
   const [nomeCliente, setNomeCliente] = useState('');
   const [whatsappCliente, setWhatsappCliente] = useState('');
+  const [produtoId, setProdutoId] = useState<number | null>(null);
+  const [productSearch, setProductSearch] = useState('');
+  const [isManualItem, setIsManualItem] = useState(false);
   const [descricaoItem, setDescricaoItem] = useState('');
   const [marca, setMarca] = useState('');
   const [volume, setVolume] = useState('');
@@ -50,6 +54,17 @@ export default function EncomendasView({ data }: Props) {
   const [feedback, setFeedback] = useState('');
   const [formError, setFormError] = useState('');
 
+  const matchingProducts = useMemo(() => {
+    const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const query = normalize(productSearch.trim());
+    if (!query) return [];
+    const terms = query.split(/\s+/);
+    return produtos.filter(product => {
+      const searchable = normalize([product.nome, product.marca, product.volume, product.sku, product.codigoBarras].join(' '));
+      return terms.every(term => searchable.includes(term));
+    }).slice(0, 8);
+  }, [produtos, productSearch]);
+
   // Encomendas filtradas
   const filteredEncomendas = useMemo(() => {
     return encomendas.filter(e => {
@@ -57,6 +72,7 @@ export default function EncomendasView({ data }: Props) {
         e.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
         e.nomeCliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
         e.descricaoItem.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        e.produto?.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (e.marca && e.marca.toLowerCase().includes(searchTerm.toLowerCase()));
 
       const matchStatus = filterStatus === 'ALL' || e.status === filterStatus;
@@ -64,11 +80,48 @@ export default function EncomendasView({ data }: Props) {
     });
   }, [encomendas, searchTerm, filterStatus, selectedMonth]);
 
+  const exportOrders = () => {
+    const textCell = (value: string) => `"${(/^(?:[\t\r\n]|\s*[=+@-])/.test(value) ? "'" + value : value).replaceAll('"', '""')}"`;
+    const moneyCell = (value: number | null) => value === null ? '' : value.toFixed(2).replace('.', ',');
+    const rows = ['Encomenda;Data;Cliente;Perfume;SKU;Marca;Volume;Quantidade;Fornecedor;Preço estimado (R$);Custo estimado (R$);Sinal pago (R$);Previsão;Status;Observações'];
+    for (const order of filteredEncomendas) {
+      rows.push([
+        textCell(order.numero),
+        new Date(order.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+        textCell(order.nomeCliente),
+        textCell(order.produto?.nome ?? order.descricaoItem),
+        textCell(order.produto?.sku ?? ''),
+        textCell(order.produto?.marca ?? order.marca ?? ''),
+        textCell(order.produto?.volume ?? order.volume ?? ''),
+        order.quantidade,
+        textCell(order.fornecedor?.nome ?? ''),
+        moneyCell(order.precoEstimado),
+        moneyCell(order.custoEstimado),
+        moneyCell(order.valorAdiantamento),
+        textCell(order.previsaoChegada ?? ''),
+        textCell(STATUS_CONFIG[order.status]?.label ?? order.status),
+        textCell(order.observacoes ?? ''),
+      ].join(';'));
+    }
+
+    const url = URL.createObjectURL(new Blob(['\uFEFF', rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `encomendas-perfumio-${selectedMonth || 'todos-os-meses'}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const openOrderForm = (order: AdminEncomenda | null) => {
     setEditingOrder(order);
     setClienteId(order?.clienteId?.toString() ?? '');
     setNomeCliente(order?.nomeCliente ?? '');
     setWhatsappCliente(order?.whatsappCliente ?? '');
+    setProdutoId(order?.produtoId ?? null);
+    setProductSearch('');
+    setIsManualItem(Boolean(order && !order.produtoId));
     setDescricaoItem(order?.descricaoItem ?? '');
     setMarca(order?.marca ?? '');
     setVolume(order?.volume ?? '');
@@ -83,11 +136,21 @@ export default function EncomendasView({ data }: Props) {
     setIsFormOpen(true);
   };
 
+  const selectProduct = (product: AdminProduto) => {
+    setProdutoId(product.id);
+    setDescricaoItem(product.nome);
+    setMarca(product.marca);
+    setVolume(product.volume ?? '');
+    setProductSearch('');
+    setIsManualItem(false);
+    setFormError('');
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
-    if (!nomeCliente.trim() || !descricaoItem.trim()) {
-      setFormError('Informe o nome do cliente e o item encomendado.');
+    if (!nomeCliente.trim() || !descricaoItem.trim() || (produtoId === null && !isManualItem)) {
+      setFormError('Informe o cliente e selecione um perfume ou cadastre um item avulso.');
       return;
     }
 
@@ -99,6 +162,7 @@ export default function EncomendasView({ data }: Props) {
         clienteId: clienteId ? parseInt(clienteId) : undefined,
         nomeCliente,
         whatsappCliente,
+        produtoId: produtoId ?? undefined,
         descricaoItem,
         marca,
         volume,
@@ -117,6 +181,7 @@ export default function EncomendasView({ data }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...payload,
+            produtoId,
             precoEstimado: payload.precoEstimado ?? null,
             custoEstimado: payload.custoEstimado ?? null,
             updatedAt: new Date(editingOrder.updatedAt).toISOString(),
@@ -184,13 +249,19 @@ export default function EncomendasView({ data }: Props) {
           </p>
         </div>
 
-        <button
-          onClick={() => openOrderForm(null)}
-          className="px-5 py-2.5 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer self-start sm:self-auto"
-        >
-          <Plus size={16} className="text-brand-caramel" />
-          <span>Registrar Nova Encomenda</span>
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={exportOrders} disabled={filteredEncomendas.length === 0} title="Exportar encomendas dos filtros selecionados" className="inline-flex items-center gap-2 rounded-xl border border-brand-line bg-brand-card px-4 py-2 text-brand-chocolate hover:bg-brand-nude">
+            <Download size={16} aria-hidden="true" /> Exportar lista CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => openOrderForm(null)}
+            className="px-5 py-2.5 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
+          >
+            <Plus size={16} className="text-brand-caramel" />
+            <span>Registrar Nova Encomenda</span>
+          </button>
+        </div>
       </div>
 
       <MonthFilter value={selectedMonth} onChange={setSelectedMonth} />
@@ -253,6 +324,7 @@ export default function EncomendasView({ data }: Props) {
               ) : (
                 filteredEncomendas.map((enc) => {
                   const cfg = STATUS_CONFIG[enc.status] || STATUS_CONFIG.SOLICITACAO_RECEBIDA;
+                  const photoUrl = normalizeImageUrl(enc.produto?.fotos[0]?.url);
                   const dataFormatada = new Date(enc.createdAt).toLocaleDateString('pt-BR', {
                     day: '2-digit', month: '2-digit', year: 'numeric'
                   });
@@ -272,10 +344,21 @@ export default function EncomendasView({ data }: Props) {
                       </td>
 
                       <td className="py-3 px-3">
-                        <span className="font-bold text-brand-chocolate block">{enc.descricaoItem}</span>
-                        <span className="text-[11px] text-brand-muted">
-                          {enc.marca ? enc.marca : ''} {enc.volume ? `• ${enc.volume}` : ''} • Qtd: {enc.quantidade}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <div className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-brand-line bg-brand-card" aria-hidden="true">
+                            <Package size={18} className="text-brand-muted" />
+                            {photoUrl && (
+                              <img key={photoUrl} src={photoUrl} alt="" width={44} height={44} loading="lazy" className="absolute inset-0 size-full bg-brand-card object-contain p-0.5" onError={event => { event.currentTarget.hidden = true; }} />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="font-bold text-brand-chocolate block">{enc.descricaoItem}</span>
+                            <span className="text-[11px] text-brand-muted">
+                              {enc.produto?.sku ? `${enc.produto.sku} • ` : ''}
+                              {enc.marca ? enc.marca : ''} {enc.volume ? `• ${enc.volume}` : ''} • Qtd: {enc.quantidade}
+                            </span>
+                          </div>
+                        </div>
                       </td>
 
                       <td className="py-3 px-3 text-right font-bold text-brand-chocolate">
@@ -412,31 +495,73 @@ export default function EncomendasView({ data }: Props) {
               {/* DETALHES DO ITEM ENCOMENDADO */}
               <div className="p-3.5 rounded-2xl bg-brand-cream border border-brand-line space-y-3">
                 <span className="text-[11px] font-bold text-brand-muted uppercase tracking-wider block">2. Item Solicitado</span>
-                
-                <div>
-                  <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Descrição / Nome do Perfume *</label>
-                  <input
-                    type="text"
-                    required
-                    value={descricaoItem}
-                    onChange={(e) => setDescricaoItem(e.target.value)}
-                    placeholder="Ex: Tom Ford Lost Cherry EDP"
-                    className="w-full px-3 py-2 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none"
-                  />
-                </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Marca</label>
-                    <input type="text" value={marca} onChange={e => setMarca(e.target.value)} placeholder="Tom Ford" className="w-full px-3 py-1.5 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line outline-none" />
+                {produtoId !== null && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-line bg-brand-card p-3">
+                    <div>
+                      <p className="font-semibold">{descricaoItem}</p>
+                      <p className="text-xs text-brand-muted">{[marca, volume, produtos.find(product => product.id === produtoId)?.sku].filter(Boolean).join(' · ')}</p>
+                    </div>
+                    <button type="button" onClick={() => setProdutoId(null)} className="rounded-lg border border-brand-line px-3 text-brand-chocolate hover:bg-brand-nude">Trocar perfume</button>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Volume</label>
-                    <input type="text" value={volume} onChange={e => setVolume(e.target.value)} placeholder="50ml" className="w-full px-3 py-1.5 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line outline-none" />
+                )}
+
+                {produtoId === null && !isManualItem && (
+                  <div className="space-y-2">
+                    <label htmlFor="order-product-search" className="block text-xs font-semibold text-brand-muted">Buscar no catálogo</label>
+                    <input id="order-product-search" type="search" value={productSearch} onChange={event => setProductSearch(event.target.value)} placeholder="Digite o nome, a marca ou o código" className="w-full px-3 py-2 bg-brand-card rounded-xl border border-brand-line" />
+                    {matchingProducts.length > 0 && (
+                      <ul className="max-h-48 overflow-y-auto divide-y divide-brand-line rounded-lg border border-brand-line bg-brand-card" aria-label="Perfumes encontrados">
+                        {matchingProducts.map(product => (
+                          <li key={product.id}>
+                            <button type="button" onClick={() => selectProduct(product)} className="block w-full px-3 py-2 text-left hover:bg-brand-nude">
+                              <span className="block whitespace-normal font-semibold">{product.nome}</span>
+                              <span className="block whitespace-normal text-xs text-brand-muted">{[product.marca, product.volume, product.sku].filter(Boolean).join(' · ')}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {productSearch.trim() && matchingProducts.length === 0 && <p className="text-xs text-brand-muted">Nenhum perfume encontrado.</p>}
+                    {productSearch.trim() && (
+                      <button type="button" onClick={() => {
+                        const description = productSearch.trim();
+                        if (description !== descricaoItem) {
+                          setDescricaoItem(description);
+                          setMarca('');
+                          setVolume('');
+                        }
+                        setIsManualItem(true);
+                      }} className="rounded-lg border border-brand-line bg-brand-card px-3 text-brand-chocolate hover:bg-brand-nude">Cadastrar item avulso</button>
+                    )}
                   </div>
+                )}
+
+                {isManualItem && (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-brand-muted">Item avulso</span>
+                      <button type="button" onClick={() => { setProductSearch(descricaoItem); setIsManualItem(false); }} className="rounded-lg border border-brand-line bg-brand-card px-3 text-brand-chocolate hover:bg-brand-nude">Buscar no catálogo</button>
+                    </div>
+                    <label htmlFor="order-item-description" className="block text-xs font-semibold text-brand-muted">Nome do perfume *</label>
+                    <input id="order-item-description" type="text" required value={descricaoItem} onChange={event => setDescricaoItem(event.target.value)} className="w-full px-3 py-2 bg-brand-card rounded-xl border border-brand-line" />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {isManualItem && (
+                    <>
+                      <label className="block text-xs font-semibold text-brand-muted">Marca
+                        <input type="text" value={marca} onChange={e => setMarca(e.target.value)} placeholder="Tom Ford" className="mt-1 w-full px-3 py-1.5 bg-brand-card rounded-xl border border-brand-line" />
+                      </label>
+                      <label className="block text-xs font-semibold text-brand-muted">Volume
+                        <input type="text" value={volume} onChange={e => setVolume(e.target.value)} placeholder="50ml" className="mt-1 w-full px-3 py-1.5 bg-brand-card rounded-xl border border-brand-line" />
+                      </label>
+                    </>
+                  )}
                   <div>
-                    <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Quantidade</label>
-                    <input type="number" min="1" value={quantidade} onChange={e => setQuantidade(parseInt(e.target.value) || 1)} className="w-full px-3 py-1.5 bg-brand-card text-xs font-bold text-center text-brand-chocolate rounded-xl border border-brand-line outline-none" />
+                    <label htmlFor="order-item-quantity" className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Quantidade</label>
+                    <input id="order-item-quantity" type="number" min="1" value={quantidade} onChange={e => setQuantidade(parseInt(e.target.value) || 1)} className="w-full px-3 py-1.5 bg-brand-card text-xs font-bold text-center text-brand-chocolate rounded-xl border border-brand-line outline-none" />
                   </div>
                 </div>
               </div>
