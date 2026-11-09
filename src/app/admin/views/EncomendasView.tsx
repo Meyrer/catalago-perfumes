@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { ERPData, AdminEncomenda, AdminProduto } from '../types';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
 import { normalizeImageUrl } from '@/lib/image-url';
+import { getBrandCollectionNumber } from '@/lib/product-order';
 import { Clock, Download, Package, Plus, Search, MessageCircle, Pencil, X, Loader2 } from 'lucide-react';
 import { createEncomendaAction, updateEncomendaStatusAction } from '../../actions';
 
@@ -22,6 +23,34 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   FINALIZADO: { label: 'Finalizado / Entregue', color: 'text-brand-chocolate', bg: 'bg-brand-nude', border: 'border-brand-line' },
   CANCELADO: { label: 'Cancelado', color: 'text-brand-chocolate', bg: 'bg-brand-rose-beige', border: 'border-brand-terracotta' },
 };
+
+function getOrderCode(order: AdminEncomenda): string {
+  const sku = order.produto?.sku?.trim() ?? '';
+  const nome = order.produto?.nome ?? order.descricaoItem.trim();
+  const marca = order.produto?.marca ?? order.marca ?? '';
+  const brandCollection = marca.trim().toUpperCase() === 'BRAND COLLECTION'
+    || (!marca.trim() && /^Brand\s+Collection\b/i.test(nome));
+
+  if (brandCollection) {
+    const code = getBrandCollectionNumber({ nome, marca: 'BRAND COLLECTION', sku });
+    if (code !== null) return String(code).padStart(3, '0');
+  }
+  if (!order.produto && (brandCollection || !marca.trim()) && /^\d{1,3}$/.test(nome)) {
+    return nome.padStart(3, '0');
+  }
+  return sku;
+}
+
+function downloadOrderReport(file: Blob, filename: string) {
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 export default function EncomendasView({ data }: Props) {
   const router = useRouter();
@@ -104,14 +133,40 @@ export default function EncomendasView({ data }: Props) {
       ].join(';'));
     }
 
-    const url = URL.createObjectURL(new Blob(['\uFEFF', rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `encomendas-perfumio-${selectedMonth || 'todos-os-meses'}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    downloadOrderReport(
+      new Blob(['\uFEFF', rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' }),
+      `encomendas-perfumio-${selectedMonth || 'todos-os-meses'}.csv`,
+    );
+  };
+
+  const exportOrdersTxt = () => {
+    const totals = new Map<string, { quantidade: number; nome: string }>();
+    let semCodigo = 0;
+    for (const order of filteredEncomendas) {
+      const code = getOrderCode(order);
+      if (!code) {
+        semCodigo += 1;
+        continue;
+      }
+      const previous = totals.get(code);
+      totals.set(code, {
+        quantidade: (previous?.quantidade ?? 0) + order.quantidade,
+        nome: order.produto?.nome ?? previous?.nome ?? order.descricaoItem,
+      });
+    }
+
+    if (totals.size === 0) {
+      setFeedback('Nenhuma encomenda dos filtros selecionados tem código para exportar.');
+      return;
+    }
+
+    const lines = [...totals].sort(([a], [b]) => a.localeCompare(b, 'pt-BR', { numeric: true }))
+      .map(([code, { quantidade, nome }]) => `${code}, ${quantidade} — ${nome.replace(/\s+/g, ' ').trim()}`);
+    downloadOrderReport(
+      new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/plain;charset=utf-8' }),
+      `encomendas-perfumio-${selectedMonth || 'todos-os-meses'}.txt`,
+    );
+    setFeedback(semCodigo ? `Encomendas sem código fora do TXT: ${semCodigo}.` : 'Lista TXT exportada.');
   };
 
   const openOrderForm = (order: AdminEncomenda | null) => {
@@ -252,6 +307,9 @@ export default function EncomendasView({ data }: Props) {
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={exportOrders} disabled={filteredEncomendas.length === 0} title="Exportar encomendas dos filtros selecionados" className="inline-flex items-center gap-2 rounded-xl border border-brand-line bg-brand-card px-4 py-2 text-brand-chocolate hover:bg-brand-nude">
             <Download size={16} aria-hidden="true" /> Exportar lista CSV
+          </button>
+          <button type="button" onClick={exportOrdersTxt} disabled={filteredEncomendas.length === 0} title="Exportar códigos e quantidades dos filtros selecionados" className="inline-flex items-center gap-2 rounded-xl border border-brand-line bg-brand-card px-4 py-2 text-brand-chocolate hover:bg-brand-nude">
+            <Download size={16} aria-hidden="true" /> Exportar TXT
           </button>
           <button
             type="button"
