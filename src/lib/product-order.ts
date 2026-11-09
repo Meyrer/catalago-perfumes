@@ -5,7 +5,7 @@ export function sortProductsWithStockFirst<T extends StockProduct>(products: T[]
   return [...products].sort((a, b) => Number((b.quantidade ?? 0) > 0) - Number((a.quantidade ?? 0) > 0));
 }
 
-function getBrandCollectionNumber(product: NumberedProduct): number | null {
+export function getBrandCollectionNumber(product: NumberedProduct): number | null {
   if (product.marca.trim().toUpperCase() !== 'BRAND COLLECTION') return null;
   const code = product.sku?.match(/^BRAND-(\d+)$/i)?.[1]
     ?? product.nome.match(/\bBrand\s+Collection\s*(?:N[º°o.]?\s*)?(\d+)\b/i)?.[1];
