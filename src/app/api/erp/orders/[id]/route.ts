@@ -41,6 +41,7 @@ export async function PUT(request: Request, context: Context) {
         clienteId: idField(body.clienteId, "Cliente") ?? null,
         nomeCliente: requiredText(body.nomeCliente, "Nome do cliente"),
         whatsappCliente: optionalText(body.whatsappCliente, "WhatsApp", 100)?.replace(/\D/g, "") || null,
+        ...(body.produtoId === undefined ? {} : { produtoId: idField(body.produtoId, "Perfume") ?? null }),
         descricaoItem: requiredText(body.descricaoItem, "Descrição do item", 5000),
         marca: optionalText(body.marca, "Marca", 200) ?? null,
         volume: optionalText(body.volume, "Volume", 100) ?? null,

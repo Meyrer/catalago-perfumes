@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import type { ERPData, AdminVenda, AdminProduto } from '../types';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
 import { getSalePaymentHistory, getSalePaymentStatus, getSaleReceivedAmount, summarizeSalePayments } from '@/lib/sale-payment';
+import { fromCents, toCents } from '@/lib/money';
 import { getFifoLots, takeFifo, fifoCost, releaseFifo, saleFifoAllocations } from '@/lib/fifo';
 import { 
   ShoppingBag, Plus, Search, CheckCircle2, Clock, 
@@ -111,12 +112,12 @@ export default function VendasView({ data }: Props) {
 
   // Cálculos do carrinho na criação de venda
   const carrinhoCalculado = useMemo(() => {
-    let subtotal = 0;
+    let subtotalCents = 0;
     let custoTotal = 0;
 
     const itensDetalhados = cartItens.map(item => {
       const p = produtos.find(prod => prod.id === item.produtoId);
-      const sub = item.precoUnitario * item.quantidade;
+      const itemSubtotalCents = toCents(item.precoUnitario) * item.quantidade;
       const previousItem = editingVenda?.itens.find(it => it.produtoId === item.produtoId);
       let cst = (previousItem?.custoUnitario ?? p?.precoCusto ?? 0) * item.quantidade;
       if (p && statusVenda !== 'CANCELADO') {
@@ -126,13 +127,15 @@ export default function VendasView({ data }: Props) {
           else if (item.quantidade > previousItem.quantidade && item.quantidade - previousItem.quantidade <= p.quantidade) cst = fifoCost(original) + fifoCost(takeFifo(getFifoLots(p), item.quantidade - previousItem.quantidade).taken);
         } else if (item.quantidade <= p.quantidade) cst = fifoCost(takeFifo(getFifoLots(p), item.quantidade).taken);
       }
-      subtotal += sub;
+      subtotalCents += itemSubtotalCents;
       custoTotal += cst;
-      return { ...item, produto: p, subtotal: sub, custoTotal: cst };
+      return { ...item, produto: p, subtotal: fromCents(itemSubtotalCents), custoTotal: cst };
     });
 
-    const valorTotal = Math.max(0, subtotal - (desconto || 0) + (frete || 0));
-    const lucroTotal = (subtotal - (desconto || 0)) - custoTotal;
+    const subtotal = fromCents(subtotalCents);
+    const subtotalComDescontoCents = subtotalCents - toCents(desconto);
+    const valorTotal = fromCents(Math.max(0, subtotalComDescontoCents + toCents(frete)));
+    const lucroTotal = fromCents(subtotalComDescontoCents) - custoTotal;
 
     return { subtotal, custoTotal, valorTotal, lucroTotal, itensDetalhados };
   }, [cartItens, produtos, desconto, frete, editingVenda, statusVenda]);
