@@ -27,6 +27,7 @@ type Produto = {
   precoOriginal: number | null;
   precoParcelado: string | null;
   quantidade?: number;
+  emTransito?: boolean;
   volume: string | null;
   modoUso: string | null;
   caracteristicas: string | null;
@@ -74,6 +75,7 @@ function getCatalogPrice(produto: Produto): string {
 
 function getAvailabilityLabel(produto: Produto): string {
   if (isProdutoProntaEntrega(produto)) return 'Em estoque · Pronta entrega';
+  if (produto.emTransito) return 'Em breve';
   return produto.tipoDisponibilidade === 'ENCOMENDA' ? 'Sob encomenda' : 'Esgotado';
 }
 
@@ -1514,7 +1516,7 @@ export default function CatalogClient({
                         )}
                       </div>
                       <p className="text-brand-muted font-medium">
-                        {!isProdutoProntaEntrega(selectedProduct) && selectedProduct.tipoDisponibilidade !== 'ENCOMENDA' ? 'Consulte a previsão de reposição pelo WhatsApp.' : selectedProduct.previsaoEntrega || (
+                        {selectedProduct.emTransito ? 'Reposição em trânsito. Consulte a previsão pelo WhatsApp.' : !isProdutoProntaEntrega(selectedProduct) && selectedProduct.tipoDisponibilidade !== 'ENCOMENDA' ? 'Consulte a previsão de reposição pelo WhatsApp.' : selectedProduct.previsaoEntrega || (
                           isProdutoProntaEntrega(selectedProduct)
                             ? 'Envio ou retirada combinada de imediato.'
                             : 'Traga seu cosmético dos sonhos no próximo lote com a gente.'
@@ -2515,8 +2517,8 @@ function ProductCard({
           </button>
         </h3>
 
-        <p className={'product-availability ' + (isProntaEntrega ? 'in-stock text-brand-chocolate' : 'text-brand-muted')}>
-          {isProntaEntrega ? <CheckCircle2 size={15} aria-hidden="true" /> : <Clock size={13} className="text-brand-muted" />}
+        <p className={'product-availability ' + (isProntaEntrega ? 'in-stock' : produto.emTransito ? 'coming-soon' : '')}>
+          {isProntaEntrega ? <CheckCircle2 size={15} aria-hidden="true" /> : <Clock size={13} aria-hidden="true" />}
           {getAvailabilityLabel(produto)}
         </p>
 
