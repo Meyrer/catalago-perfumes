@@ -9,6 +9,16 @@ import { plainPrismaData } from "@/lib/admin-api";
 import { fromCents, roundMoney, toCents } from "@/lib/money";
 import { getSaleReceivedAmount, recordSalePayment, validateSaleReceivedAmount } from "@/lib/sale-payment";
 
+function parsePaymentForecast(value: string | null | undefined) {
+  if (value === undefined || value === null) return value;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith('0000-') ||
+      !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw new Error('Informe uma data válida para a previsão de pagamento.');
+  }
+  return date;
+}
+
 export async function createSale(data: {
   clienteId?: number;
   nomeClienteAvulso?: string;
@@ -20,12 +30,14 @@ export async function createSale(data: {
   observacoes?: string;
   status?: string;
   valorRecebido?: number | null;
+  previsaoPagamento?: string | null;
   dataPagamento?: string;
   formaRecebimento?: string;
 }, actor: string) {
   const { clienteId, nomeClienteAvulso, contatoClienteAvulso, itens, formaPagamento, observacoes } = data;
   const desconto = data.desconto ?? 0;
   const frete = data.frete ?? 0;
+  const previsaoPagamento = parsePaymentForecast(data.previsaoPagamento);
   const status = data.status || "PREPARANDO";
   if (!['AGUARDANDO_PAGAMENTO', 'PAGO', 'PREPARANDO', 'ENVIADO', 'ENTREGUE', 'CANCELADO'].includes(status)) throw new Error('Status inválido.');
   if (!['PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'DINHEIRO', 'LINK_PAGAMENTO'].includes(formaPagamento)) throw new Error('Forma de pagamento inválida.');
@@ -101,6 +113,7 @@ export async function createSale(data: {
       frete,
       valorTotal,
       valorRecebido,
+      previsaoPagamento: previsaoPagamento ?? null,
       historicoPagamentos: recordSalePayment({ status: 'PREPARANDO', valorTotal, valorRecebido: 0 }, valorRecebido, data.formaRecebimento || formaPagamento, actor, data.dataPagamento),
       custoTotal,
       lucroTotal,
@@ -179,6 +192,7 @@ export async function updateSale(vendaId: number, data: Parameters<typeof create
   const desconto = roundMoney(data.desconto ?? 0);
   const frete = roundMoney(data.frete ?? 0);
   const date = new Date(data.data);
+  const previsaoPagamento = parsePaymentForecast(data.previsaoPagamento);
   if (!Number.isSafeInteger(vendaId) || vendaId < 1 || Number.isNaN(date.getTime())) throw new Error('Venda ou data inválida.');
   if (!['AGUARDANDO_PAGAMENTO', 'PAGO', 'PREPARANDO', 'ENVIADO', 'ENTREGUE', 'CANCELADO'].includes(status)) throw new Error('Status inválido.');
   if (!['PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'DINHEIRO', 'LINK_PAGAMENTO'].includes(data.formaPagamento)) throw new Error('Forma de pagamento inválida.');
@@ -294,6 +308,7 @@ export async function updateSale(vendaId: number, data: Parameters<typeof create
       custoTotal: fromCents(custoTotalCents),
       valorTotal,
       valorRecebido,
+      ...(previsaoPagamento === undefined ? {} : { previsaoPagamento }),
       historicoPagamentos: recordSalePayment(venda, valorRecebido, data.formaRecebimento || data.formaPagamento, actor, data.dataPagamento),
       lucroTotal: fromCents(subtotalCents - toCents(desconto) - custoTotalCents),
       itens: { deleteMany: {}, create: itens },
