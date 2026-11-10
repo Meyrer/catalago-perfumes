@@ -89,6 +89,12 @@ Exemplo de registro:
 
 Em POST ou PATCH, `pagamentoCaixa: { "valor": 1610, "data": "2026-11-10" }` registra a saída efetiva em reais, limitada ao custo da compra. Envie o PATCH do pagamento separadamente dos campos de status, data da compra e observações. `null` remove o lançamento. O valor é descontado no resumo por recebimentos e fica fora das despesas do DRE.
 
+## Aportes dos sócios
+
+`GET /contributions` lista os aportes registrados. `POST /contributions` recebe `{ "compraId": 1 }` ou `{ "despesaId": 2 }` e registra o valor e a data da origem como entrada de capital. A compra deve estar recebida e sem pagamento no caixa. Nesse caso, sua saída de caixa é registrada na mesma operação, sem movimentar estoque. Para despesas, é necessário que o pagamento já esteja registrado. Repetir a mesma origem retorna o aporte existente.
+
+Para conciliar um lote histórico de Mini Brand Collection cujo saldo inicial já consta no sistema, envie `{ "estoqueInicial": { "data": "2026-09-22", "quantidade": 18, "custoUnitario": 13.2 } }`. O endpoint confere o saldo inicial dos produtos cadastrados na data informada, registra a compra histórica e lança a saída e o aporte correspondentes na mesma transação.
+
 ## Vendas
 
 | Método | Caminho | Ação |
