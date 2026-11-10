@@ -16,6 +16,8 @@ type Props = {
   data: ERPData;
 };
 
+const moedaBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
 export default function FinanceiroView({ data }: Props) {
   const { vendas, despesas, compras } = data;
 
@@ -70,6 +72,16 @@ export default function FinanceiroView({ data }: Props) {
   const recebimentos = useMemo(() => vendas.flatMap(venda => getSalePaymentAllocations(venda).map((entry, index) => ({
     ...entry, vendaId: venda.id, numero: venda.numero, key: `${venda.id}-${index}`,
   }))), [vendas]);
+  const caixa = useMemo(() => {
+    const entradas = recebimentos.reduce((sum, entry) => sum + toCents(entry.valor), 0);
+    const despesasPagas = despesas.reduce((sum, despesa) => (
+      despesa.tipo === 'DESPESA' && despesa.pago ? sum + toCents(despesa.valor) : sum
+    ), 0);
+    const comprasPagas = compras.reduce((sum, compra) => sum + toCents(compra.valorPagoCaixa ?? 0), 0);
+    const saidas = despesasPagas + comprasPagas;
+    return { entradas: fromCents(entradas), saidas: fromCents(saidas), saldo: fromCents(entradas - saidas) };
+  }, [recebimentos, despesas, compras]);
+
   const recebimentosFiltrados = useMemo(() => recebimentos.filter(entry => entry.data !== null
     && (periodo === 'mes' ? isInMonth(entry.data, selectedMonth) : new Date(entry.data) >= dataCorte)), [recebimentos, periodo, selectedMonth, dataCorte]);
   const recebidoNoPeriodo = fromCents(recebimentosFiltrados.reduce((sum, entry) => sum + toCents(entry.valor), 0));
@@ -181,6 +193,24 @@ export default function FinanceiroView({ data }: Props) {
           </button>
         </div>
       </div>
+
+      <section aria-labelledby="saldo-caixa-title" className="grid gap-4 rounded-2xl border border-brand-line bg-brand-card p-5 shadow-xs sm:grid-cols-3">
+        <div>
+          <h3 id="saldo-caixa-title" className="text-sm font-bold text-brand-chocolate">Saldo em caixa</h3>
+          <p className={`mt-1 text-2xl font-bold ${caixa.saldo < 0 ? 'text-red-700' : 'text-brand-chocolate'}`}>{moedaBRL.format(caixa.saldo)}</p>
+          <p className="mt-1 text-[11px] text-brand-muted">Acumulado de todo o histórico registrado</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-brand-muted">Entradas</p>
+          <p className="mt-1 text-lg font-bold text-brand-chocolate">{moedaBRL.format(caixa.entradas)}</p>
+          <p className="mt-1 text-[11px] text-brand-muted">Pagamentos recebidos das vendas</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-brand-muted">Saídas</p>
+          <p className="mt-1 text-lg font-bold text-brand-chocolate">{moedaBRL.format(caixa.saidas)}</p>
+          <p className="mt-1 text-[11px] text-brand-muted">Despesas e compras pagas pelo caixa</p>
+        </div>
+      </section>
 
       <MonthFilter
         value={periodo === 'mes' ? selectedMonth : ''}
