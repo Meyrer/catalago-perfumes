@@ -1,6 +1,6 @@
 "use server";
 
-import { createSale, updateSale, updateSaleStatus, deleteSale, createPurchase, receivePurchase, createCustomOrder } from "@/lib/erp-operations";
+import { createSale, updateSale, updateSaleStatus, deleteSale, createPurchase, receivePurchase, updatePurchaseCashPayment, createCustomOrder } from "@/lib/erp-operations";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -649,11 +649,31 @@ export async function receberCompraAction(compraId: number) {
   return receivePurchase(compraId, session.name);
 }
 
+export async function marcarCompraEmTransitoAction(compraId: number) {
+  await requireAdminAuth();
+  if (!Number.isSafeInteger(compraId) || compraId < 1) throw new Error('Compra inválida.');
+  const changed = await prisma.compra.updateMany({
+    where: { id: compraId, status: 'PENDENTE' },
+    data: { status: 'EM_TRANSITO' },
+  });
+  if (changed.count !== 1) throw new Error('A compra não está mais pendente. Atualize a página.');
+  revalidatePath('/admin');
+  revalidatePath('/');
+}
+
+export async function atualizarPagamentoCompraAction(compraId: number, pagamento: { valor: number; data: string } | null, updatedAt: string) {
+  await requireAdminAuth();
+  const version = new Date(updatedAt);
+  if (!Number.isFinite(version.getTime())) throw new Error('Atualize a página antes de editar o pagamento.');
+  await updatePurchaseCashPayment(compraId, pagamento, version);
+}
+
 export async function deleteCompraAction(compraId: number) {
   await requireAdminAuth();
   await prisma.$transaction(async tx => {
     const compra = await tx.compra.findUnique({ where: { id: compraId } });
     if (!compra) throw new Error('Compra não encontrada.');
+    if (compra.valorPagoCaixa !== null) throw new Error('Uma compra com pagamento registrado no caixa não pode ser excluída.');
     const movimento = await tx.estoqueMovimentacao.findFirst({ where: { compraId } });
     if (compra.status === 'RECEBIDO' || movimento) throw new Error('Compras com entrada no estoque não podem ser excluídas. O registro deve ser preservado para conferência.');
     const deleted = await tx.compra.deleteMany({ where: { id: compraId, updatedAt: compra.updatedAt, status: compra.status } });

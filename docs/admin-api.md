@@ -87,6 +87,8 @@ Exemplo de registro:
 
 `status: "RECEBIDO"` no cadastro dá entrada imediata no estoque e atualiza os custos. **Não use para registrar novamente mercadoria cuja entrada já ocorreu**: esse endpoint não concilia compras retroativas com movimentos preexistentes. Para uma compra pendente, use `/receive` apenas quando a mercadoria chegar. O PATCH não altera itens ou custos e não cancela/reabre compras recebidas. Despesas registradas separadamente no DRE não devem ser repetidas no frete da compra.
 
+Em POST ou PATCH, `pagamentoCaixa: { "valor": 1610, "data": "2026-11-10" }` registra a saída efetiva em reais, limitada ao custo da compra. Envie o PATCH do pagamento separadamente dos campos de status, data da compra e observações. `null` remove o lançamento. O valor é descontado no resumo por recebimentos e fica fora das despesas do DRE.
+
 ## Vendas
 
 | Método | Caminho | Ação |

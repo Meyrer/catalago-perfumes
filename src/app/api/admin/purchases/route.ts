@@ -31,6 +31,7 @@ export async function POST(request: Request) {
       frete: numberField(body.frete, "frete", 0, 0), taxas: numberField(body.taxas, "taxas", 0, 0),
       outrosCustos: numberField(body.outrosCustos, "outrosCustos", 0, 0),
       status: enumField(body.status, "status", purchaseStatuses, "PENDENTE"),
+      pagamentoCaixa: body.pagamentoCaixa,
       observacoes: optionalText(body.observacoes, "observacoes", 5000) ?? undefined,
       itens: itemFields(body.itens, "valorUnitarioMoeda").map(({ price, ...item }) => ({ ...item, valorUnitarioMoeda: price })),
     };

@@ -6,7 +6,7 @@ import CatalogClient from "./CatalogClient";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [produtos, categorias, banners] = await Promise.all([
+  const [produtos, categorias, banners, reposicoes] = await Promise.all([
     prisma.produto.findMany({
       where: { disponivel: true },
       include: { categoria: true, fotos: true },
@@ -17,13 +17,19 @@ export default async function Home() {
     }),
     prisma.banner.findMany({
       orderBy: { createdAt: 'desc' }
-    })
+    }),
+    prisma.compraItem.groupBy({
+      by: ['produtoId'],
+      where: { compra: { status: 'EM_TRANSITO' }, produto: { disponivel: true, quantidade: { lte: 0 } } },
+    }),
   ]);
 
+  const reposicoesEmTransito = new Set(reposicoes.map(item => item.produtoId));
   const publicProdutos = produtos.map(produto => {
     const { precoCusto: _precoCusto, lotesEstoque: _lotesEstoque, ...publicProduto } = produto;
     return plainPrismaData({
       ...publicProduto,
+      emTransito: produto.quantidade <= 0 && reposicoesEmTransito.has(produto.id),
       fotos: publicProduto.fotos.map(foto => ({
         ...foto,
         url: normalizeImageUrl(foto.url),

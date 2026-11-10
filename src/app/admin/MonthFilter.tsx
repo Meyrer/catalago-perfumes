@@ -5,6 +5,13 @@ import { useId } from 'react';
 const monthFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric', month: '2-digit', timeZone: 'America/Sao_Paulo',
 });
+const dayFormatter = new Intl.DateTimeFormat('sv-SE', {
+  year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'America/Sao_Paulo',
+});
+
+export function getDayKey(date: Date = new Date()): string {
+  return dayFormatter.format(date);
+}
 
 export function getMonthKey(value: Date | string = new Date()): string {
   const date = new Date(value);

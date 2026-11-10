@@ -2,17 +2,38 @@
 
 import { useState, useMemo } from 'react';
 import type { ERPData, AdminCompra } from '../types';
-import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
+import MonthFilter, { getDayKey, getMonthKey, isInMonth } from '../MonthFilter';
+import { roundMoney } from '@/lib/money';
 import { 
   Truck, Plus, Search, CheckCircle2, Clock, 
   X, Loader2, DollarSign, Calendar, ArrowDownRight, 
   Globe, ChevronRight, Eye, Coins, ShoppingCart, Package, Check
 } from 'lucide-react';
-import { createCompraAction, receberCompraAction, deleteCompraAction } from '../../actions';
+import { createCompraAction, receberCompraAction, marcarCompraEmTransitoAction, atualizarPagamentoCompraAction } from '../../actions';
 
 type Props = {
   data: ERPData;
 };
+
+function PurchaseCashFields({ value, onChange, total }: {
+  value: { valor: string; data: string };
+  onChange: (value: { valor: string; data: string }) => void;
+  total: number;
+}) {
+  const inputClass = 'mt-1 w-full px-3 py-2 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line';
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <label className="text-xs font-bold text-brand-muted">
+        Valor pago pelo caixa (R$)
+        <input className={inputClass} type="number" step="0.01" min="0.01" max={roundMoney(total)} placeholder="Opcional" value={value.valor} onChange={event => onChange({ ...value, valor: event.target.value })} />
+      </label>
+      <label className="text-xs font-bold text-brand-muted">
+        Data do pagamento
+        <input className={inputClass} type="date" value={value.data} required={value.valor !== ''} onChange={event => onChange({ ...value, data: event.target.value })} />
+      </label>
+    </div>
+  );
+}
 
 export default function ComprasView({ data }: Props) {
   const { compras, fornecedores, produtos } = data;
@@ -31,7 +52,10 @@ export default function ComprasView({ data }: Props) {
   const [frete, setFrete] = useState<number>(0);
   const [taxas, setTaxas] = useState<number>(0);
   const [outrosCustos, setOutrosCustos] = useState<number>(0);
-  const [statusCompra, setStatusCompra] = useState<string>('RECEBIDO');
+  const [statusCompra, setStatusCompra] = useState('PENDENTE');
+  const [pagamentoCaixa, setPagamentoCaixa] = useState(() => ({ valor: '', data: getDayKey() }));
+  const [isSavingCash, setIsSavingCash] = useState(false);
+  const [cashError, setCashError] = useState('');
   const [observacoes, setObservacoes] = useState('');
 
   // Itens da Compra
@@ -141,6 +165,7 @@ export default function ComprasView({ data }: Props) {
         outrosCustos,
         observacoes,
         status: statusCompra,
+        pagamentoCaixa: pagamentoCaixa.valor === '' ? null : { valor: Number(pagamentoCaixa.valor), data: pagamentoCaixa.data },
         itens: compraItens
       });
 
@@ -154,6 +179,33 @@ export default function ComprasView({ data }: Props) {
     }
   };
 
+  const openPurchaseDetails = (compra: AdminCompra) => {
+    setPagamentoCaixa({
+      valor: compra.valorPagoCaixa?.toFixed(2) ?? '',
+      data: compra.dataPagamentoCaixa ? new Date(compra.dataPagamentoCaixa).toISOString().slice(0, 10) : getDayKey(),
+    });
+    setCashError('');
+    setViewingCompra(compra);
+  };
+
+  const handleSaveCashPayment = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!viewingCompra) return;
+    setIsSavingCash(true);
+    setCashError('');
+    try {
+      await atualizarPagamentoCompraAction(
+        viewingCompra.id,
+        pagamentoCaixa.valor === '' ? null : { valor: Number(pagamentoCaixa.valor), data: pagamentoCaixa.data },
+        new Date(viewingCompra.updatedAt).toISOString(),
+      );
+      window.location.reload();
+    } catch (error) {
+      setCashError(error instanceof Error ? error.message : 'Erro ao salvar o pagamento.');
+      setIsSavingCash(false);
+    }
+  };
+
   const handleReceber = async (id: number) => {
     if (!confirm('Deseja marcar esta compra como recebida? Os produtos serão adicionados ao estoque físico automaticamente.')) return;
     try {
@@ -163,6 +215,15 @@ export default function ComprasView({ data }: Props) {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao receber compra.';
       setFeedback(msg);
+    }
+  };
+
+  const handleMarkInTransit = async (id: number) => {
+    try {
+      await marcarCompraEmTransitoAction(id);
+      window.location.reload();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'Erro ao marcar a compra em trânsito.');
     }
   };
 
@@ -208,6 +269,8 @@ export default function ComprasView({ data }: Props) {
           onClick={() => {
             setIsNewOpen(true);
             setCompraItens([]);
+            setStatusCompra('PENDENTE');
+            setPagamentoCaixa({ valor: '', data: getDayKey() });
             setFormError('');
           }}
           className="shrink-0 px-5 py-3 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-xs cursor-pointer self-start xl:self-auto"
@@ -320,7 +383,7 @@ export default function ComprasView({ data }: Props) {
                         <p className="mt-1.5 text-xs leading-relaxed text-brand-muted">
                           {c.itens.reduce((total, item) => total + item.quantidade, 0)} unidades · {c.itens.slice(0, 3).map(item => (item.produto?.nome.split('—').pop() || 'Item').replace(/\s*\([^)]*\)/g, '').trim()).join(', ')}{c.itens.length > 3 ? ` e mais ${c.itens.length - 3}` : ''}
                         </p>
-                        <button type="button" onClick={() => setViewingCompra(c)} className="mt-2 inline-flex items-center gap-1 rounded-lg border border-brand-line px-2.5 py-1.5 text-xs font-semibold text-brand-chocolate hover:bg-brand-cream cursor-pointer">
+                        <button type="button" onClick={() => openPurchaseDetails(c)} className="mt-2 inline-flex items-center gap-1 rounded-lg border border-brand-line px-2.5 py-1.5 text-xs font-semibold text-brand-chocolate hover:bg-brand-cream cursor-pointer">
                           Ver detalhes <ChevronRight size={13} />
                         </button>
                       </td>
@@ -346,6 +409,11 @@ export default function ComprasView({ data }: Props) {
 
                       <td className="py-3 px-4 text-right">
                         <div className="inline-flex flex-col items-end gap-2">
+                          {c.status === 'PENDENTE' && (
+                            <button type="button" onClick={() => handleMarkInTransit(c.id)} className="rounded-lg border border-brand-line px-2.5 py-1 text-[11px] font-bold text-brand-chocolate hover:bg-brand-cream cursor-pointer">
+                              Marcar em trânsito
+                            </button>
+                          )}
                           {!isRecebido && c.status !== 'CANCELADO' && (
                             <button
                               onClick={() => handleReceber(c.id)}
@@ -355,7 +423,7 @@ export default function ComprasView({ data }: Props) {
                             </button>
                           )}
                           <button
-                            onClick={() => setViewingCompra(c)}
+                            onClick={() => openPurchaseDetails(c)}
                             className="inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-lg bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-semibold transition-colors cursor-pointer"
                             aria-label={`Ver detalhes da compra ${c.numero}`}
                           >
@@ -558,6 +626,19 @@ export default function ComprasView({ data }: Props) {
                 </div>
               </div>
 
+              <div className="p-4 sm:p-5 rounded-2xl bg-brand-cream border border-brand-line space-y-3.5">
+                <label className="block text-xs font-bold text-brand-muted">
+                  Status da compra
+                  <select value={statusCompra} onChange={event => setStatusCompra(event.target.value)} className="mt-1 block w-full max-w-xs px-3 py-2 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line">
+                    <option value="PENDENTE">Pendente</option>
+                    <option value="EM_TRANSITO">Em trânsito</option>
+                    <option value="RECEBIDO">Recebida · Dar entrada agora</option>
+                  </select>
+                </label>
+                <PurchaseCashFields value={pagamentoCaixa} onChange={setPagamentoCaixa} total={calculoCompra.custoTotalBRL} />
+                <p className="text-[11px] text-brand-muted">Informe quanto saiu do caixa para esta compra. Despesas lançadas separadamente ficam fora desse valor.</p>
+              </div>
+
               <div>
                 <label htmlFor="compra-observacoes" className="mb-1.5 block text-xs font-bold text-brand-muted">Observação</label>
                 <textarea
@@ -591,7 +672,7 @@ export default function ComprasView({ data }: Props) {
                       <span>Salvando Compra...</span>
                     </>
                   ) : (
-                    <span>Registrar Compra & Entrada de Estoque</span>
+                    <span>{statusCompra === 'RECEBIDO' ? 'Registrar compra e dar entrada' : 'Registrar compra'}</span>
                   )}
                 </button>
               </div>
@@ -603,7 +684,7 @@ export default function ComprasView({ data }: Props) {
       {/* MODAL: VER DETALHES DA COMPRA */}
       {viewingCompra && (
         <div className="fixed inset-0 bg-brand-deep/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="compra-detalhes-title" className="bg-brand-card w-full max-w-3xl rounded-3xl border border-brand-line shadow-2xl p-6 relative overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div role="dialog" aria-modal="true" aria-labelledby="compra-detalhes-title" className="bg-brand-card w-full max-w-3xl max-h-[90vh] rounded-3xl border border-brand-line shadow-2xl p-6 relative overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-caramel to-brand-caramel" />
 
             <div className="flex items-center justify-between pb-3 border-b border-brand-line mb-4">
@@ -646,6 +727,15 @@ export default function ComprasView({ data }: Props) {
                   <p className="whitespace-pre-wrap leading-relaxed">{viewingCompra.observacoes}</p>
                 </div>
               )}
+
+              <form onSubmit={handleSaveCashPayment} className="rounded-xl border border-brand-line bg-brand-cream p-3 space-y-2">
+                <h4 className="font-bold text-brand-chocolate">Pagamento pelo caixa</h4>
+                <PurchaseCashFields value={pagamentoCaixa} onChange={setPagamentoCaixa} total={viewingCompra.custoTotalBRL} />
+                {cashError && <p role="alert" className="text-red-700">{cashError}</p>}
+                <button type="submit" disabled={isSavingCash} className="rounded-lg border border-brand-line bg-brand-card px-3 py-2 font-semibold text-brand-chocolate disabled:opacity-60">
+                  {isSavingCash ? 'Salvando…' : 'Salvar pagamento'}
+                </button>
+              </form>
 
               <div className="p-3.5 rounded-xl bg-brand-nude border border-brand-line space-y-1">
                 <div className="flex justify-between text-brand-muted">

@@ -150,6 +150,8 @@ model Compra {
   taxas          Float        @default(0.0)
   outrosCustos   Float        @default(0.0)
   custoTotalBRL  Float        @default(0.0)
+  valorPagoCaixa Decimal?     @db.Decimal(12, 2)
+  dataPagamentoCaixa DateTime? @db.Date
   observacoes    String?
   itens          CompraItem[]
   createdAt      DateTime     @default(now())

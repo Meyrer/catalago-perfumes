@@ -518,6 +518,36 @@ export async function deleteSale(vendaId: number, actor: string) {
   revalidatePath('/');
 }
 
+function purchaseCashFields(payment: unknown, total: number) {
+  if (payment === null || payment === undefined) return { valorPagoCaixa: null, dataPagamentoCaixa: null };
+  if (typeof payment !== 'object' || !('valor' in payment) || !('data' in payment) ||
+      typeof payment.valor !== 'number' || typeof payment.data !== 'string') {
+    throw new Error('Informe o valor e a data do pagamento da compra pelo caixa.');
+  }
+
+  const cents = toCents(payment.valor);
+  if (!Number.isSafeInteger(cents) || cents <= 0 || cents > Math.min(toCents(total), 999999999999)) {
+    throw new Error('O valor pago pelo caixa deve ser positivo e não pode superar o custo total da compra.');
+  }
+  const date = new Date(`${payment.data}T00:00:00.000Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(payment.data) || payment.data.startsWith('0000-') ||
+      !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== payment.data) {
+    throw new Error('Informe uma data válida para o pagamento da compra.');
+  }
+  return { valorPagoCaixa: fromCents(cents), dataPagamentoCaixa: date };
+}
+
+export async function updatePurchaseCashPayment(compraId: number, payment: unknown, updatedAt?: Date) {
+  if (!Number.isSafeInteger(compraId) || compraId < 1) throw new Error('Compra inválida.');
+  const compra = await prisma.compra.findUniqueOrThrow({ where: { id: compraId } });
+  const changed = await prisma.compra.updateMany({
+    where: { id: compraId, updatedAt: updatedAt ?? compra.updatedAt },
+    data: purchaseCashFields(payment, compra.custoTotalBRL),
+  });
+  if (changed.count !== 1) throw new Error('A compra foi alterada. Atualize a página antes de editar o pagamento.');
+  revalidatePath('/admin');
+}
+
 export async function createPurchase(data: {
   fornecedorId?: number;
   moeda: 'BRL' | 'USD' | 'EUR';
@@ -525,6 +555,7 @@ export async function createPurchase(data: {
   frete: number;
   taxas: number;
   outrosCustos: number;
+  pagamentoCaixa?: unknown;
   observacoes?: string;
   itens: Array<{ produtoId: number; quantidade: number; valorUnitarioMoeda: number }>;
   status?: string;
@@ -559,6 +590,7 @@ export async function createPurchase(data: {
   const subtotalBRL = roundMoney(subtotalMoeda * cotacao);
   const custosExtrasBRL = roundMoney(frete + taxas + outrosCustos);
   const custoTotalBRL = roundMoney(subtotalBRL + custosExtrasBRL);
+  const pagamentoCaixa = purchaseCashFields(data.pagamentoCaixa, custoTotalBRL);
   const numero = `COMP-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 8).toUpperCase()}`;
 
   // Rateio proporcional dos custos extras
@@ -574,6 +606,7 @@ export async function createPurchase(data: {
       taxas,
       outrosCustos,
       custoTotalBRL,
+      ...pagamentoCaixa,
       observacoes: observacoes || null,
       itens: {
         create: itens.map(item => {
