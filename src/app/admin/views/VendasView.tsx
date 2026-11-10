@@ -55,6 +55,11 @@ function localPaymentDate() {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
+function PaymentForecast({ date }: { date: Date }) {
+  const forecast = new Date(date);
+  return <>Previsão de pagamento <time dateTime={forecast.toISOString().slice(0, 10)}>{forecast.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</time></>;
+}
+
 export default function VendasView({ data }: Props) {
   const { vendas, produtos, clientes, user } = data;
 
@@ -83,6 +88,7 @@ export default function VendasView({ data }: Props) {
   const [frete, setFrete] = useState<number>(0);
   const [observacoes, setObservacoes] = useState('');
   const [valorRecebido, setValorRecebido] = useState<number | ''>(0);
+  const [previsaoPagamento, setPrevisaoPagamento] = useState('');
   const [dataPagamento, setDataPagamento] = useState(localPaymentDate);
   const [formaRecebimento, setFormaRecebimento] = useState('PIX');
   const [cartItens, setCartItens] = useState<Array<{ produtoId: number; quantidade: number; precoUnitario: number }>>([]);
@@ -161,6 +167,7 @@ export default function VendasView({ data }: Props) {
     setFrete(venda.frete);
     setObservacoes(venda.observacoes || '');
     setValorRecebido(getSaleReceivedAmount(venda) ?? '');
+    setPrevisaoPagamento(venda.previsaoPagamento ? new Date(venda.previsaoPagamento).toISOString().slice(0, 10) : '');
     setDataPagamento(localPaymentDate());
     setFormaRecebimento(venda.formaPagamento);
     setCartItens(venda.itens.map(it => ({ produtoId: it.produtoId, quantidade: it.quantidade, precoUnitario: it.precoUnitario })));
@@ -243,6 +250,7 @@ export default function VendasView({ data }: Props) {
         status: statusVenda,
         observacoes,
         valorRecebido: valorRecebido === '' ? 0 : valorRecebido,
+        previsaoPagamento: previsaoPagamento || null,
         ...(hasNewReceipt ? {
           dataPagamento: new Date(dataPagamento).toISOString(),
           formaRecebimento: editingVenda ? formaRecebimento : formaPagamento,
@@ -335,6 +343,7 @@ export default function VendasView({ data }: Props) {
             setFrete(0);
             setObservacoes('');
             setValorRecebido(0);
+            setPrevisaoPagamento('');
             setDataPagamento(localPaymentDate());
             setFormaRecebimento('PIX');
           }}
@@ -479,6 +488,11 @@ export default function VendasView({ data }: Props) {
                         <span className="block whitespace-nowrap text-[10px] text-brand-muted mt-1">
                           {paymentLabel}
                         </span>
+                        {(paymentStatus === 'PENDENTE' || paymentStatus === 'PARCIAL') && v.previsaoPagamento && (
+                          <span className="block text-[10px] font-semibold text-brand-chocolate mt-1">
+                            <PaymentForecast date={v.previsaoPagamento} />
+                          </span>
+                        )}
                       </td>
 
                       <td className="py-3 px-3 text-right font-bold text-brand-chocolate whitespace-nowrap">
@@ -864,6 +878,10 @@ export default function VendasView({ data }: Props) {
                   <p className="text-[11px] text-brand-muted mt-1">Em branco ou zero significa que ainda não recebeu. Entregar a venda não confirma pagamento.</p>
                   {valorRecebido !== '' && <p className="text-xs font-semibold text-brand-chocolate mt-2">Falta receber: {Math.max(0, carrinhoCalculado.valorTotal - valorRecebido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
                   <div className="mt-2"><PaymentBadge sale={{ status: statusVenda, valorTotal: carrinhoCalculado.valorTotal, valorRecebido: valorRecebido === '' ? 0 : valorRecebido }} /></div>
+                  <label className="mt-3 block max-w-xs text-[10px] font-bold text-brand-muted uppercase">
+                    Previsão de pagamento (opcional)
+                    <input type="date" value={previsaoPagamento} onChange={e => setPrevisaoPagamento(e.target.value)} className="mt-1 w-full min-w-0 px-3 py-2 rounded-xl bg-brand-card border border-brand-line text-xs text-brand-chocolate" />
+                  </label>
                   {hasNewReceipt && (
                     <div className="mt-3 space-y-2">
                       <p className="text-xs font-semibold text-brand-chocolate">Ao salvar, registrar {Math.max(0, Number(valorRecebido) - (previousReceived ?? 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} no histórico como novo recebimento.</p>
@@ -990,6 +1008,9 @@ export default function VendasView({ data }: Props) {
               )}
 
               {/* Totais */}
+              {viewingVenda.previsaoPagamento && (
+                <p className="text-xs font-semibold text-brand-chocolate"><PaymentForecast date={viewingVenda.previsaoPagamento} /></p>
+              )}
               <PaymentHistory sale={viewingVenda} />
               <div className="p-3.5 rounded-xl bg-brand-nude border border-brand-line space-y-1.5">
                 <div className="flex justify-between text-brand-muted">
