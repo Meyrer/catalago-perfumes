@@ -57,7 +57,7 @@ export default function FinanceiroView({ data }: Props) {
 
   // Despesas no Período
   const despesasFiltradas = useMemo(() => {
-    return despesas.filter(d => periodo === 'mes' ? isInMonth(d.data, selectedMonth) : new Date(d.data) >= dataCorte);
+    return despesas.filter(d => d.tipo !== 'APORTE' && (periodo === 'mes' ? isInMonth(d.data, selectedMonth) : new Date(d.data) >= dataCorte));
   }, [despesas, dataCorte, periodo, selectedMonth]);
 
   // Indicadores DRE
@@ -72,15 +72,20 @@ export default function FinanceiroView({ data }: Props) {
   const recebimentos = useMemo(() => vendas.flatMap(venda => getSalePaymentAllocations(venda).map((entry, index) => ({
     ...entry, vendaId: venda.id, numero: venda.numero, key: `${venda.id}-${index}`,
   }))), [vendas]);
+  const aportes = useMemo(() => despesas.filter(lancamento => lancamento.tipo === 'APORTE' && lancamento.pago), [despesas]);
   const caixa = useMemo(() => {
-    const entradas = recebimentos.reduce((sum, entry) => sum + toCents(entry.valor), 0);
+    const vendasRecebidas = recebimentos.reduce((sum, entry) => sum + toCents(entry.valor), 0);
+    const capital = aportes.reduce((sum, aporte) => sum + toCents(aporte.valor), 0);
+    const entradas = vendasRecebidas + capital;
     const despesasPagas = despesas.reduce((sum, despesa) => (
       despesa.tipo === 'DESPESA' && despesa.pago ? sum + toCents(despesa.valor) : sum
     ), 0);
     const comprasPagas = compras.reduce((sum, compra) => sum + toCents(compra.valorPagoCaixa ?? 0), 0);
     const saidas = despesasPagas + comprasPagas;
-    return { entradas: fromCents(entradas), saidas: fromCents(saidas), saldo: fromCents(entradas - saidas) };
-  }, [recebimentos, despesas, compras]);
+    return { entradas: fromCents(entradas), aportes: fromCents(capital), saidas: fromCents(saidas), saldo: fromCents(entradas - saidas) };
+  }, [recebimentos, despesas, compras, aportes]);
+  const aportesDoPeriodo = aportes.filter(aporte => periodo === 'mes' ? isInMonth(aporte.data, selectedMonth) : new Date(aporte.data) >= dataCorte);
+  const aportesCentavos = aportesDoPeriodo.reduce((sum, aporte) => sum + toCents(aporte.valor), 0);
 
   const recebimentosFiltrados = useMemo(() => recebimentos.filter(entry => entry.data !== null
     && (periodo === 'mes' ? isInMonth(entry.data, selectedMonth) : new Date(entry.data) >= dataCorte)), [recebimentos, periodo, selectedMonth, dataCorte]);
@@ -203,13 +208,26 @@ export default function FinanceiroView({ data }: Props) {
         <div>
           <p className="text-xs font-semibold text-brand-muted">Entradas</p>
           <p className="mt-1 text-lg font-bold text-brand-chocolate">{moedaBRL.format(caixa.entradas)}</p>
-          <p className="mt-1 text-[11px] text-brand-muted">Pagamentos recebidos das vendas</p>
+          <p className="mt-1 text-[11px] text-brand-muted">Vendas recebidas e aportes dos sócios</p>
         </div>
         <div>
           <p className="text-xs font-semibold text-brand-muted">Saídas</p>
           <p className="mt-1 text-lg font-bold text-brand-chocolate">{moedaBRL.format(caixa.saidas)}</p>
           <p className="mt-1 text-[11px] text-brand-muted">Despesas e compras pagas pelo caixa</p>
         </div>
+        {aportes.length > 0 && (
+          <details className="border-t border-brand-line pt-3 sm:col-span-3">
+            <summary className="cursor-pointer text-xs font-semibold text-brand-chocolate">Aportes dos sócios · {moedaBRL.format(caixa.aportes)}</summary>
+            <ul className="mt-2 divide-y divide-brand-line">
+              {aportes.map(aporte => (
+                <li key={aporte.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-xs text-brand-muted">
+                  <span>{new Date(aporte.data).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} · {aporte.descricao}</span>
+                  <span className="font-semibold text-brand-chocolate">{moedaBRL.format(aporte.valor)}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </section>
 
       <MonthFilter
@@ -231,8 +249,8 @@ export default function FinanceiroView({ data }: Props) {
       <div className="flex flex-wrap gap-2" aria-label="Critério do resumo financeiro">
         {(['vendas', 'recebimentos'] as const).map(mode => <button key={mode} type="button" onClick={() => setResumo(mode)} aria-pressed={resumo === mode} className={`rounded-xl border border-brand-line px-4 py-2 text-xs font-bold ${resumo === mode ? 'bg-brand-chocolate text-brand-cream' : 'bg-brand-card text-brand-chocolate'}`}>{mode === 'vendas' ? 'Vendas do período' : 'Recebimentos do período'}</button>)}
       </div>
-      <p className="text-xs text-brand-muted">{resumo === 'vendas' ? 'Valores das vendas do período selecionado, mesmo quando o pagamento acontece em outro mês.' : 'Recebimentos e compras pela data do pagamento. Despesas pagas pela data do lançamento.'}</p>
-      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3.5 ${resumo === 'vendas' ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
+      <p className="text-xs text-brand-muted">{resumo === 'vendas' ? 'Valores das vendas do período selecionado, mesmo quando o pagamento acontece em outro mês.' : 'Recebimentos e compras pela data do pagamento. Despesas pagas e aportes pela data do lançamento.'}</p>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3.5 ${resumo === 'vendas' ? 'lg:grid-cols-3' : 'lg:grid-cols-3 xl:grid-cols-5'}`}>
         {(resumo === 'vendas' ? [
           { label: 'Total vendido', value: receitaBruta, detail: `${paymentSummary.count} venda(s) · canceladas excluídas` },
           { label: 'Já recebido', value: paymentSummary.received, detail: 'Pagamentos confirmados, incluindo parciais' },
@@ -242,9 +260,10 @@ export default function FinanceiroView({ data }: Props) {
           { label: 'Resultado das vendas', value: lucroLiquido, detail: `Vendido − custo − despesas · margem ${margemLiquida}%` },
         ] : [
           { label: 'Recebido no período', value: recebidoNoPeriodo, detail: `${recebimentosFiltrados.length} recebimento(s) com data registrada` },
+          { label: 'Aportes do período', value: fromCents(aportesCentavos), detail: `${aportesDoPeriodo.length} aporte(s) dos sócios` },
           { label: 'Despesas pagas', value: -despesasPagas, detail: `${despesasExibidas.length} lançamento(s) pago(s)` },
           { label: 'Compras pagas pelo caixa', value: -fromCents(comprasPagasCentavos), detail: `${comprasPagas.length} compra(s) com pagamento registrado` },
-          { label: 'Saldo do período', value: fromCents(toCents(recebidoNoPeriodo) - toCents(despesasPagas) - comprasPagasCentavos), detail: 'Recebimentos menos despesas e compras pagas, sem saldo anterior' },
+          { label: 'Saldo do período', value: fromCents(toCents(recebidoNoPeriodo) + aportesCentavos - toCents(despesasPagas) - comprasPagasCentavos), detail: 'Entradas menos despesas e compras pagas, sem saldo anterior' },
         ]).map(card => (
           <div key={card.label} className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs min-w-0">
             <p className="text-xs font-semibold text-brand-muted">{card.label}</p>
