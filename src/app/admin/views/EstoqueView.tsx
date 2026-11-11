@@ -3,12 +3,13 @@
 import { getFifoStockValue, getFifoLots, getFifoNextCost } from '@/lib/fifo';
 
 import { useState, useMemo, useRef } from 'react';
+import Link from 'next/link';
 import type { ERPData, AdminProduto } from '../types';
 import StockMovementHistory from '../StockMovementHistory';
 import { 
   Boxes, AlertTriangle, ArrowDownRight, ArrowUpRight, 
   Search, History, RefreshCw, X, Loader2,
-  Package, Calendar, CheckCircle2, ShieldAlert
+  Package, Calendar, CheckCircle2, ShieldAlert, FileText
 } from 'lucide-react';
 import { movimentarEstoqueAction } from '../../actions';
 import { normalizeImageUrl } from '@/lib/image-url';
@@ -126,7 +127,7 @@ export default function EstoqueView({ data }: Props) {
         </div>
 
         {/* Sub-Abas: Saldo Atual vs Histórico Completo */}
-        <div className="flex items-center gap-1.5 bg-brand-nude p-1 rounded-2xl border border-brand-line">
+        <div className="flex flex-wrap items-center gap-1.5 bg-brand-nude p-1 rounded-2xl border border-brand-line">
           <button
             onClick={() => setActiveSubTab('saldo')}
             className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
@@ -143,6 +144,13 @@ export default function EstoqueView({ data }: Props) {
           >
             <History size={14} /> Histórico de Movimentações ({movimentacoesTotal})
           </button>
+          <Link
+            href="/admin/catalogo-estoque"
+            prefetch={false}
+            className="flex items-center gap-1.5 rounded-xl border border-brand-line bg-brand-card px-4 py-2 text-xs font-bold text-brand-chocolate hover:bg-brand-cream"
+          >
+            <FileText size={14} aria-hidden="true" /> Gerar catálogo
+          </Link>
         </div>
       </div>
 
