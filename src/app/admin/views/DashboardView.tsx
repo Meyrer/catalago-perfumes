@@ -44,7 +44,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
   const [salesTimeframe, setSalesTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
   const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
 
-  const { produtos, vendas, encomendas } = data;
+  const { produtos, vendas, encomendas, despesas } = data;
 
   // Datas de referência
   const agora = new Date();
@@ -66,6 +66,10 @@ export default function DashboardView({ data, onNavigate }: Props) {
   const paymentSummary = useMemo(() => summarizeSalePayments(vendasDoPeriodo), [vendasDoPeriodo]);
   const faturamentoMes = paymentSummary.total;
   const lucroMes = useMemo(() => fromCents(vendasDoPeriodo.reduce((sum, venda) => sum + toCents(venda.valorTotal) - toCents(venda.custoTotal), 0)), [vendasDoPeriodo]);
+  const despesasCentavos = useMemo(() => despesas
+    .filter(despesa => despesa.tipo !== 'APORTE' && isInMonth(despesa.data, selectedMonth))
+    .reduce((sum, despesa) => sum + toCents(despesa.valor), 0), [despesas, selectedMonth]);
+  const lucroLiquido = fromCents(toCents(lucroMes) - despesasCentavos);
   const margemLucroMes = faturamentoMes > 0 ? ((lucroMes / faturamentoMes) * 100).toFixed(1) : '0';
   const ticketMedioMes = paymentSummary.count > 0 ? faturamentoMes / paymentSummary.count : 0;
 
@@ -244,15 +248,23 @@ export default function DashboardView({ data, onNavigate }: Props) {
       </div>
 
       <MonthFilter value={selectedMonth} onChange={setSelectedMonth} />
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" aria-label="Resumo das vendas do período">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4" aria-label="Resumo das vendas do período">
         {[
-          { label: 'Total vendido', value: paymentSummary.total, icon: ShoppingBag },
-          { label: 'Já recebido', value: paymentSummary.received, icon: CheckCircle2 },
-          { label: 'Falta receber', value: paymentSummary.outstanding, icon: Clock },
-        ].map(card => <StatCard key={card.label} label={card.label} value={card.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} icon={card.icon} />)}
-      </div>
-      <p className="text-xs text-brand-muted">Vendas agrupadas pelo mês da venda. Total vendido = já recebido + falta receber.</p>
-      <p className="text-[11px] text-brand-muted">Recebido considera os pagamentos registrados dessas vendas, antes de despesas e taxas. O estoque abaixo mostra o saldo atual.</p>
+          { label: 'Total vendido bruto', value: paymentSummary.total, icon: ShoppingBag },
+          { label: 'Lucro líquido', value: lucroLiquido, icon: DollarSign, detail: 'Após custos e despesas do período' },
+          { label: 'Já recebido bruto', value: paymentSummary.received, icon: CheckCircle2, color: 'text-emerald-700' },
+          { label: 'Falta receber bruto', value: paymentSummary.outstanding, icon: Clock, color: 'text-amber-700' },
+        ].map(card => (
+          <StatCard
+            key={card.label}
+            label={card.label}
+            icon={card.icon}
+            detail={card.detail}
+            value={<span className={card.color}>{card.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
+          />
+        ))}
+      </section>
+      <p className="text-xs text-brand-muted">Valores agrupados pelo mês da venda.</p>
 
       {/* INDICADORES COMPLEMENTARES */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-3.5">
