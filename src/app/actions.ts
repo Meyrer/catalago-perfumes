@@ -1,6 +1,6 @@
 "use server";
 
-import { createSale, updateSale, updateSaleStatus, deleteSale, createPurchase, receivePurchase, updatePurchaseCashPayment, createCustomOrder } from "@/lib/erp-operations";
+import { createSale, updateSale, updateSaleStatus, registerSaleReceipt, deleteSale, createPurchase, receivePurchase, updatePurchaseCashPayment, createCustomOrder } from "@/lib/erp-operations";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -602,6 +602,11 @@ export async function updateVendaAction(vendaId: number, data: Parameters<typeof
 export async function updateVendaStatusAction(vendaId: number, novoStatus: string) {
   const session = await requireAdminAuth();
   return updateSaleStatus(vendaId, novoStatus, session.name);
+}
+
+export async function registrarRecebimentoAction(vendaId: number, data: Parameters<typeof registerSaleReceipt>[1]) {
+  const session = await requireAdminAuth();
+  return registerSaleReceipt(vendaId, data, session.name);
 }
 
 export async function deleteVendaAction(vendaId: number) {

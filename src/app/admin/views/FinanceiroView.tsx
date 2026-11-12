@@ -11,19 +11,24 @@ import {
   ArrowDownRight, Trash2, X, Loader2, Filter
 } from 'lucide-react';
 import { createDespesaAction, deleteDespesaAction } from '../../actions';
+import ReceivablesView from './ReceivablesView';
 
 type Props = {
   data: ERPData;
 };
 
 const moedaBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const financeViews = [
+  { id: 'caixa', label: 'Caixa' }, { id: 'receber', label: 'A receber' }, { id: 'dre', label: 'DRE' },
+] as const;
 
 export default function FinanceiroView({ data }: Props) {
   const { vendas, despesas, compras } = data;
 
   const [periodo, setPeriodo] = useState<'hoje' | '7d' | '30d' | 'mes' | 'todos'>('mes');
   const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
-  const [resumo, setResumo] = useState<'vendas' | 'recebimentos'>('vendas');
+  const [view, setView] = useState<(typeof financeViews)[number]['id']>('caixa');
+  const resumo = view === 'caixa' ? 'recebimentos' : 'vendas';
   const [isNewDespesaOpen, setIsNewDespesaOpen] = useState(false);
   const [descDespesa, setDescDespesa] = useState('');
   const [catDespesa, setCatDespesa] = useState('EMBALAGENS');
@@ -159,16 +164,13 @@ export default function FinanceiroView({ data }: Props) {
         <div>
           <h2 className="text-xl sm:text-2xl font-serif font-bold text-brand-chocolate flex items-center gap-2.5">
             <DollarSign size={22} className="text-brand-muted" />
-            DRE & Gestão Financeira
+            Finanças
           </h2>
-          <p className="text-xs text-brand-muted mt-0.5">
-            Demonstrativo de resultado, custo de produtos vendidos (CPV), despesas operacionais e lucro líquido.
-          </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* Seletor de Período */}
-          <div className="flex items-center gap-1 bg-brand-nude p-1 rounded-2xl border border-brand-line">
+          {view !== 'receber' && <div className="flex flex-wrap items-center gap-1 bg-brand-nude p-1 rounded-2xl border border-brand-line">
             {(['hoje', '7d', '30d', 'mes', 'todos'] as const).map(p => (
               <button
                 key={p}
@@ -183,7 +185,7 @@ export default function FinanceiroView({ data }: Props) {
                 {p === 'hoje' ? 'Hoje' : p === '7d' ? '7 dias' : p === '30d' ? '30 dias' : p === 'mes' ? 'Mês Atual' : 'Todo o Histórico'}
               </button>
             ))}
-          </div>
+          </div>}
 
           <button
             onClick={() => {
@@ -199,7 +201,13 @@ export default function FinanceiroView({ data }: Props) {
         </div>
       </div>
 
-      <section aria-labelledby="saldo-caixa-title" className="grid gap-4 rounded-2xl border border-brand-line bg-brand-card p-5 shadow-xs sm:grid-cols-3">
+      <nav className="flex flex-wrap gap-2" aria-label="Visões financeiras">
+        {financeViews.map(item => <button key={item.id} type="button" onClick={() => setView(item.id)} aria-pressed={view === item.id} className={`rounded-xl border border-brand-line px-4 py-2 text-sm font-semibold cursor-pointer ${view === item.id ? 'bg-brand-chocolate text-brand-cream' : 'bg-brand-card text-brand-chocolate'}`}>{item.label}</button>)}
+      </nav>
+
+      {view === 'receber' && <ReceivablesView vendas={vendas} />}
+
+      {view === 'caixa' && <section aria-labelledby="saldo-caixa-title" className="grid gap-4 rounded-2xl border border-brand-line bg-brand-card p-5 shadow-xs sm:grid-cols-3">
         <div>
           <h3 id="saldo-caixa-title" className="text-sm font-bold text-brand-chocolate">Saldo em caixa</h3>
           <p className={`mt-1 text-2xl font-bold ${caixa.saldo < 0 ? 'text-red-700' : 'text-brand-chocolate'}`}>{moedaBRL.format(caixa.saldo)}</p>
@@ -228,15 +236,15 @@ export default function FinanceiroView({ data }: Props) {
             </ul>
           </details>
         )}
-      </section>
+      </section>}
 
-      <MonthFilter
+      {view !== 'receber' && <MonthFilter
         value={periodo === 'mes' ? selectedMonth : ''}
         onChange={month => {
           setSelectedMonth(month);
           setPeriodo(month ? 'mes' : 'todos');
         }}
-      />
+      />}
 
       {feedback && (
         <div className="p-3.5 rounded-2xl bg-brand-nude border border-brand-line text-brand-chocolate text-xs font-bold flex items-center justify-between">
@@ -245,10 +253,7 @@ export default function FinanceiroView({ data }: Props) {
         </div>
       )}
 
-      {/* RESUMO DAS MESMAS VENDAS DO PERÍODO */}
-      <div className="flex flex-wrap gap-2" aria-label="Critério do resumo financeiro">
-        {(['vendas', 'recebimentos'] as const).map(mode => <button key={mode} type="button" onClick={() => setResumo(mode)} aria-pressed={resumo === mode} className={`rounded-xl border border-brand-line px-4 py-2 text-xs font-bold ${resumo === mode ? 'bg-brand-chocolate text-brand-cream' : 'bg-brand-card text-brand-chocolate'}`}>{mode === 'vendas' ? 'Vendas do período' : 'Recebimentos do período'}</button>)}
-      </div>
+      {view !== 'receber' && <>
       <p className="text-xs text-brand-muted">{resumo === 'vendas' ? 'Valores das vendas do período selecionado, mesmo quando o pagamento acontece em outro mês.' : 'Recebimentos e compras pela data do pagamento. Despesas pagas e aportes pela data do lançamento.'}</p>
       <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3.5 ${resumo === 'vendas' ? 'lg:grid-cols-3' : 'lg:grid-cols-3 xl:grid-cols-5'}`}>
         {(resumo === 'vendas' ? [
@@ -281,11 +286,23 @@ export default function FinanceiroView({ data }: Props) {
         </tbody></table>
       </div>}
 
+      {view === 'caixa' && comprasPagas.length > 0 && (
+        <section className="rounded-2xl border border-brand-line bg-brand-card p-4">
+          <h3 className="mb-2 text-sm font-bold text-brand-chocolate">Compras pagas pelo caixa</h3>
+          <ul className="divide-y divide-brand-line text-xs">
+            {comprasPagas.map(compra => <li key={compra.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+              <span>{new Date(compra.dataPagamentoCaixa!).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} · {compra.numero}{compra.fornecedor ? ` · ${compra.fornecedor.nome}` : ''}</span>
+              <strong>{moedaBRL.format(compra.valorPagoCaixa ?? 0)}</strong>
+            </li>)}
+          </ul>
+        </section>
+      )}
+
       {/* DETALHAMENTO: FORMAS DE PAGAMENTO & LISTA DE DESPESAS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={`grid grid-cols-1 gap-6 ${view === 'dre' ? 'lg:grid-cols-3' : ''}`}>
         
         {/* FORMAS DE PAGAMENTO (1 Coluna) */}
-        <div className="bg-brand-card rounded-3xl p-5 sm:p-6 border border-brand-line shadow-xs flex flex-col justify-between">
+        {view === 'dre' && <div className="bg-brand-card rounded-3xl p-5 sm:p-6 border border-brand-line shadow-xs flex flex-col justify-between">
           <div>
             <h3 className="text-base sm:text-lg font-serif font-bold text-brand-chocolate mb-1">
               Recebido por forma de pagamento
@@ -318,10 +335,10 @@ export default function FinanceiroView({ data }: Props) {
               )}
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* LISTA DE DESPESAS OPERACIONAIS (2 Colunas) */}
-        <div className="lg:col-span-2 bg-brand-card rounded-3xl p-5 sm:p-6 border border-brand-line shadow-xs flex flex-col justify-between">
+        <div className={`${view === 'dre' ? 'lg:col-span-2' : ''} bg-brand-card rounded-3xl p-5 sm:p-6 border border-brand-line shadow-xs flex flex-col justify-between`}>
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -394,6 +411,7 @@ export default function FinanceiroView({ data }: Props) {
           </div>
         </div>
       </div>
+      </>}
 
       {/* MODAL REGISTRAR DESPESA */}
       {isNewDespesaOpen && (
