@@ -15,6 +15,7 @@ import { createVendaAction, updateVendaStatusAction, deleteVendaAction } from '.
 
 type Props = {
   data: ERPData;
+  openQuickSale?: boolean;
 };
 
 function PaymentBadge({ sale }: { sale: Parameters<typeof getSalePaymentStatus>[0] }) {
@@ -60,7 +61,7 @@ function PaymentForecast({ date }: { date: Date }) {
   return <>Previsão de pagamento <time dateTime={forecast.toISOString().slice(0, 10)}>{forecast.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</time></>;
 }
 
-export default function VendasView({ data }: Props) {
+export default function VendasView({ data, openQuickSale = false }: Props) {
   const { vendas, produtos, clientes, user } = data;
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,7 +71,7 @@ export default function VendasView({ data }: Props) {
   const [selectedPayment, setSelectedPayment] = useState('ALL');
 
   // Drawer / Modais
-  const [isNewVendaOpen, setIsNewVendaOpen] = useState(false);
+  const [isNewVendaOpen, setIsNewVendaOpen] = useState(openQuickSale);
   const [viewingVenda, setViewingVenda] = useState<AdminVenda | null>(null);
   const [editingVenda, setEditingVenda] = useState<AdminVenda | null>(null);
   const [dataVenda, setDataVenda] = useState('');
@@ -82,8 +83,10 @@ export default function VendasView({ data }: Props) {
   const [clientSearch, setClientSearch] = useState('');
   const [nomeAvulso, setNomeAvulso] = useState('');
   const [contatoAvulso, setContatoAvulso] = useState('');
+  const [cadastrarCliente, setCadastrarCliente] = useState(false);
+  const [quickPayment, setQuickPayment] = useState<'' | 'PAGO' | 'PARCIAL' | 'PENDENTE'>('');
   const [formaPagamento, setFormaPagamento] = useState('PIX');
-  const [statusVenda, setStatusVenda] = useState('PREPARANDO');
+  const [statusVenda, setStatusVenda] = useState('AUTO');
   const [desconto, setDesconto] = useState<number>(0);
   const [frete, setFrete] = useState<number>(0);
   const [observacoes, setObservacoes] = useState('');
@@ -147,7 +150,10 @@ export default function VendasView({ data }: Props) {
   }, [cartItens, produtos, desconto, frete, editingVenda, statusVenda]);
 
   const previousReceived = editingVenda ? getSaleReceivedAmount(editingVenda) : 0;
-  const hasNewReceipt = valorRecebido !== '' && previousReceived !== null && valorRecebido > previousReceived;
+  const received = editingVenda ? Number(valorRecebido)
+    : quickPayment === 'PAGO' ? carrinhoCalculado.valorTotal
+    : quickPayment === 'PARCIAL' ? Number(valorRecebido) : 0;
+  const hasNewReceipt = received > previousReceived;
 
   const estoqueParaVenda = (produto: AdminProduto) => produto.quantidade + (
     editingVenda && editingVenda.status !== 'CANCELADO'
@@ -234,6 +240,17 @@ export default function VendasView({ data }: Props) {
       setFormError('Adicione pelo menos um produto à venda.');
       return;
     }
+    if (!editingVenda) {
+      if (!quickPayment) { setFormError('Selecione a situação do pagamento.'); return; }
+      if ((quickPayment !== 'PAGO' || cadastrarCliente) && !clienteId && !nomeAvulso.trim()) {
+        setFormError('Selecione ou informe o nome do cliente.');
+        return;
+      }
+      if (quickPayment === 'PARCIAL' && (toCents(received) <= 0 || toCents(received) >= toCents(carrinhoCalculado.valorTotal))) {
+        setFormError('O pagamento parcial deve ser maior que zero e menor que o total da venda.');
+        return;
+      }
+    }
 
     setIsSubmitting(true);
     setFormError('');
@@ -241,18 +258,20 @@ export default function VendasView({ data }: Props) {
     try {
       const payload = {
         clienteId: clienteId ? parseInt(clienteId) : undefined,
-        nomeClienteAvulso: nomeAvulso || undefined,
-        contatoClienteAvulso: contatoAvulso || undefined,
+        nomeClienteAvulso: nomeAvulso.trim() || undefined,
+        contatoClienteAvulso: contatoAvulso.trim() || undefined,
+        ...(!editingVenda && cadastrarCliente && !clienteId ? { cadastrarCliente: true } : {}),
         itens: cartItens,
         formaPagamento,
         desconto,
         frete,
-        status: statusVenda,
+        status: statusVenda !== 'AUTO' ? statusVenda
+          : quickPayment === 'PAGO' ? 'PAGO' : 'AGUARDANDO_PAGAMENTO',
         observacoes,
-        valorRecebido: valorRecebido === '' ? 0 : valorRecebido,
-        previsaoPagamento: previsaoPagamento || null,
+        valorRecebido: received,
+        previsaoPagamento: !editingVenda && quickPayment === 'PAGO' ? null : previsaoPagamento || null,
         ...(hasNewReceipt ? {
-          dataPagamento: new Date(dataPagamento).toISOString(),
+          dataPagamento: (dataPagamento ? new Date(dataPagamento) : new Date()).toISOString(),
           formaRecebimento: editingVenda ? formaRecebimento : formaPagamento,
         } : {}),
       };
@@ -334,11 +353,13 @@ export default function VendasView({ data }: Props) {
             setProductSearch('');
             setShowAllProducts(false);
             setFormError('');
-            setStatusVenda('PREPARANDO');
+            setStatusVenda('AUTO');
             setClienteId('');
             setClientSearch('');
             setNomeAvulso('');
             setContatoAvulso('');
+            setCadastrarCliente(false);
+            setQuickPayment('');
             setDesconto(0);
             setFrete(0);
             setObservacoes('');
@@ -350,7 +371,7 @@ export default function VendasView({ data }: Props) {
           className="px-5 py-2.5 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer self-start sm:self-auto"
         >
           <Plus size={16} className="text-brand-caramel" />
-          <span>Registrar Nova Venda</span>
+          <span>Venda rápida</span>
         </button>
       </div>
 
@@ -569,12 +590,12 @@ export default function VendasView({ data }: Props) {
       {/* ========================================================================= */}
       {isNewVendaOpen && (
         <div className="fixed inset-0 bg-brand-deep/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5">
-          <div role="dialog" aria-modal="true" aria-labelledby="nova-venda-title" className="bg-brand-card w-full max-w-4xl rounded-3xl border border-brand-line shadow-2xl relative flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div role="dialog" aria-modal="true" aria-labelledby="nova-venda-title" className={`bg-brand-card w-full ${editingVenda ? 'max-w-4xl' : 'max-w-2xl'} max-h-[calc(100dvh-2rem)] rounded-3xl border border-brand-line shadow-2xl relative flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150`}>
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-caramel to-brand-caramel" />
 
             <div className="flex shrink-0 items-center justify-between gap-3 p-4 sm:px-6 sm:py-5 border-b border-brand-line">
               <div className="min-w-0">
-                <h3 id="nova-venda-title" className="text-xl font-serif font-bold text-brand-chocolate">{editingVenda ? `Editar Venda / Pedido ${editingVenda.numero}` : 'Registrar Venda / Pedido'}</h3>
+                <h3 id="nova-venda-title" className="text-xl font-serif font-bold text-brand-chocolate">{editingVenda ? `Editar Venda / Pedido ${editingVenda.numero}` : 'Venda rápida'}</h3>
                 <p className="text-xs text-brand-muted">{editingVenda ? 'Atualize os dados do pedido e ajuste o estoque automaticamente' : 'Venda direta com baixa automática de estoque'}</p>
               </div>
               <button aria-label="Fechar venda" onClick={() => setIsNewVendaOpen(false)} className="shrink-0 p-2 text-brand-muted hover:text-brand-chocolate rounded-full hover:bg-brand-nude cursor-pointer">
@@ -651,6 +672,7 @@ export default function VendasView({ data }: Props) {
                                       setClientSearch('');
                                       setNomeAvulso('');
                                       setContatoAvulso('');
+                                      setCadastrarCliente(false);
                                     }}
                                     className="w-full p-3 text-left hover:bg-brand-nude focus-visible:bg-brand-nude"
                                   >
@@ -673,8 +695,9 @@ export default function VendasView({ data }: Props) {
                   {!clienteId && (
                     <>
                       <div>
-                        <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Nome do Cliente Avulso</label>
+                        <label htmlFor="venda-cliente-avulso" className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Nome do cliente avulso</label>
                         <input
+                          id="venda-cliente-avulso"
                           type="text"
                           value={nomeAvulso}
                           onChange={(e) => setNomeAvulso(e.target.value)}
@@ -682,6 +705,12 @@ export default function VendasView({ data }: Props) {
                           className="w-full px-3 py-2 bg-brand-card text-xs text-brand-chocolate rounded-xl border border-brand-line outline-none font-medium"
                         />
                       </div>
+                      <label className="block text-xs text-brand-muted">WhatsApp (opcional)
+                        <input type="tel" value={contatoAvulso} onChange={event => setContatoAvulso(event.target.value)} className="mt-1 block w-full rounded-xl border border-brand-line bg-brand-card px-3 py-2" />
+                      </label>
+                      {!editingVenda && nomeAvulso.trim() && <label className="flex items-center gap-2 text-xs text-brand-chocolate">
+                        <input type="checkbox" checked={cadastrarCliente} onChange={event => setCadastrarCliente(event.target.checked)} /> Salvar no cadastro de clientes
+                      </label>}
                     </>
                   )}
                 </div>
@@ -800,12 +829,21 @@ export default function VendasView({ data }: Props) {
 
               {/* PAGAMENTO E TOTAIS */}
               <div className="p-4 rounded-2xl bg-brand-nude border border-brand-line space-y-3">
-                <span className="text-[11px] font-bold text-brand-muted uppercase tracking-wider block">3. Pagamento & Valores</span>
+                <span className="text-[11px] font-bold text-brand-muted uppercase tracking-wider block">3. Pagamento</span>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Forma de Pagamento</label>
+                  {!editingVenda && <label className="text-xs font-semibold text-brand-muted">Situação do pagamento
+                    <select value={quickPayment} required onChange={event => setQuickPayment(event.target.value as typeof quickPayment)} className="mt-1 block w-full rounded-xl border border-brand-line bg-brand-card px-3 py-2 text-brand-chocolate">
+                      <option value="" disabled>Selecione</option>
+                      <option value="PAGO">Pago</option>
+                      <option value="PARCIAL">Parcial</option>
+                      <option value="PENDENTE">A receber</option>
+                    </select>
+                  </label>}
+                  {(editingVenda || quickPayment === 'PAGO' || quickPayment === 'PARCIAL') && <div>
+                    <label htmlFor="venda-forma-pagamento" className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Forma de Pagamento</label>
                     <select
+                      id="venda-forma-pagamento"
                       value={formaPagamento}
                       onChange={(e) => setFormaPagamento(e.target.value)}
                       className="w-full px-3 py-1.5 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none"
@@ -816,9 +854,9 @@ export default function VendasView({ data }: Props) {
                       <option value="DINHEIRO">Dinheiro</option>
                       <option value="LINK_PAGAMENTO">Link de Pagamento</option>
                     </select>
-                  </div>
+                  </div>}
 
-                  <div>
+                  {editingVenda && <div>
                     <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Status da Venda</label>
                     <select
                       value={statusVenda}
@@ -836,10 +874,83 @@ export default function VendasView({ data }: Props) {
                       {editingVenda?.status === 'CANCELADO' && <option value="CANCELADO" disabled hidden>Cancelado</option>}
                     </select>
                     <p className="mt-1 text-[11px] text-brand-muted">
-                      {editingVenda ? 'Estoque ajustado pela diferença entre os itens anteriores e os novos.' : statusVenda === 'AGUARDANDO_PAGAMENTO' ? 'Reserva de estoque imediata.' : 'Baixa de estoque imediata.'}
+                      Estoque ajustado pela diferença entre os itens anteriores e os novos.
                     </p>
-                  </div>
+                  </div>}
+                </div>
 
+                {!editingVenda && quickPayment === 'PARCIAL' && <label className="block text-xs font-semibold text-brand-muted">Valor recebido (R$)
+                  <input type="number" min="0.01" max={fromCents(toCents(carrinhoCalculado.valorTotal) - 1)} step="0.01" required value={valorRecebido} onChange={event => setValorRecebido(event.target.value === '' ? '' : Number(event.target.value))} className="mt-1 block w-full rounded-xl border border-brand-line bg-brand-card px-3 py-2" />
+                </label>}
+                {!editingVenda && (quickPayment === 'PENDENTE' || quickPayment === 'PARCIAL') && <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-brand-muted">Previsão de pagamento (opcional)
+                    <input type="date" value={previsaoPagamento} onChange={event => setPrevisaoPagamento(event.target.value)} className="mt-1 block w-full rounded-xl border border-brand-line bg-brand-card px-3 py-2" />
+                  </label>
+                  <p className="text-xs font-semibold text-brand-chocolate">Falta receber {fromCents(Math.max(0, toCents(carrinhoCalculado.valorTotal) - toCents(received))).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                </div>}
+
+                {editingVenda && <div className="border-t border-brand-line pt-3">
+                  <label htmlFor="venda-valor-recebido" className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Valor já recebido (R$)</label>
+                  <div className="flex flex-wrap gap-2">
+                    <input id="venda-valor-recebido" type="number" min="0" max={carrinhoCalculado.valorTotal} step="0.01" value={valorRecebido} onChange={event => {
+                      const value = event.target.value === '' ? '' : Number(event.target.value);
+                      setValorRecebido(value);
+                      if (statusVenda === 'PAGO' && (value === '' || value < carrinhoCalculado.valorTotal)) setStatusVenda('AGUARDANDO_PAGAMENTO');
+                    }} placeholder="0,00 — ainda não recebido" className="min-w-0 flex-1 px-3 py-2 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none" />
+                    <button type="button" onClick={() => setValorRecebido(carrinhoCalculado.valorTotal)} className="px-3 py-2 rounded-xl border border-brand-line bg-brand-card text-xs font-semibold text-brand-chocolate cursor-pointer">Recebi tudo</button>
+                  </div>
+                  <p className="text-[11px] text-brand-muted mt-1">Em branco ou zero significa que ainda não recebeu. Entregar a venda não confirma pagamento.</p>
+                  {valorRecebido !== '' && <p className="text-xs font-semibold text-brand-chocolate mt-2">Falta receber: {Math.max(0, carrinhoCalculado.valorTotal - valorRecebido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
+                  <div className="mt-2"><PaymentBadge sale={{ status: statusVenda, valorTotal: carrinhoCalculado.valorTotal, valorRecebido: valorRecebido === '' ? 0 : valorRecebido }} /></div>
+                  <label className="mt-3 block max-w-xs text-[10px] font-bold text-brand-muted uppercase">
+                    Previsão de pagamento (opcional)
+                    <input type="date" value={previsaoPagamento} onChange={e => setPrevisaoPagamento(e.target.value)} className="mt-1 w-full min-w-0 px-3 py-2 rounded-xl bg-brand-card border border-brand-line text-xs text-brand-chocolate" />
+                  </label>
+                  {hasNewReceipt && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-semibold text-brand-chocolate">Ao salvar, registrar {Math.max(0, Number(valorRecebido) - (previousReceived ?? 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} no histórico como novo recebimento.</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label className="text-[10px] font-bold text-brand-muted uppercase">Data e hora do recebimento
+                          <input type="datetime-local" required value={dataPagamento} onChange={e => setDataPagamento(e.target.value)} className="mt-1 w-full min-w-0 px-3 py-2 rounded-xl bg-brand-card border border-brand-line text-xs text-brand-chocolate" />
+                        </label>
+                        <label className="text-[10px] font-bold text-brand-muted uppercase">Forma deste recebimento
+                          <select value={formaRecebimento} onChange={e => setFormaRecebimento(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-xl bg-brand-card border border-brand-line text-xs text-brand-chocolate">
+                            <option value="PIX">PIX</option><option value="CARTAO_CREDITO">Cartão de crédito</option><option value="CARTAO_DEBITO">Cartão de débito</option><option value="DINHEIRO">Dinheiro</option><option value="LINK_PAGAMENTO">Link de pagamento</option>
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-3"><PaymentHistory sale={editingVenda} /></div>
+                </div>}
+                {/* Resumo Final da Venda */}
+                <div className="pt-3 border-t border-brand-line flex flex-wrap items-center justify-between gap-3">
+                  {editingVenda && <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    <span className="text-[11px] text-brand-muted">Subtotal: R$ {carrinhoCalculado.subtotal.toFixed(2)}</span>
+                    <span className="text-[11px] text-brand-chocolate font-bold">Lucro: +R$ {carrinhoCalculado.lucroTotal.toFixed(2)}</span>
+                  </div>}
+                  <div className="ml-auto text-right">
+                    <span className="text-xs text-brand-muted mr-2">Valor Total a Pagar:</span>
+                    <span className="text-lg font-bold text-brand-chocolate">
+                      {carrinhoCalculado.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <details onInvalid={event => { event.currentTarget.open = true; }} className="rounded-2xl border border-brand-line bg-brand-card p-4">
+                <summary className="cursor-pointer text-xs font-semibold text-brand-chocolate">Mais detalhes</summary>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {!editingVenda && <label className="block text-xs font-semibold text-brand-muted sm:col-span-2">Status da entrega
+                    <select value={statusVenda} onChange={event => setStatusVenda(event.target.value)} className="mt-1 block w-full rounded-xl border border-brand-line bg-brand-card px-3 py-2">
+                      <option value="AUTO">Padrão da venda</option>
+                      <option value="PREPARANDO">Preparando</option>
+                      <option value="ENVIADO">Enviado</option>
+                      <option value="ENTREGUE">Entregue</option>
+                    </select>
+                  </label>}
+                  {!editingVenda && hasNewReceipt && <label className="block text-xs font-semibold text-brand-muted sm:col-span-2">Data e hora do recebimento
+                    <input type="datetime-local" value={dataPagamento} onChange={event => setDataPagamento(event.target.value)} className="mt-1 block w-full rounded-xl border border-brand-line bg-brand-card px-3 py-2" />
+                  </label>}
                   <div>
                     <label className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Desconto (R$)</label>
                     <input
@@ -864,65 +975,19 @@ export default function VendasView({ data }: Props) {
                     />
                   </div>
                 </div>
-
-                <div className="border-t border-brand-line pt-3">
-                  <label htmlFor="venda-valor-recebido" className="block text-[10px] font-bold text-brand-muted uppercase mb-1">Valor já recebido (R$)</label>
-                  <div className="flex flex-wrap gap-2">
-                    <input id="venda-valor-recebido" type="number" min="0" max={carrinhoCalculado.valorTotal} step="0.01" value={valorRecebido} onChange={event => {
-                      const value = event.target.value === '' ? '' : Number(event.target.value);
-                      setValorRecebido(value);
-                      if (statusVenda === 'PAGO' && (value === '' || value < carrinhoCalculado.valorTotal)) setStatusVenda('AGUARDANDO_PAGAMENTO');
-                    }} placeholder="0,00 — ainda não recebido" className="min-w-0 flex-1 px-3 py-2 bg-brand-card text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none" />
-                    <button type="button" onClick={() => setValorRecebido(carrinhoCalculado.valorTotal)} className="px-3 py-2 rounded-xl border border-brand-line bg-brand-card text-xs font-semibold text-brand-chocolate cursor-pointer">Recebi tudo</button>
-                  </div>
-                  <p className="text-[11px] text-brand-muted mt-1">Em branco ou zero significa que ainda não recebeu. Entregar a venda não confirma pagamento.</p>
-                  {valorRecebido !== '' && <p className="text-xs font-semibold text-brand-chocolate mt-2">Falta receber: {Math.max(0, carrinhoCalculado.valorTotal - valorRecebido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
-                  <div className="mt-2"><PaymentBadge sale={{ status: statusVenda, valorTotal: carrinhoCalculado.valorTotal, valorRecebido: valorRecebido === '' ? 0 : valorRecebido }} /></div>
-                  <label className="mt-3 block max-w-xs text-[10px] font-bold text-brand-muted uppercase">
-                    Previsão de pagamento (opcional)
-                    <input type="date" value={previsaoPagamento} onChange={e => setPrevisaoPagamento(e.target.value)} className="mt-1 w-full min-w-0 px-3 py-2 rounded-xl bg-brand-card border border-brand-line text-xs text-brand-chocolate" />
+                <div className="mt-3">
+                  <label className="block text-[10px] font-bold text-brand-muted uppercase">
+                    Observações / anotações
+                    <textarea
+                      value={observacoes}
+                      onChange={e => setObservacoes(e.target.value)}
+                      rows={3}
+                      placeholder="Informações adicionais sobre esta venda..."
+                      className="mt-1 w-full px-3 py-2 bg-brand-card text-xs normal-case font-normal text-brand-chocolate rounded-xl border border-brand-line outline-none focus:border-brand-caramel"
+                    />
                   </label>
-                  {hasNewReceipt && (
-                    <div className="mt-3 space-y-2">
-                      <p className="text-xs font-semibold text-brand-chocolate">Ao salvar, registrar {Math.max(0, Number(valorRecebido) - (previousReceived ?? 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} no histórico como novo recebimento.</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label className="text-[10px] font-bold text-brand-muted uppercase">Data e hora do recebimento
-                          <input type="datetime-local" required value={dataPagamento} onChange={e => setDataPagamento(e.target.value)} className="mt-1 w-full min-w-0 px-3 py-2 rounded-xl bg-brand-card border border-brand-line text-xs text-brand-chocolate" />
-                        </label>
-                        {editingVenda && <label className="text-[10px] font-bold text-brand-muted uppercase">Forma deste recebimento
-                          <select value={formaRecebimento} onChange={e => setFormaRecebimento(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-xl bg-brand-card border border-brand-line text-xs text-brand-chocolate">
-                            <option value="PIX">PIX</option><option value="CARTAO_CREDITO">Cartão de crédito</option><option value="CARTAO_DEBITO">Cartão de débito</option><option value="DINHEIRO">Dinheiro</option><option value="LINK_PAGAMENTO">Link de pagamento</option>
-                          </select>
-                        </label>}
-                      </div>
-                    </div>
-                  )}
-                  {editingVenda && <div className="mt-3"><PaymentHistory sale={editingVenda} /></div>}
                 </div>
-                {/* Resumo Final da Venda */}
-                <div className="pt-3 border-t border-brand-line flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    <span className="text-[11px] text-brand-muted">Subtotal: R$ {carrinhoCalculado.subtotal.toFixed(2)}</span>
-                    <span className="text-[11px] text-brand-chocolate font-bold">Lucro: +R$ {carrinhoCalculado.lucroTotal.toFixed(2)}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs text-brand-muted mr-2">Valor Total a Pagar:</span>
-                    <span className="text-lg font-bold text-brand-chocolate">
-                      {carrinhoCalculado.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <label className="block text-[10px] font-bold text-brand-muted uppercase">
-                Observações / anotações
-                <textarea
-                  value={observacoes}
-                  onChange={e => setObservacoes(e.target.value)}
-                  rows={3}
-                  placeholder="Informações adicionais sobre esta venda..."
-                  className="mt-1 w-full px-3 py-2 bg-brand-card text-xs normal-case font-normal text-brand-chocolate rounded-xl border border-brand-line outline-none focus:border-brand-caramel"
-                />
-              </label>
+              </details>
             </form>
 
               {/* BOTÕES */}

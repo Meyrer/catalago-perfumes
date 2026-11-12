@@ -32,6 +32,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Ellipsis,
   X,
   ExternalLink,
   Plus,
@@ -66,6 +68,8 @@ export default function AdminClient({ data }: AdminClientProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [moreMenuPreference, setMoreMenuPreference] = useState<boolean | null>(null);
+  const [quickSaleRequest, setQuickSaleRequest] = useState(0);
 
   useEffect(() => {
     if (!isMobileMenuOpen) return;
@@ -90,9 +94,16 @@ export default function AdminClient({ data }: AdminClientProps) {
 
   const handleSelectTab = (tab: AdminTab) => {
     setActiveTab(tab);
+    if (tab !== 'vendas') setQuickSaleRequest(0);
+    setMoreMenuPreference(null);
     localStorage.setItem('elegance_admin_tab', tab);
     setIsMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleQuickSale = () => {
+    handleSelectTab('vendas');
+    setQuickSaleRequest(request => request + 1);
   };
 
   // Contadores para Badges no Menu
@@ -121,44 +132,31 @@ export default function AdminClient({ data }: AdminClientProps) {
 
   const navGroups = [
     {
-      group: 'VISÃO GERAL',
+      id: 'principal',
       items: [
-        { id: 'dashboard' as AdminTab, label: 'Dashboard', icon: LayoutDashboard, badge: null }
+        { id: 'dashboard' as AdminTab, label: 'Dashboard', icon: LayoutDashboard, badge: null },
+        { id: 'vendas' as AdminTab, label: 'Vendas', icon: ShoppingBag, badge: pendingVendasCount > 0 ? pendingVendasCount : null, badgeColor: 'bg-brand-chocolate' },
+        { id: 'estoque' as AdminTab, label: 'Estoque', icon: Boxes, badge: lowStockCount > 0 ? lowStockCount : null, badgeColor: 'bg-brand-chocolate text-brand-cream' },
+        { id: 'encomendas' as AdminTab, label: 'Encomendas', icon: Clock, badge: pendingOrdersCount > 0 ? pendingOrdersCount : null, badgeColor: 'bg-brand-chocolate' },
+        { id: 'clientes' as AdminTab, label: 'Clientes', icon: Users, badge: null },
+        { id: 'financeiro' as AdminTab, label: 'Finanças', icon: DollarSign, badge: null }
       ]
     },
     {
-      group: 'OPERAÇÃO COMERCIAL',
-      items: [
-        { id: 'vendas' as AdminTab, label: 'Vendas & PDV', icon: ShoppingBag, badge: pendingVendasCount > 0 ? pendingVendasCount : null, badgeColor: 'bg-brand-chocolate' },
-        { id: 'encomendas' as AdminTab, label: 'Sob Encomenda', icon: Clock, badge: pendingOrdersCount > 0 ? pendingOrdersCount : null, badgeColor: 'bg-brand-chocolate' },
-        { id: 'clientes' as AdminTab, label: 'Clientes & CRM', icon: Users, badge: null }
-      ]
-    },
-    {
-      group: 'CATÁLOGO & ESTOQUE',
+      id: 'mais',
       items: [
         { id: 'produtos' as AdminTab, label: 'Produtos', icon: Package, badge: data.produtos.length, badgeColor: 'bg-brand-chocolate text-brand-cream' },
         { id: 'categorias' as AdminTab, label: 'Categorias', icon: Tags, badge: null },
-        { id: 'estoque' as AdminTab, label: 'Gestão de Estoque', icon: Boxes, badge: lowStockCount > 0 ? lowStockCount : null, badgeColor: 'bg-brand-chocolate text-brand-cream' },
-        { id: 'banners' as AdminTab, label: 'Banners Vitrine', icon: ImageIcon, badge: null }
-      ]
-    },
-    {
-      group: 'SUPRIMENTOS & FINANÇAS',
-      items: [
+        { id: 'banners' as AdminTab, label: 'Banners da vitrine', icon: ImageIcon, badge: null },
         { id: 'compras' as AdminTab, label: 'Compras & Importação', icon: Truck, badge: null },
         { id: 'fornecedores' as AdminTab, label: 'Fornecedores', icon: Building2, badge: null },
-        { id: 'financeiro' as AdminTab, label: 'DRE & Finanças', icon: DollarSign, badge: null },
-        { id: 'relatorios' as AdminTab, label: 'Relatórios & BI', icon: BarChart3, badge: null }
-      ]
-    },
-    {
-      group: 'SISTEMA',
-      items: [
+        { id: 'relatorios' as AdminTab, label: 'Relatórios', icon: BarChart3, badge: null },
         { id: 'configuracoes' as AdminTab, label: 'Configurações', icon: Settings, badge: null }
       ]
     }
   ];
+  const isMoreMenuOpen = moreMenuPreference ?? navGroups.some(group =>
+    group.id === 'mais' && group.items.some(item => item.id === activeTab));
 
   return (
     <div className="admin-app min-h-screen bg-brand-cream text-brand-chocolate flex flex-col antialiased selection:bg-brand-chocolate/20 selection:text-brand-muted">
@@ -215,15 +213,19 @@ export default function AdminClient({ data }: AdminClientProps) {
             </div>
 
             {/* ITENS DE NAVEGAÇÃO */}
-            <nav className="min-h-0 flex-1 p-3 space-y-6 overflow-y-auto scrollbar-thin scrollbar-thumb-brand-chocolate">
-              {navGroups.map((group, gIdx) => (
-                <div key={gIdx} className="space-y-1">
-                  {!isSidebarCollapsed && (
-                    <span className="admin-nav-group px-3 text-[10px] font-bold uppercase tracking-wider text-brand-rose-beige block mb-2 font-mono">
-                      {group.group}
-                    </span>
+            <nav aria-label="Menu administrativo" className="min-h-0 flex-1 p-3 overflow-y-auto scrollbar-thin scrollbar-thumb-brand-chocolate">
+              {navGroups.map(group => (
+                <div key={group.id} className="space-y-1">
+                  {group.id === 'mais' && (
+                    <button type="button" className={`admin-nav-item flex w-full items-center ${isSidebarCollapsed ? 'justify-center' : ''}`}
+                      aria-expanded={isMoreMenuOpen} aria-controls="admin-more-navigation"
+                      aria-label="Mais" title={isSidebarCollapsed ? 'Mais' : undefined}
+                      onClick={() => setMoreMenuPreference(!isMoreMenuOpen)}>
+                      <Ellipsis size={18} aria-hidden="true" />
+                      {!isSidebarCollapsed && <><span className="flex-1 text-left">Mais</span><ChevronDown size={15} className={isMoreMenuOpen ? 'rotate-180' : undefined} aria-hidden="true" /></>}
+                    </button>
                   )}
-
+                  <div id={group.id === 'mais' ? 'admin-more-navigation' : undefined} hidden={group.id === 'mais' && !isMoreMenuOpen} className="space-y-1">
                   {group.items.map(item => {
                     const Icon = item.icon;
                     const isActive = activeTab === item.id;
@@ -231,8 +233,10 @@ export default function AdminClient({ data }: AdminClientProps) {
                     return (
                       <button
                         key={item.id}
+                        type="button"
                         onClick={() => handleSelectTab(item.id)}
                         aria-current={isActive ? "page" : undefined}
+                        aria-label={isSidebarCollapsed ? item.label : undefined}
                         title={isSidebarCollapsed ? item.label : undefined}
                         className={`
                           admin-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all relative group
@@ -267,6 +271,7 @@ export default function AdminClient({ data }: AdminClientProps) {
                       </button>
                     );
                   })}
+                  </div>
                 </div>
               ))}
             </nav>
@@ -354,7 +359,7 @@ export default function AdminClient({ data }: AdminClientProps) {
             {/* BOTÕES DE AÇÃO RÁPIDA NO TOPO */}
             <div className="flex flex-wrap items-center gap-2.5">
               <button
-                onClick={() => handleSelectTab('vendas')}
+                onClick={handleQuickSale}
                 className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-semibold shadow-xs transition-all active:scale-95"
               >
                 <Plus size={14} />
@@ -386,12 +391,12 @@ export default function AdminClient({ data }: AdminClientProps) {
             {activeTab === 'dashboard' && (
               <DashboardView 
                 data={data} 
-                onNavigate={(tab) => handleSelectTab(tab as AdminTab)} 
+                onNavigate={tab => tab === 'vendas' ? handleQuickSale() : handleSelectTab(tab as AdminTab)}
               />
             )}
 
             {activeTab === 'vendas' && (
-              <VendasView data={data} />
+              <VendasView key={quickSaleRequest} data={data} openQuickSale={quickSaleRequest > 0} />
             )}
 
             {activeTab === 'encomendas' && (

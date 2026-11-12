@@ -23,6 +23,7 @@ export async function createSale(data: {
   clienteId?: number;
   nomeClienteAvulso?: string;
   contatoClienteAvulso?: string;
+  cadastrarCliente?: boolean;
   itens: Array<{ produtoId: number; quantidade: number; precoUnitario: number }>;
   formaPagamento: string;
   desconto?: number;
@@ -35,6 +36,8 @@ export async function createSale(data: {
   formaRecebimento?: string;
 }, actor: string) {
   const { clienteId, nomeClienteAvulso, contatoClienteAvulso, itens, formaPagamento, observacoes } = data;
+  const novoCliente = !clienteId && data.cadastrarCliente === true;
+  if (novoCliente && !nomeClienteAvulso?.trim()) throw new Error('Informe o nome do cliente.');
   const desconto = data.desconto ?? 0;
   const frete = data.frete ?? 0;
   const previsaoPagamento = parsePaymentForecast(data.previsaoPagamento);
@@ -91,6 +94,9 @@ export async function createSale(data: {
   const numeroVenda = `VND-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 8).toUpperCase()}`;
 
   const venda = await prisma.$transaction(async (tx) => {
+  const clienteDaVenda = novoCliente ? await tx.cliente.create({ data: {
+    nome: nomeClienteAvulso!.trim(), whatsapp: contatoClienteAvulso?.trim() || null,
+  } }) : null;
   const custosFIFO = new Map<number, { unitCost: number; allocations: FifoLot[] }>();
   for (const item of itens) {
     const product = produtosMap.get(item.produtoId)!;
@@ -103,9 +109,9 @@ export async function createSale(data: {
   const venda = await tx.venda.create({
     data: {
       numero: numeroVenda,
-      clienteId: clienteId || null,
-      nomeClienteAvulso: nomeClienteAvulso || null,
-      contatoClienteAvulso: contatoClienteAvulso || null,
+      clienteId: clienteDaVenda?.id ?? (clienteId || null),
+      nomeClienteAvulso: clienteDaVenda ? null : nomeClienteAvulso || null,
+      contatoClienteAvulso: clienteDaVenda ? null : contatoClienteAvulso || null,
       status,
       formaPagamento,
       subtotal,
@@ -317,6 +323,37 @@ export async function updateSale(vendaId: number, data: Parameters<typeof create
 
   revalidatePath('/admin');
   revalidatePath('/');
+  return { success: true };
+}
+
+export async function registerSaleReceipt(vendaId: number, data: {
+  updatedAt: string;
+  valor: number;
+  formaPagamento: string;
+  dataPagamento: string;
+}, actor: string) {
+  const receiptCents = toCents(data.valor);
+  if (!Number.isSafeInteger(vendaId) || vendaId < 1 || !Number.isSafeInteger(receiptCents) || receiptCents <= 0) {
+    throw new Error('Informe um valor de recebimento válido.');
+  }
+
+  await prisma.$transaction(async tx => {
+    const venda = await tx.venda.findUnique({ where: { id: vendaId } });
+    if (!venda || venda.status === 'CANCELADO') throw new Error('Venda indisponível para recebimento.');
+    if (venda.updatedAt.toISOString() !== data.updatedAt) throw new Error('A venda foi alterada. Atualize os dados antes de registrar o recebimento.');
+
+    const valorRecebido = validateSaleReceivedAmount(
+      fromCents(toCents(getSaleReceivedAmount(venda)) + receiptCents), venda.valorTotal,
+    );
+    const quitada = toCents(valorRecebido) === toCents(venda.valorTotal);
+    await tx.venda.update({ where: { id: vendaId }, data: {
+      valorRecebido,
+      historicoPagamentos: recordSalePayment(venda, valorRecebido, data.formaPagamento, actor, data.dataPagamento),
+      ...(quitada && venda.status === 'AGUARDANDO_PAGAMENTO' ? { status: 'PAGO' } : {}),
+    } });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  revalidatePath('/admin');
   return { success: true };
 }
 
