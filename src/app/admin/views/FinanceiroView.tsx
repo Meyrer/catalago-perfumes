@@ -211,7 +211,7 @@ function CashSummary({ overview }: { overview: FinanceOverview }) {
   const { cash, range } = overview;
   const cards = [
     { label: 'Saldo em caixa', value: cash.balance, color: cash.balance < 0 ? 'text-red-700' : 'text-[var(--admin-primary)]' },
-    { label: 'Vendas recebidas', value: cash.received, color: 'text-emerald-700', detail: cash.receivedFromRegistration > 0 ? `${amount(cash.receivedFromRegistration)} pela data de cadastro` : undefined },
+    { label: 'Vendas recebidas', value: cash.received, color: 'text-emerald-700' },
     { label: 'Saídas', value: cash.outgoing, color: 'text-red-700' },
     { label: 'Aportes dos sócios', value: cash.contributions, color: 'text-brand-deep' },
   ];
@@ -222,7 +222,6 @@ function CashSummary({ overview }: { overview: FinanceOverview }) {
         <p className={`mt-1 text-lg font-bold tabular-nums sm:text-2xl ${card.color}`}>{amount(card.value)}</p>
         <p className="mt-1 text-xs text-brand-muted">{card.label === 'Saldo em caixa' ? range.end ? `Acumulado até ${formatDay(range.end)}` : 'Saldo acumulado' : 'No período'}
           {card.label === 'Saldo em caixa' && overview.pending.count > 0 && <span className="block">Inclui valores sem data</span>}
-          {card.detail && <span className="block">{card.detail}</span>}
         </p>
       </div>)}
     </div>
