@@ -4,7 +4,7 @@ import { getExpensePartnerFunding, getPartnerContributions, getPurchasePartnerFu
 import type { AdminCompra, AdminVenda, ERPData } from '@/app/admin/types';
 
 export const financePeriods = [
-  ['mes', 'Este mês'], ['todos', 'Todo o período'],
+  ['hoje', 'Hoje'], ['7d', '7 dias'], ['mes', 'Este mês'], ['todos', 'Todo o período'],
 ] as const;
 
 export const movementTypes = [
@@ -56,6 +56,12 @@ function dayOf(value: Date | string | null) {
 
 function dateRange(period: FinancePeriod, today: string) {
   if (period === 'todos') return { start: '', end: '' };
+  if (period === 'hoje') return { start: today, end: today };
+  if (period === '7d') {
+    const first = new Date(today);
+    first.setUTCDate(first.getUTCDate() - 6);
+    return { start: first.toISOString().slice(0, 10), end: today };
+  }
   const start = today.slice(0, 7) + '-01';
   const last = new Date(start);
   last.setUTCMonth(last.getUTCMonth() + 1, 0);
