@@ -63,7 +63,7 @@ A listagem também aceita `q` (busca por nome, marca ou SKU), `marca` (nome comp
 | GET | `/purchases?month=2026-11&fornecedorId=1&status=RECEBIDO&limit=100&cursor=1` | Lista compras com fornecedor, itens e produtos. |
 | POST | `/purchases` | Registra uma compra usando as regras de cálculo e estoque do painel. |
 | GET | `/purchases/{id}` | Consulta a compra completa. |
-| PATCH | `/purchases/{id}` | Edita `observacoes`, `data` e status sem recebimento. `updatedAt` é opcional para controle de concorrência. |
+| PATCH | `/purchases/{id}` | Edita `observacoes`, `data`, `fornecedorId` e status sem recebimento. `updatedAt` é opcional para controle de concorrência. |
 | POST | `/purchases/{id}/receive` | Recebe e dá entrada no estoque. Repetir em compra já recebida não duplica as unidades. Não recebe compra cancelada. |
 | DELETE | `/purchases/{id}?confirm=true` | Exclui somente compra ainda não recebida. Compra recebida retorna `409` para preservar o histórico do estoque. |
 
@@ -87,7 +87,9 @@ Exemplo de registro:
 
 `status: "RECEBIDO"` no cadastro dá entrada imediata no estoque e atualiza os custos. **Não use para registrar novamente mercadoria cuja entrada já ocorreu**: esse endpoint não concilia compras retroativas com movimentos preexistentes. Para uma compra pendente, use `/receive` apenas quando a mercadoria chegar. O PATCH não altera itens ou custos e não cancela/reabre compras recebidas. Despesas registradas separadamente no DRE não devem ser repetidas no frete da compra.
 
-Em POST ou PATCH, `pagamentoCaixa: { "valor": 1610, "data": "2026-11-10" }` registra a saída efetiva em reais, limitada ao custo da compra. Envie o PATCH do pagamento separadamente dos campos de status, data da compra e observações. `null` remove o lançamento. O valor é descontado no resumo por recebimentos e fica fora das despesas do DRE.
+`fornecedorId` aceita o ID de um fornecedor cadastrado ou `null` para remover o vínculo. Também pode ser corrigido após o recebimento, sem movimentar estoque ou caixa.
+
+Em POST ou PATCH, `pagamentoCaixa: { "valor": 1610, "data": "2026-11-10" }` registra a saída efetiva em reais, limitada ao custo da compra. Envie o PATCH do pagamento separadamente dos demais campos. `null` remove o lançamento. O valor é descontado no resumo por recebimentos e fica fora das despesas do DRE.
 
 ## Aportes dos sócios
 
