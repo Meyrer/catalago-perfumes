@@ -594,6 +594,18 @@ export async function createVendaAction(data: Parameters<typeof createSale>[0]) 
   return createSale(data, session.name);
 }
 
+export async function converterEncomendaAction(data: Parameters<typeof createSale>[0], conversion: NonNullable<Parameters<typeof createSale>[2]>) {
+  const session = await requireAdminAuth();
+  if (!conversion) return { success: false, error: 'Encomenda inválida.' };
+  try {
+    await createSale(data, session.name, conversion);
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error && error.constructor === Error ? error.message : 'Não foi possível converter a encomenda. Atualize os dados e tente novamente.';
+    return { success: false, error: message };
+  }
+}
+
 export async function updateVendaAction(vendaId: number, data: Parameters<typeof updateSale>[1]) {
   const session = await requireAdminAuth();
   return updateSale(vendaId, data, session.name);
@@ -626,17 +638,19 @@ export async function createEncomendaAction(data: Parameters<typeof createCustom
 export async function updateEncomendaStatusAction(encomendaId: number, status: string) {
   await requireAdminAuth();
   if (!['SOLICITACAO_RECEBIDA', 'AGUARDANDO_PAGAMENTO', 'PEDIDO_REALIZADO', 'EM_TRANSITO', 'RECEBIDO', 'PRONTO_ENTREGA', 'FINALIZADO', 'CANCELADO'].includes(status)) throw new Error('Status da encomenda inválido.');
-  await prisma.encomenda.update({
-    where: { id: encomendaId },
+  const updated = await prisma.encomenda.updateMany({
+    where: { id: encomendaId, vendaId: null },
     data: { status }
   });
+  if (!updated.count) throw new Error('Encomenda indisponível ou já vinculada a uma venda.');
   revalidatePath('/admin');
   return { success: true };
 }
 
 export async function deleteEncomendaAction(encomendaId: number) {
   await requireAdminAuth();
-  await prisma.encomenda.delete({ where: { id: encomendaId } });
+  const deleted = await prisma.encomenda.deleteMany({ where: { id: encomendaId, vendaId: null } });
+  if (!deleted.count) throw new Error('Encomenda indisponível ou já vinculada a uma venda.');
   revalidatePath('/admin');
 }
 

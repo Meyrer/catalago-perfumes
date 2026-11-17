@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import type { ERPData, AdminVenda, AdminProduto } from '../types';
+import type { ERPData, AdminEncomenda, AdminVenda, AdminProduto } from '../types';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
 import { getSalePaymentHistory, getSalePaymentStatus, getSaleReceivedAmount, summarizeSalePayments } from '@/lib/sale-payment';
 import { fromCents, toCents } from '@/lib/money';
@@ -11,11 +11,13 @@ import {
   X, Loader2, DollarSign, Calendar, User, Truck, 
   CreditCard, ChevronRight, Eye, AlertCircle, Pencil, Trash2
 } from 'lucide-react';
-import { createVendaAction, updateVendaStatusAction, deleteVendaAction } from '../../actions';
+import { converterEncomendaAction, createVendaAction, updateVendaStatusAction, deleteVendaAction } from '../../actions';
 
 type Props = {
   data: ERPData;
   openQuickSale?: boolean;
+  orderForSale?: AdminEncomenda | null;
+  onReturnToOrders: () => void;
 };
 
 function PaymentBadge({ sale }: { sale: Parameters<typeof getSalePaymentStatus>[0] }) {
@@ -61,8 +63,9 @@ function PaymentForecast({ date }: { date: Date }) {
   return <>Previsão de pagamento <time dateTime={forecast.toISOString().slice(0, 10)}>{forecast.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</time></>;
 }
 
-export default function VendasView({ data, openQuickSale = false }: Props) {
+export default function VendasView({ data, openQuickSale = false, orderForSale = null, onReturnToOrders }: Props) {
   const { vendas, produtos, clientes, user } = data;
+  const orderDeposit = fromCents(toCents(orderForSale?.valorAdiantamento ?? 0));
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
@@ -89,12 +92,20 @@ export default function VendasView({ data, openQuickSale = false }: Props) {
   const [statusVenda, setStatusVenda] = useState('AUTO');
   const [desconto, setDesconto] = useState<number>(0);
   const [frete, setFrete] = useState<number>(0);
-  const [observacoes, setObservacoes] = useState('');
-  const [valorRecebido, setValorRecebido] = useState<number | ''>(0);
+  const [observacoes, setObservacoes] = useState(orderForSale?.observacoes ?? '');
+  const [valorRecebido, setValorRecebido] = useState<number | ''>(orderDeposit);
   const [previsaoPagamento, setPrevisaoPagamento] = useState('');
   const [dataPagamento, setDataPagamento] = useState(localPaymentDate);
   const [formaRecebimento, setFormaRecebimento] = useState('PIX');
-  const [cartItens, setCartItens] = useState<Array<{ produtoId: number; quantidade: number; precoUnitario: number }>>([]);
+  const [cartItens, setCartItens] = useState<Array<{ produtoId: number; quantidade: number; precoUnitario: number }>>(() => {
+    if (!orderForSale?.produtoId) return [];
+    const produto = produtos.find(item => item.id === orderForSale.produtoId);
+    return [{
+      produtoId: orderForSale.produtoId,
+      quantidade: orderForSale.quantidade,
+      precoUnitario: (orderForSale.quantidade === 1 ? orderForSale.precoEstimado : null) || produto?.precoVista || 0,
+    }];
+  });
   const [productSearch, setProductSearch] = useState('');
   const [showAllProducts, setShowAllProducts] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -149,7 +160,7 @@ export default function VendasView({ data, openQuickSale = false }: Props) {
     return { subtotal, custoTotal, valorTotal, lucroTotal, itensDetalhados };
   }, [cartItens, produtos, desconto, frete, editingVenda, statusVenda]);
 
-  const previousReceived = editingVenda ? getSaleReceivedAmount(editingVenda) : 0;
+  const previousReceived = editingVenda ? getSaleReceivedAmount(editingVenda) : orderDeposit;
   const received = editingVenda ? Number(valorRecebido)
     : quickPayment === 'PAGO' ? carrinhoCalculado.valorTotal
     : quickPayment === 'PARCIAL' ? Number(valorRecebido) : 0;
@@ -242,12 +253,16 @@ export default function VendasView({ data, openQuickSale = false }: Props) {
     }
     if (!editingVenda) {
       if (!quickPayment) { setFormError('Selecione a situação do pagamento.'); return; }
-      if ((quickPayment !== 'PAGO' || cadastrarCliente) && !clienteId && !nomeAvulso.trim()) {
+      if (!orderForSale && (quickPayment !== 'PAGO' || cadastrarCliente) && !clienteId && !nomeAvulso.trim()) {
         setFormError('Selecione ou informe o nome do cliente.');
         return;
       }
       if (quickPayment === 'PARCIAL' && (toCents(received) <= 0 || toCents(received) >= toCents(carrinhoCalculado.valorTotal))) {
         setFormError('O pagamento parcial deve ser maior que zero e menor que o total da venda.');
+        return;
+      }
+      if (orderForSale && toCents(received) < toCents(previousReceived)) {
+        setFormError('Inclua o sinal no total já recebido. Se ainda houver saldo em aberto, escolha Parcial.');
         return;
       }
     }
@@ -290,18 +305,30 @@ export default function VendasView({ data, openQuickSale = false }: Props) {
         if (!response.ok || !result?.success) {
           throw new Error(result?.error || 'Não foi possível salvar a venda. Os dados preenchidos foram mantidos; tente novamente.');
         }
+      } else if (orderForSale) {
+        const result = await converterEncomendaAction(payload, {
+          id: orderForSale.id,
+          updatedAt: new Date(orderForSale.updatedAt).toISOString(),
+        });
+        if (!result.success) throw new Error(result.error);
       } else {
         await createVendaAction(payload);
       }
 
       setFeedback(editingVenda ? 'Venda atualizada com sucesso e estoque ajustado!' : 'Venda registrada com sucesso e estoque atualizado!');
       setIsNewVendaOpen(false);
+      if (orderForSale) onReturnToOrders();
       window.location.reload();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao processar venda.';
       setFormError(msg);
       setIsSubmitting(false);
     }
+  };
+
+  const closeSale = () => {
+    if (orderForSale) onReturnToOrders();
+    else setIsNewVendaOpen(false);
   };
 
   const handleUpdateStatus = async (vendaId: number, newStatus: string) => {
@@ -595,10 +622,10 @@ export default function VendasView({ data, openQuickSale = false }: Props) {
 
             <div className="flex shrink-0 items-center justify-between gap-3 p-4 sm:px-6 sm:py-5 border-b border-brand-line">
               <div className="min-w-0">
-                <h3 id="nova-venda-title" className="text-xl font-serif font-bold text-brand-chocolate">{editingVenda ? `Editar Venda / Pedido ${editingVenda.numero}` : 'Venda rápida'}</h3>
-                <p className="text-xs text-brand-muted">{editingVenda ? 'Atualize os dados do pedido e ajuste o estoque automaticamente' : 'Venda direta com baixa automática de estoque'}</p>
+                <h3 id="nova-venda-title" className="text-xl font-serif font-bold text-brand-chocolate">{orderForSale ? 'Transformar encomenda em venda' : editingVenda ? `Editar Venda / Pedido ${editingVenda.numero}` : 'Venda rápida'}</h3>
+                <p className="text-xs text-brand-muted">{orderForSale ? orderForSale.numero : editingVenda ? 'Atualize os dados do pedido e ajuste o estoque automaticamente' : 'Venda direta com baixa automática de estoque'}</p>
               </div>
-              <button aria-label="Fechar venda" onClick={() => setIsNewVendaOpen(false)} className="shrink-0 p-2 text-brand-muted hover:text-brand-chocolate rounded-full hover:bg-brand-nude cursor-pointer">
+              <button type="button" disabled={isSubmitting} aria-label="Fechar venda" onClick={closeSale} className="shrink-0 p-2 text-brand-muted hover:text-brand-chocolate rounded-full hover:bg-brand-nude cursor-pointer">
                 <X size={20} />
               </button>
             </div>
@@ -623,6 +650,25 @@ export default function VendasView({ data, openQuickSale = false }: Props) {
                   />
                 </label>
               )}
+              {orderForSale ? (
+                <div className="space-y-3 rounded-2xl border border-brand-line bg-brand-cream p-4">
+                  <div>
+                    <p className="text-xs text-brand-muted">Cliente</p>
+                    <p className="text-sm font-semibold">{orderForSale.cliente?.nome || orderForSale.nomeCliente}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-brand-muted">Perfume e quantidade</p>
+                    <p className="text-sm font-semibold">{orderForSale.quantidade} × {orderForSale.produto?.nome ?? orderForSale.descricaoItem}</p>
+                  </div>
+                  {orderForSale.precoEstimado != null && <p className="text-xs text-brand-muted">Preço informado na encomenda {orderForSale.precoEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
+                  {previousReceived > 0 && <p className="text-xs font-semibold">Sinal registrado {previousReceived.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}
+                  <label className="block max-w-xs text-xs font-semibold text-brand-muted">Preço unitário (R$)
+                    <input type="number" min="0.01" step="0.01" required value={cartItens[0]?.precoUnitario || ''}
+                      onChange={event => setCartItens(items => items.map(item => ({ ...item, precoUnitario: Number(event.target.value) })))}
+                      className="mt-1 block w-full rounded-xl border border-brand-line bg-brand-card px-3 py-2" />
+                  </label>
+                </div>
+              ) : <>
               {/* SELEÇÃO DE CLIENTE */}
               <div className="p-4 rounded-2xl bg-brand-cream border border-brand-line space-y-3">
                 <span className="text-[11px] font-bold text-brand-muted uppercase tracking-wider block">1. Identificação do Cliente</span>
@@ -827,6 +873,7 @@ export default function VendasView({ data, openQuickSale = false }: Props) {
                 )}
               </div>
 
+              </>}
               {/* PAGAMENTO E TOTAIS */}
               <div className="p-4 rounded-2xl bg-brand-nude border border-brand-line space-y-3">
                 <span className="text-[11px] font-bold text-brand-muted uppercase tracking-wider block">3. Pagamento</span>
@@ -837,7 +884,7 @@ export default function VendasView({ data, openQuickSale = false }: Props) {
                       <option value="" disabled>Selecione</option>
                       <option value="PAGO">Pago</option>
                       <option value="PARCIAL">Parcial</option>
-                      <option value="PENDENTE">A receber</option>
+                  <option value="PENDENTE" disabled={Boolean(orderForSale && previousReceived > 0)}>A receber</option>
                     </select>
                   </label>}
                   {(editingVenda || quickPayment === 'PAGO' || quickPayment === 'PARCIAL') && <div>
@@ -879,8 +926,8 @@ export default function VendasView({ data, openQuickSale = false }: Props) {
                   </div>}
                 </div>
 
-                {!editingVenda && quickPayment === 'PARCIAL' && <label className="block text-xs font-semibold text-brand-muted">Valor recebido (R$)
-                  <input type="number" min="0.01" max={fromCents(toCents(carrinhoCalculado.valorTotal) - 1)} step="0.01" required value={valorRecebido} onChange={event => setValorRecebido(event.target.value === '' ? '' : Number(event.target.value))} className="mt-1 block w-full rounded-xl border border-brand-line bg-brand-card px-3 py-2" />
+                {!editingVenda && quickPayment === 'PARCIAL' && <label className="block text-xs font-semibold text-brand-muted">{orderForSale && previousReceived > 0 ? 'Total recebido, incluindo o sinal (R$)' : 'Valor recebido (R$)'}
+                  <input type="number" min={Math.max(0.01, previousReceived)} max={fromCents(toCents(carrinhoCalculado.valorTotal) - 1)} step="0.01" required value={valorRecebido} onChange={event => setValorRecebido(event.target.value === '' ? '' : Number(event.target.value))} className="mt-1 block w-full rounded-xl border border-brand-line bg-brand-card px-3 py-2" />
                 </label>}
                 {!editingVenda && (quickPayment === 'PENDENTE' || quickPayment === 'PARCIAL') && <div className="space-y-2">
                   <label className="block text-xs font-semibold text-brand-muted">Previsão de pagamento (opcional)
@@ -940,7 +987,7 @@ export default function VendasView({ data, openQuickSale = false }: Props) {
               <details onInvalid={event => { event.currentTarget.open = true; }} className="rounded-2xl border border-brand-line bg-brand-card p-4">
                 <summary className="cursor-pointer text-xs font-semibold text-brand-chocolate">Mais detalhes</summary>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {!editingVenda && <label className="block text-xs font-semibold text-brand-muted sm:col-span-2">Status da entrega
+                  {!editingVenda && !orderForSale && <label className="block text-xs font-semibold text-brand-muted sm:col-span-2">Status da entrega
                     <select value={statusVenda} onChange={event => setStatusVenda(event.target.value)} className="mt-1 block w-full rounded-xl border border-brand-line bg-brand-card px-3 py-2">
                       <option value="AUTO">Padrão da venda</option>
                       <option value="PREPARANDO">Preparando</option>
@@ -995,7 +1042,7 @@ export default function VendasView({ data, openQuickSale = false }: Props) {
                 <button
                   type="button"
                   disabled={isSubmitting}
-                  onClick={() => setIsNewVendaOpen(false)}
+                  onClick={closeSale}
                   className="px-4 py-2.5 rounded-xl border border-brand-line text-xs font-bold text-brand-muted hover:bg-brand-nude transition-colors cursor-pointer"
                 >
                   Cancelar
@@ -1012,7 +1059,7 @@ export default function VendasView({ data, openQuickSale = false }: Props) {
                       <span>Processando Venda...</span>
                     </>
                   ) : (
-                    <span>{editingVenda ? 'Salvar Alterações' : 'Concluir Venda & Baixar Estoque'}</span>
+                    <span>{orderForSale ? 'Confirmar entrega e venda' : editingVenda ? 'Salvar Alterações' : 'Concluir Venda & Baixar Estoque'}</span>
                   )}
                 </button>
               </div>
