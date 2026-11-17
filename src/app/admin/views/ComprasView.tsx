@@ -4,6 +4,8 @@ import { useState, useMemo } from 'react';
 import type { ERPData, AdminCompra } from '../types';
 import MonthFilter, { getDayKey, getMonthKey, isInMonth } from '../MonthFilter';
 import { roundMoney } from '@/lib/money';
+import { getPartnerContributions, getPurchasePartnerFunding } from '@/lib/partner-funding';
+import PartnerFundingBadge from './PartnerFundingBadge';
 import { 
   Truck, Plus, Search, CheckCircle2, Clock, 
   X, Loader2, DollarSign, Calendar, ArrowDownRight, 
@@ -37,7 +39,8 @@ function PurchaseCashFields({ value, onChange, total }: {
 }
 
 export default function ComprasView({ data, initialSearch = '' }: Props) {
-  const { compras, fornecedores, produtos } = data;
+  const { compras, fornecedores, produtos, despesas } = data;
+  const contributions = useMemo(() => getPartnerContributions(despesas), [despesas]);
 
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [selectedMonth, setSelectedMonth] = useState(() => initialSearch ? '' : getMonthKey());
@@ -394,6 +397,7 @@ export default function ComprasView({ data, initialSearch = '' }: Props) {
 
                       <td className="py-3 px-3 font-semibold text-brand-chocolate">
                         {c.fornecedor?.nome || 'Importação Direta'}
+                        <PartnerFundingBadge funding={getPurchasePartnerFunding(contributions, c)} />
                         {c.fornecedor?.cidadePais && (
                           <span className="text-[10px] text-brand-muted block">{c.fornecedor.cidadePais}</span>
                         )}
@@ -728,6 +732,7 @@ export default function ComprasView({ data, initialSearch = '' }: Props) {
               <div className="p-3 rounded-xl bg-brand-cream border border-brand-line">
                 <span className="text-[10px] font-bold text-brand-muted uppercase block">Fornecedor</span>
                 <p className="font-bold text-brand-chocolate">{viewingCompra.fornecedor?.nome || 'Importação Direta'}</p>
+                <PartnerFundingBadge funding={getPurchasePartnerFunding(contributions, viewingCompra)} explain />
                 <p className="text-[11px] text-brand-muted mt-0.5">{viewingCompra.fornecedor?.contato || ''}</p>
               </div>
 

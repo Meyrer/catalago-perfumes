@@ -8,6 +8,7 @@ import { fromCents, toCents } from '@/lib/money';
 import { getDayKey } from '../MonthFilter';
 import type { ERPData } from '../types';
 import ReceivablesView from './ReceivablesView';
+import PartnerFundingBadge from './PartnerFundingBadge';
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' });
@@ -188,6 +189,7 @@ export default function FinanceiroView({ data, onOpenSource }: { data: ERPData; 
       )}
 
       {selected && <FinanceDialog title={selected.description} onClose={() => setSelected(undefined)} busy={deleting}>
+        <PartnerFundingBadge funding={selected.partnerFunding} explain />
         <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
           <Detail label="Valor" value={amount(selected.cents)} />
           <Detail label={selected.type === 'compra' && selected.cash === 0 ? 'Data da compra' : 'Data'} value={formatDay(selected.day)} />
@@ -268,6 +270,7 @@ function MovementTable({ rows, onOpen }: { rows: Movement[]; onOpen: (row: Movem
           <td className="px-3 py-2 sm:px-4"><span className="font-semibold">{row.description}</span>
             {row.name && <span className="block text-xs text-brand-muted">{row.name}</span>}
             {row.status && <span className="block text-xs text-brand-muted">{row.status}</span>}
+            <PartnerFundingBadge funding={row.partnerFunding} />
             <span className="block text-xs text-brand-muted md:hidden">{labels[row.type]}<span className="sm:hidden"> · {formatDay(row.day)}</span></span>
           </td>
           <td className="hidden px-3 py-2 md:table-cell"><span className={`rounded-md px-2 py-1 text-xs font-semibold ${row.cash < 0 ? 'bg-red-50 text-red-700' : row.cash > 0 && row.type !== 'aporte' ? 'bg-emerald-50 text-emerald-700' : 'bg-brand-nude text-brand-muted'}`}>{labels[row.type]}</span></td>
