@@ -39,8 +39,6 @@ const optionLabel = (options: string[][], value: string) => options.find(([key])
 export default function FinanceiroView({ data, onOpenSource }: { data: ERPData; onOpenSource: OpenSource }) {
   const [tab, setTab] = useState<Tab>('resumo');
   const [period, setPeriod] = useState<FinanceFilter['period']>('mes');
-  const [start, setStart] = useState('');
-  const [end, setEnd] = useState('');
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [type, setType] = useState<FinanceFilter['type']>('');
@@ -56,15 +54,12 @@ export default function FinanceiroView({ data, onOpenSource }: { data: ERPData; 
 
   const listing = tab === 'movimentacoes';
   const filter: FinanceFilter = {
-    period, start: period === 'personalizado' ? start : '', end: period === 'personalizado' ? end : '',
+    period,
     query: listing ? query : '', type: listing ? type : '', scope: listing ? scope : 'recent', page: listing ? page : 1,
   };
   const params = new URLSearchParams({ ...filter, page: String(filter.page) }).toString();
   const request = `${params}&refresh=${refresh}`;
-  const invalidRange = Boolean(filter.start && filter.end && filter.start > filter.end);
-
   useEffect(() => {
-    if (invalidRange) return;
     const controller = new AbortController();
     void (async () => {
       try {
@@ -77,10 +72,10 @@ export default function FinanceiroView({ data, onOpenSource }: { data: ERPData; 
       }
     })();
     return () => controller.abort();
-  }, [request, invalidRange, vendas, compras, despesas]);
+  }, [request, vendas, compras, despesas]);
 
-  const overview = !invalidRange && response?.request === request ? response.data : undefined;
-  const error = invalidRange ? 'A data inicial deve ser anterior ou igual à data final.' : response?.request === request ? response.error : undefined;
+  const overview = response?.request === request ? response.data : undefined;
+  const error = response?.request === request ? response.error : undefined;
   const selectedEntry = selected && ['despesa', 'entrada'].includes(selected.type)
     ? despesas.find(entry => entry.id === selected.sourceId) : undefined;
 
@@ -128,19 +123,11 @@ export default function FinanceiroView({ data, onOpenSource }: { data: ERPData; 
         <span aria-hidden="true" className="mr-1 text-sm font-semibold">Período</span>
         {financePeriods.map(([id, label]) => <button type="button" key={id} aria-pressed={period === id} className={`${button} ${period === id ? 'border-brand-chocolate bg-brand-nude text-brand-chocolate' : ''}`}
           onClick={() => { setPeriod(id); setPage(1); }}>{label}</button>)}
-        {period === 'personalizado' && (
-          <div className="flex w-full flex-wrap items-end gap-2">
-            <label className="text-xs text-brand-muted">De<input type="date" className={`mt-1 block ${field}`} value={start} max={end || undefined} onChange={event => { setStart(event.target.value); setPage(1); }} /></label>
-            <label className="text-xs text-brand-muted">Até<input type="date" className={`mt-1 block ${field}`} value={end} min={start || undefined} onChange={event => { setEnd(event.target.value); setPage(1); }} /></label>
-            {!start && !end && <span className="pb-2 text-xs text-brand-muted">Todo o histórico</span>}
-            {(start || end) && <button type="button" className={button} onClick={() => { setStart(''); setEnd(''); setPage(1); }}>Limpar datas</button>}
-          </div>
-        )}
       </fieldset>
       {feedback && <div className="flex items-center justify-between gap-2 rounded-lg border border-brand-line bg-brand-card px-4"><p role="status">{feedback}</p>
         <button type="button" aria-label="Fechar mensagem" onClick={() => setFeedback('')}><X size={16} /></button></div>}
       {error && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-red-800">
-        <p>{error}</p>{!invalidRange && <button type="button" className={button} onClick={() => setRefresh(value => value + 1)}>Tentar novamente</button>}
+        <p>{error}</p><button type="button" className={button} onClick={() => setRefresh(value => value + 1)}>Tentar novamente</button>
       </div>}
 
       {tab === 'resumo' && overview && <CashSummary overview={overview} />}
@@ -192,7 +179,7 @@ export default function FinanceiroView({ data, onOpenSource }: { data: ERPData; 
         <PartnerFundingBadge funding={selected.partnerFunding} explain />
         <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
           <Detail label="Valor" value={amount(selected.cents)} />
-          <Detail label={selected.type === 'compra' && selected.cash === 0 ? 'Data da compra' : 'Data'} value={formatDay(selected.day)} />
+          <Detail label={selected.dateFromRegistration ? 'Data de cadastro (referência)' : selected.type === 'compra' && selected.cash === 0 ? 'Data da compra' : 'Data'} value={formatDay(selected.day)} />
           <Detail label="Código" value={selected.code} />
           <Detail label="Tipo" value={labels[selected.type]} />
           {selected.name && <Detail label={selected.type === 'venda' ? 'Cliente' : 'Fornecedor'} value={selected.name} />}
@@ -224,7 +211,7 @@ function CashSummary({ overview }: { overview: FinanceOverview }) {
   const { cash, range } = overview;
   const cards = [
     { label: 'Saldo em caixa', value: cash.balance, color: cash.balance < 0 ? 'text-red-700' : 'text-[var(--admin-primary)]' },
-    { label: 'Vendas recebidas', value: cash.received, color: 'text-emerald-700' },
+    { label: 'Vendas recebidas', value: cash.received, color: 'text-emerald-700', detail: cash.receivedFromRegistration > 0 ? `${amount(cash.receivedFromRegistration)} pela data de cadastro` : undefined },
     { label: 'Saídas', value: cash.outgoing, color: 'text-red-700' },
     { label: 'Aportes dos sócios', value: cash.contributions, color: 'text-brand-deep' },
   ];
@@ -235,6 +222,7 @@ function CashSummary({ overview }: { overview: FinanceOverview }) {
         <p className={`mt-1 text-lg font-bold tabular-nums sm:text-2xl ${card.color}`}>{amount(card.value)}</p>
         <p className="mt-1 text-xs text-brand-muted">{card.label === 'Saldo em caixa' ? range.end ? `Acumulado até ${formatDay(range.end)}` : 'Saldo acumulado' : 'No período'}
           {card.label === 'Saldo em caixa' && overview.pending.count > 0 && <span className="block">Inclui valores sem data</span>}
+          {card.detail && <span className="block">{card.detail}</span>}
         </p>
       </div>)}
     </div>
@@ -266,12 +254,14 @@ function MovementTable({ rows, onOpen }: { rows: Movement[]; onOpen: (row: Movem
       {rows.map(row => {
         const color = row.cash < 0 ? 'text-red-700' : row.cash > 0 && row.type !== 'aporte' ? 'text-emerald-700' : 'text-brand-deep';
         return <tr key={row.key} className="hover:bg-brand-cream">
-          <td className="hidden px-4 py-2 tabular-nums text-brand-muted sm:table-cell">{formatDay(row.day)}</td>
+          <td className="hidden px-4 py-2 tabular-nums text-brand-muted sm:table-cell">{formatDay(row.day)}
+            {row.dateFromRegistration && <span className="block text-xs">Data de cadastro</span>}
+          </td>
           <td className="px-3 py-2 sm:px-4"><span className="font-semibold">{row.description}</span>
             {row.name && <span className="block text-xs text-brand-muted">{row.name}</span>}
             {row.status && <span className="block text-xs text-brand-muted">{row.status}</span>}
             <PartnerFundingBadge funding={row.partnerFunding} />
-            <span className="block text-xs text-brand-muted md:hidden">{labels[row.type]}<span className="sm:hidden"> · {formatDay(row.day)}</span></span>
+            <span className="block text-xs text-brand-muted md:hidden">{labels[row.type]}<span className="sm:hidden"> · {formatDay(row.day)}{row.dateFromRegistration && ' (cadastro)'}</span></span>
           </td>
           <td className="hidden px-3 py-2 md:table-cell"><span className={`rounded-md px-2 py-1 text-xs font-semibold ${row.cash < 0 ? 'bg-red-50 text-red-700' : row.cash > 0 && row.type !== 'aporte' ? 'bg-emerald-50 text-emerald-700' : 'bg-brand-nude text-brand-muted'}`}>{labels[row.type]}</span></td>
           <td className={`px-2 py-2 text-right font-semibold tabular-nums sm:px-3 ${color}`}>{amount(row.cash || row.cents)}</td>
