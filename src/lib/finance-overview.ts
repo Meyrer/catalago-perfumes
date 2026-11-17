@@ -4,8 +4,7 @@ import { getExpensePartnerFunding, getPartnerContributions, getPurchasePartnerFu
 import type { AdminCompra, AdminVenda, ERPData } from '@/app/admin/types';
 
 export const financePeriods = [
-  ['hoje', 'Hoje'], ['7d', '7 dias'], ['30d', '30 dias'],
-  ['mes', 'Este mês'], ['personalizado', 'Personalizado'],
+  ['mes', 'Este mês'], ['todos', 'Todo o período'],
 ] as const;
 
 export const movementTypes = [
@@ -17,8 +16,6 @@ export type FinancePeriod = typeof financePeriods[number][0];
 export type MovementType = typeof movementTypes[number][0];
 export type FinanceFilter = {
   period: FinancePeriod;
-  start: string;
-  end: string;
   query: string;
   type: MovementType | '';
   scope: 'recent' | 'period' | 'pending';
@@ -32,6 +29,7 @@ export type Movement = {
   description: string;
   date: string | null;
   day: string | null;
+  dateFromRegistration?: boolean;
   code: string;
   name?: string;
   method?: string | null;
@@ -43,7 +41,7 @@ export type Movement = {
   cash: number;
 };
 
-type FinanceSale = Pick<AdminVenda, 'id' | 'numero' | 'data' | 'status' | 'valorTotal' | 'valorRecebido' | 'historicoPagamentos' | 'nomeClienteAvulso' | 'custoTotal' | 'observacoes'>
+type FinanceSale = Pick<AdminVenda, 'id' | 'numero' | 'data' | 'createdAt' | 'status' | 'valorTotal' | 'valorRecebido' | 'historicoPagamentos' | 'nomeClienteAvulso' | 'custoTotal' | 'observacoes'>
   & { cliente: { nome: string } | null };
 type FinancePurchase = Pick<AdminCompra, 'id' | 'numero' | 'data' | 'status' | 'valorPagoCaixa' | 'dataPagamentoCaixa' | 'custoTotalBRL' | 'observacoes'>
   & { fornecedor: { nome: string } | null };
@@ -56,29 +54,12 @@ function dayOf(value: Date | string | null) {
   return Number.isFinite(date.getTime()) ? saoPauloDay.format(date) : null;
 }
 
-function isDay(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(value);
-  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}
-
-function dateRange({ period, start, end }: Pick<FinanceFilter, 'period' | 'start' | 'end'>, today: string) {
-  if (period === 'personalizado') {
-    if ((start && !isDay(start)) || (end && !isDay(end)) || (start && end && start > end)) {
-      throw new Error('Selecione um intervalo de datas válido.');
-    }
-    return { start, end };
-  }
-  if (period === 'hoje') return { start: today, end: today };
-  if (period === 'mes') {
-    const start = today.slice(0, 7) + '-01';
-    const last = new Date(start);
-    last.setUTCMonth(last.getUTCMonth() + 1, 0);
-    return { start, end: last.toISOString().slice(0, 10) };
-  }
-  const date = new Date(today);
-  date.setUTCDate(date.getUTCDate() - (period === '7d' ? 6 : 29));
-  return { start: date.toISOString().slice(0, 10), end: today };
+function dateRange(period: FinancePeriod, today: string) {
+  if (period === 'todos') return { start: '', end: '' };
+  const start = today.slice(0, 7) + '-01';
+  const last = new Date(start);
+  last.setUTCMonth(last.getUTCMonth() + 1, 0);
+  return { start, end: last.toISOString().slice(0, 10) };
 }
 
 function normalizeSearch(value: string) {
@@ -88,7 +69,7 @@ function normalizeSearch(value: string) {
 export function buildFinanceOverview(
   sales: FinanceSale[], purchases: FinancePurchase[], entries: ERPData['despesas'], filter: FinanceFilter, now = new Date(),
 ) {
-  const range = dateRange(filter, saoPauloDay.format(now));
+  const range = dateRange(filter.period, saoPauloDay.format(now));
   const inPeriod = (day: string | null) => day !== null && (!range.start || day >= range.start) && (!range.end || day <= range.end);
   const salesInPeriod = sales.filter(sale => sale.status !== 'CANCELADO' && inPeriod(dayOf(sale.data)));
   const sold = summarizeSalePayments(salesInPeriod);
@@ -104,6 +85,7 @@ export function buildFinanceOverview(
     const inSalePeriod = sale.status !== 'CANCELADO' && inPeriod(dayOf(sale.data));
     for (const [index, entry] of getSalePaymentAllocations(sale).entries()) {
       const cents = toCents(entry.valor);
+      const date = entry.data ?? sale.createdAt.toISOString();
       if (inSalePeriod) {
         const method = entry.formaPagamento || 'Sem forma informada';
         paymentMethods.set(method, (paymentMethods.get(method) ?? 0) + cents);
@@ -111,7 +93,7 @@ export function buildFinanceOverview(
       movements.push({
         key: `venda-${sale.id}-${index}`, sourceId: sale.id, type: 'venda',
         description: 'Recebimento de venda', name, code: sale.numero, method: entry.formaPagamento,
-        notes: sale.observacoes, date: entry.data, day: dayOf(entry.data), cents, cash: cents,
+        notes: sale.observacoes, date, day: dayOf(date), dateFromRegistration: entry.data === null, cents, cash: cents,
         status: sale.status === 'CANCELADO' ? 'Venda cancelada' : undefined,
       });
     }
@@ -150,9 +132,10 @@ export function buildFinanceOverview(
   );
   const opening = range.start ? movements.reduce((sum, row) => row.day && row.day < range.start ? sum + row.cash : sum, 0) : 0;
   const undatedNet = pending.reduce((sum, row) => sum + row.cash, 0);
-  const totals = { opening, received: 0, expenses: 0, purchases: 0, contributions: 0, other: 0 };
+  const totals = { opening, received: 0, receivedFromRegistration: 0, expenses: 0, purchases: 0, contributions: 0, other: 0 };
   for (const row of dated) {
     if (row.type === 'venda') totals.received += row.cash;
+    if (row.dateFromRegistration) totals.receivedFromRegistration += row.cash;
     if (row.type === 'compra') totals.purchases -= row.cash;
     if (row.type === 'despesa') totals.expenses -= row.cash;
     if (row.type === 'aporte') totals.contributions += row.cash;
