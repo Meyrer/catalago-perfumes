@@ -155,7 +155,7 @@ export default function EstoqueView({ data }: Props) {
       </div>
 
       {/* CARDS RESUMO DO ESTOQUE */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
         <div className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs">
           <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
             Total Físico em Estoque
@@ -192,17 +192,6 @@ export default function EstoqueView({ data }: Props) {
           </span>
         </div>
 
-        <div className="bg-brand-card p-4 rounded-2xl border border-brand-line bg-brand-nude/30 shadow-xs">
-          <span className="text-[10px] font-bold text-brand-chocolate uppercase tracking-wider block mb-1">
-            Alertas de Reposição
-          </span>
-          <p className="text-xl sm:text-2xl font-bold text-brand-chocolate">
-            {produtos.filter(p => p.tipoDisponibilidade === 'PRONTA_ENTREGA' && p.quantidade <= (p.estoqueMinimo ?? 2)).length} <span className="text-xs font-medium text-brand-chocolate">itens</span>
-          </p>
-          <span className="text-[11px] text-brand-chocolate font-medium block mt-1">
-            Estoque baixo ou zerado
-          </span>
-        </div>
       </div>
 
       {/* ========================================================= */}
