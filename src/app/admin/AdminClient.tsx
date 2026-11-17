@@ -66,6 +66,7 @@ export type AdminTab =
 
 export default function AdminClient({ data }: AdminClientProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+  const [financeSourceCode, setFinanceSourceCode] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [moreMenuPreference, setMoreMenuPreference] = useState<boolean | null>(null);
@@ -95,6 +96,7 @@ export default function AdminClient({ data }: AdminClientProps) {
 
   const handleSelectTab = (tab: AdminTab) => {
     setActiveTab(tab);
+    setFinanceSourceCode('');
     setOrderForSale(null);
     if (tab !== 'vendas' || orderForSale) setQuickSaleRequest(0);
     setMoreMenuPreference(null);
@@ -365,7 +367,7 @@ export default function AdminClient({ data }: AdminClientProps) {
                   {activeTab === 'banners' && 'Vitrine & Banners Promocionais'}
                   {activeTab === 'compras' && 'Compras & Importação de Mercadorias'}
                   {activeTab === 'fornecedores' && 'Cadastro de Fornecedores'}
-                  {activeTab === 'financeiro' && 'Demonstrativo Financeiro (DRE)'}
+                  {activeTab === 'financeiro' && 'Financeiro'}
                   {activeTab === 'relatorios' && 'Relatórios Gerenciais & Exportação'}
                   {activeTab === 'configuracoes' && 'Configurações do Sistema & Acesso'}
                 </h2>
@@ -412,7 +414,7 @@ export default function AdminClient({ data }: AdminClientProps) {
             )}
 
             {activeTab === 'vendas' && (
-              <VendasView key={quickSaleRequest} data={data} openQuickSale={quickSaleRequest > 0}
+              <VendasView key={quickSaleRequest} data={data} initialSearch={financeSourceCode} openQuickSale={quickSaleRequest > 0}
                 orderForSale={orderForSale} onReturnToOrders={() => handleSelectTab('encomendas')} />
             )}
 
@@ -444,7 +446,7 @@ export default function AdminClient({ data }: AdminClientProps) {
             )}
 
             {activeTab === 'compras' && (
-              <ComprasView data={data} />
+              <ComprasView data={data} initialSearch={financeSourceCode} />
             )}
 
             {activeTab === 'fornecedores' && (
@@ -452,7 +454,10 @@ export default function AdminClient({ data }: AdminClientProps) {
             )}
 
             {activeTab === 'financeiro' && (
-              <FinanceiroView data={data} />
+              <FinanceiroView data={data} onOpenSource={(tab, code) => {
+                handleSelectTab(tab);
+                setFinanceSourceCode(code);
+              }} />
             )}
 
             {activeTab === 'relatorios' && (

@@ -13,6 +13,7 @@ import { createCompraAction, receberCompraAction, marcarCompraEmTransitoAction, 
 
 type Props = {
   data: ERPData;
+  initialSearch?: string;
 };
 
 function PurchaseCashFields({ value, onChange, total }: {
@@ -35,11 +36,11 @@ function PurchaseCashFields({ value, onChange, total }: {
   );
 }
 
-export default function ComprasView({ data }: Props) {
+export default function ComprasView({ data, initialSearch = '' }: Props) {
   const { compras, fornecedores, produtos } = data;
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [selectedMonth, setSelectedMonth] = useState(() => initialSearch ? '' : getMonthKey());
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterFornecedor, setFilterFornecedor] = useState('ALL');
 

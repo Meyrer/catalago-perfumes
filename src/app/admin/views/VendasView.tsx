@@ -16,6 +16,7 @@ import { converterEncomendaAction, createVendaAction, updateVendaStatusAction, d
 
 type Props = {
   data: ERPData;
+  initialSearch?: string;
   openQuickSale?: boolean;
   orderForSale?: AdminEncomenda | null;
   onReturnToOrders: () => void;
@@ -73,13 +74,13 @@ function PaymentForecast({ date }: { date: Date }) {
   return <>Previsão de pagamento <time dateTime={forecast.toISOString().slice(0, 10)}>{forecast.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</time></>;
 }
 
-export default function VendasView({ data, openQuickSale = false, orderForSale = null, onReturnToOrders }: Props) {
+export default function VendasView({ data, initialSearch = '', openQuickSale = false, orderForSale = null, onReturnToOrders }: Props) {
   const router = useRouter();
   const { vendas, produtos, clientes, user } = data;
   const orderDeposit = fromCents(toCents(orderForSale?.valorAdiantamento ?? 0));
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [selectedMonth, setSelectedMonth] = useState(() => initialSearch ? '' : getMonthKey());
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedFormaPagamento, setSelectedFormaPagamento] = useState<string>('ALL');
   const [selectedPayment, setSelectedPayment] = useState('ALL');
