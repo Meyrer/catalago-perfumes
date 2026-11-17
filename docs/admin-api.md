@@ -63,7 +63,7 @@ A listagem também aceita `q` (busca por nome, marca ou SKU), `marca` (nome comp
 | GET | `/purchases?month=2026-11&fornecedorId=1&status=RECEBIDO&limit=100&cursor=1` | Lista compras com fornecedor, itens e produtos. |
 | POST | `/purchases` | Registra uma compra usando as regras de cálculo e estoque do painel. |
 | GET | `/purchases/{id}` | Consulta a compra completa. |
-| PATCH | `/purchases/{id}` | Edita `observacoes`, `data`, `fornecedorId` e status sem recebimento. `updatedAt` é opcional para controle de concorrência. |
+| PATCH | `/purchases/{id}` | Edita `observacoes`, `data`, `fornecedorId` e status sem recebimento. Para corrigir a moeda, envie apenas `moeda`, `cotacao` e `updatedAt`. |
 | POST | `/purchases/{id}/receive` | Recebe e dá entrada no estoque. Repetir em compra já recebida não duplica as unidades. Não recebe compra cancelada. |
 | DELETE | `/purchases/{id}?confirm=true` | Exclui somente compra ainda não recebida. Compra recebida retorna `409` para preservar o histórico do estoque. |
 
@@ -85,7 +85,7 @@ Exemplo de registro:
 
 `itens` é obrigatório e aceita de 1 a 200 produtos distintos. Quantidades são inteiros positivos; valores unitários e custos são números não negativos. Moedas: `BRL`, `USD`, `EUR`. `BRL` usa cotação 1; moeda estrangeira exige cotação positiva. Status: `PENDENTE`, `EM_TRANSITO`, `RECEBIDO`, `CANCELADO`; padrão da API: `PENDENTE`. Frete, taxas e outros custos são em BRL e entram no rateio da compra.
 
-`status: "RECEBIDO"` no cadastro dá entrada imediata no estoque e atualiza os custos. **Não use para registrar novamente mercadoria cuja entrada já ocorreu**: esse endpoint não concilia compras retroativas com movimentos preexistentes. Para uma compra pendente, use `/receive` apenas quando a mercadoria chegar. O PATCH não altera itens ou custos e não cancela/reabre compras recebidas. Despesas registradas separadamente no DRE não devem ser repetidas no frete da compra.
+`status: "RECEBIDO"` no cadastro dá entrada imediata no estoque e atualiza os custos. **Não use para registrar novamente mercadoria cuja entrada já ocorreu**: esse endpoint não concilia compras retroativas com movimentos preexistentes. Para uma compra pendente, use `/receive` apenas quando a mercadoria chegar. O PATCH de moeda converte os valores unitários na nova moeda e exige que os valores em reais sejam preservados. Estoque, custos em reais e caixa não são alterados. O PATCH não cancela/reabre compras recebidas. Despesas registradas separadamente no DRE não devem ser repetidas no frete da compra.
 
 `fornecedorId` aceita o ID de um fornecedor cadastrado ou `null` para remover o vínculo. Também pode ser corrigido após o recebimento, sem movimentar estoque ou caixa.
 
