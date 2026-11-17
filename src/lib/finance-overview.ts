@@ -1,6 +1,6 @@
 import { getSalePaymentAllocations, summarizeSalePayments } from '@/lib/sale-payment';
 import { toCents } from '@/lib/money';
-import { getExpensePartnerFunding, getPartnerContributions, getPurchasePartnerFunding, type PartnerFunding } from '@/lib/partner-funding';
+import { getExpensePartnerFunding, getPartnerContributionAmount, getPartnerContributions, getPurchasePartnerFunding, type PartnerFunding } from '@/lib/partner-funding';
 import type { AdminCompra, AdminVenda, ERPData } from '@/app/admin/types';
 
 export const financePeriods = [
@@ -138,17 +138,22 @@ export function buildFinanceOverview(
   );
   const opening = range.start ? movements.reduce((sum, row) => row.day && row.day < range.start ? sum + row.cash : sum, 0) : 0;
   const undatedNet = pending.reduce((sum, row) => sum + row.cash, 0);
-  const totals = { opening, received: 0, receivedFromRegistration: 0, expenses: 0, purchases: 0, contributions: 0, other: 0 };
+  const totals = { opening, received: 0, receivedFromRegistration: 0, expenses: 0, purchases: 0, contributions: 0, other: 0, coveredByPartners: 0 };
   for (const row of dated) {
     if (row.type === 'venda') totals.received += row.cash;
     if (row.dateFromRegistration) totals.receivedFromRegistration += row.cash;
-    if (row.type === 'compra') totals.purchases -= row.cash;
-    if (row.type === 'despesa') totals.expenses -= row.cash;
+    if (row.type === 'compra' || row.type === 'despesa') {
+      const payment = -row.cash;
+      const covered = Math.min(Math.max(0, payment), getPartnerContributionAmount(partnerContributions, row.type, row.sourceId));
+      totals.coveredByPartners += covered;
+      totals[row.type === 'compra' ? 'purchases' : 'expenses'] += payment - covered;
+    }
     if (row.type === 'aporte') totals.contributions += row.cash;
     if (row.type === 'entrada') totals.other += row.cash;
   }
   const outgoing = totals.expenses + totals.purchases;
-  const net = totals.received + totals.contributions + totals.other - outgoing;
+  // O saldo continua seguindo as datas dos aportes e dos pagamentos registrados.
+  const net = totals.received + totals.contributions + totals.other - outgoing - totals.coveredByPartners;
   const text = normalizeSearch(filter.query.trim());
   const filtered = (filter.scope === 'pending' ? pending : dated).filter(row =>
     (!filter.type || row.type === filter.type) && (!text || [row.description, row.name, row.code, `#${row.sourceId}`, row.notes].some(value => value && normalizeSearch(value).includes(text))),
