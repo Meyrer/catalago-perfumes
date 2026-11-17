@@ -1,8 +1,9 @@
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import { apiError, apiSuccess, isAdminApiAuthorized, optionalText, positiveId, readJsonObject } from "@/lib/admin-api";
-import { dateField, enumField, erpError, idField, purchaseStatuses } from "@/lib/admin-erp-api";
+import { dateField, enumField, erpError, idField, numberField, purchaseStatuses } from "@/lib/admin-erp-api";
 import { updatePurchaseCashPayment } from "@/lib/erp-operations";
+import { roundMoney, toCents } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ id: string }> };
@@ -25,6 +26,38 @@ export async function PATCH(request: Request, context: Context) {
   const body = await readJsonObject(request);
   if (!body) return apiError("Envie um objeto JSON válido.", 400);
   try {
+    if ("moeda" in body || "cotacao" in body) {
+      if (Object.keys(body).some(key => !["moeda", "cotacao", "updatedAt"].includes(key))) return apiError("Edite a moeda e a cotação separadamente.", 400);
+      const moeda = enumField(body.moeda, "moeda", ["BRL", "USD", "EUR"]);
+      const cotacao = numberField(body.cotacao, "cotacao", Number.MIN_VALUE);
+      if (moeda === "BRL" && cotacao !== 1) return apiError("Compras em BRL devem usar cotacao=1.", 400);
+      const updatedAt = dateField(body.updatedAt, "updatedAt");
+      const result = await prisma.$transaction(async tx => {
+        const compra = await tx.compra.findUnique({ where: { id }, include: { itens: true } });
+        if (!compra) return { ok: false, error: "Compra não encontrada.", status: 404 } as const;
+        if (compra.updatedAt.getTime() !== updatedAt.getTime()) return { ok: false, error: "A compra foi alterada. Consulte novamente antes de editar.", status: 409 } as const;
+
+        const itens = compra.itens.map(item => ({
+          ...item,
+          novoValor: roundMoney(item.valorUnitarioMoeda * compra.cotacao / cotacao),
+        }));
+        const subtotalAnterior = itens.reduce((sum, item) => sum + toCents(item.valorUnitarioMoeda) * item.quantidade, 0);
+        const novoSubtotal = itens.reduce((sum, item) => sum + toCents(item.novoValor) * item.quantidade, 0);
+        if (itens.some(item => toCents(item.novoValor * cotacao) !== toCents(item.valorUnitarioMoeda * compra.cotacao)) ||
+            toCents(novoSubtotal * cotacao / 100) !== toCents(subtotalAnterior * compra.cotacao / 100)) {
+          return { ok: false, error: "A conversão deve preservar os valores dos itens e o subtotal em reais.", status: 409 } as const;
+        }
+        const changed = await tx.compra.updateMany({ where: { id, updatedAt }, data: { moeda, cotacao } });
+        if (changed.count !== 1) return { ok: false, error: "A compra foi alterada. Consulte novamente antes de editar.", status: 409 } as const;
+        for (const item of itens) {
+          await tx.compraItem.update({ where: { id: item.id }, data: { valorUnitarioMoeda: item.novoValor } });
+        }
+        return { ok: true, data: await tx.compra.findUniqueOrThrow({ where: { id }, include }) } as const;
+      });
+      if (!result.ok) return apiError(result.error, result.status);
+      revalidatePath("/admin");
+      return apiSuccess(result.data);
+    }
     if ("pagamentoCaixa" in body) {
       if (Object.keys(body).some(key => !["pagamentoCaixa", "updatedAt"].includes(key))) return apiError("Edite o pagamento do caixa separadamente.", 400);
       await updatePurchaseCashPayment(id, body.pagamentoCaixa, body.updatedAt === undefined ? undefined : dateField(body.updatedAt, "updatedAt"));
