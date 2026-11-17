@@ -16,12 +16,16 @@ const paymentMethods = [
 export default function ReceivablesView({ vendas }: { vendas: AdminVenda[] }) {
   const [selected, setSelected] = useState<{ sale: AdminVenda; balance: number } | null>(null);
   const [feedback, setFeedback] = useState('');
+  const [page, setPage] = useState(1);
   const openSales = vendas.filter(sale => sale.status !== 'CANCELADO')
     .map(sale => ({ sale, cents: toCents(sale.valorTotal) - toCents(getSaleReceivedAmount(sale)) }))
     .filter(entry => entry.cents > 0)
     .sort((a, b) => (a.sale.previsaoPagamento ? new Date(a.sale.previsaoPagamento).getTime() : Infinity)
       - (b.sale.previsaoPagamento ? new Date(b.sale.previsaoPagamento).getTime() : Infinity)
       || new Date(a.sale.data).getTime() - new Date(b.sale.data).getTime());
+  const pageCount = Math.max(1, Math.ceil(openSales.length / 15));
+  const currentPage = Math.min(page, pageCount);
+  const visibleSales = openSales.slice((currentPage - 1) * 15, currentPage * 15);
 
   return (
     <section className="space-y-4" aria-label="Vendas a receber">
@@ -38,7 +42,7 @@ export default function ReceivablesView({ vendas }: { vendas: AdminVenda[] }) {
           </thead>
           <tbody className="divide-y divide-brand-line">
             {openSales.length === 0 && <tr><td colSpan={5} className="p-5 text-center text-brand-muted">Nenhuma venda a receber.</td></tr>}
-            {openSales.map(({ sale, cents }) => (
+            {visibleSales.map(({ sale, cents }) => (
               <tr key={sale.id}>
                 <td className="p-3 font-semibold">{sale.cliente?.nome || sale.nomeClienteAvulso || 'Cliente balcão'}{(sale.cliente?.whatsapp || sale.contatoClienteAvulso) && <span className="block text-xs font-normal text-brand-muted">{sale.cliente?.whatsapp || sale.contatoClienteAvulso}</span>}</td>
                 <td className="p-3 text-xs">{sale.numero}</td>
@@ -50,6 +54,11 @@ export default function ReceivablesView({ vendas }: { vendas: AdminVenda[] }) {
           </tbody>
         </table>
       </div>
+      {pageCount > 1 && <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-brand-muted">
+        <span>Página {currentPage} de {pageCount}</span>
+        <button type="button" onClick={() => setPage(currentPage - 1)} disabled={currentPage === 1} className="rounded-lg border border-brand-line bg-brand-card px-3 disabled:opacity-50">Anterior</button>
+        <button type="button" onClick={() => setPage(currentPage + 1)} disabled={currentPage === pageCount} className="rounded-lg border border-brand-line bg-brand-card px-3 disabled:opacity-50">Próxima</button>
+      </div>}
       {selected && <ReceiptDialog {...selected} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); setFeedback('Recebimento registrado.'); }} />}
     </section>
   );

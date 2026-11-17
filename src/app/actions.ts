@@ -876,7 +876,36 @@ export async function createDespesaAction(data: {
 
 export async function deleteDespesaAction(id: number) {
   await requireAdminAuth();
-  await prisma.despesaFinanceira.delete({ where: { id } });
+  await prisma.despesaFinanceira.delete({ where: { id, tipo: 'DESPESA' } });
+  revalidatePath('/admin');
+}
+
+export async function updateFinanceEntryAction(id: number, data: {
+  descricao: string;
+  valor: number;
+  data?: string;
+  categoria?: string;
+  formaPagamento?: string | null;
+  pago: boolean;
+  observacoes: string;
+}) {
+  await requireAdminAuth();
+  const entry = await prisma.despesaFinanceira.findFirst({ where: { id, tipo: { in: ['DESPESA', 'RECEITA_EXTRA'] } } });
+  if (!entry) throw new Error('Lançamento não disponível para edição.');
+  const cents = Number.isFinite(data.valor) ? toCents(data.valor) : 0;
+  const date = data.data ? new Date(data.data) : entry.data;
+  if (!data.descricao?.trim() || !Number.isSafeInteger(cents) || cents <= 0 || !Number.isFinite(date.getTime()) ||
+      typeof data.pago !== 'boolean' || typeof data.observacoes !== 'string') {
+    throw new Error('Confira a descrição, o valor e a data do lançamento.');
+  }
+  const { count } = await prisma.despesaFinanceira.updateMany({
+    where: { id, tipo: entry.tipo, valor: entry.valor, descricao: entry.descricao, data: entry.data,
+      categoria: entry.categoria, formaPagamento: entry.formaPagamento, pago: entry.pago, observacoes: entry.observacoes },
+    data: { descricao: data.descricao.trim(), valor: data.valor === entry.valor ? entry.valor : fromCents(cents),
+      data: date, pago: data.pago, observacoes: data.observacoes.trim() || null,
+      ...(entry.tipo === 'DESPESA' && { categoria: data.categoria || entry.categoria, formaPagamento: data.formaPagamento }) },
+  });
+  if (!count) throw new Error('O lançamento foi alterado. Abra novamente para editar.');
   revalidatePath('/admin');
 }
 
