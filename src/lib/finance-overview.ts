@@ -1,5 +1,6 @@
 import { getSalePaymentAllocations, summarizeSalePayments } from '@/lib/sale-payment';
 import { toCents } from '@/lib/money';
+import { getExpensePartnerFunding, getPartnerContributions, getPurchasePartnerFunding, type PartnerFunding } from '@/lib/partner-funding';
 import type { AdminCompra, AdminVenda, ERPData } from '@/app/admin/types';
 
 export const financePeriods = [
@@ -37,6 +38,7 @@ export type Movement = {
   notes?: string | null;
   category?: string;
   status?: string;
+  partnerFunding?: PartnerFunding;
   cents: number;
   cash: number;
 };
@@ -93,6 +95,7 @@ export function buildFinanceOverview(
   const cost = salesInPeriod.reduce((sum, sale) => sum + toCents(sale.custoTotal), 0);
   const expenses = entries.reduce((sum, entry) => entry.tipo === 'DESPESA' && inPeriod(dayOf(entry.data)) ? sum + toCents(entry.valor) : sum, 0);
   const paymentMethods = new Map<string, number>();
+  const partnerContributions = getPartnerContributions(entries);
 
   // The receipt allocations are the sole source of cash receipts from sales.
   const movements: Movement[] = [];
@@ -124,6 +127,7 @@ export function buildFinanceOverview(
       key: `compra-${purchase.id}`, sourceId: purchase.id, type: 'compra', description: 'Compra de mercadorias',
       name, code: purchase.numero, date, day, notes: purchase.observacoes,
       cents: payment || toCents(purchase.custoTotalBRL), cash: -payment,
+      partnerFunding: getPurchasePartnerFunding(partnerContributions, purchase),
       status: purchase.status === 'CANCELADO' ? 'Compra cancelada' : payment ? undefined : 'Sem saída registrada no caixa',
     });
   }
@@ -135,6 +139,7 @@ export function buildFinanceOverview(
       key: `${type}-${entry.id}`, sourceId: entry.id, type, description: linkedPurchase ? 'Aporte para compra de mercadorias' : entry.descricao,
       name: linkedPurchase?.fornecedor?.nome, code: linkedPurchase?.numero ?? `#${entry.id}`, category: entry.categoria,
       notes: entry.observacoes, method: entry.formaPagamento, date: entry.data.toISOString(), day: dayOf(entry.data),
+      partnerFunding: type === 'despesa' && entry.pago ? getExpensePartnerFunding(partnerContributions, entry.id, cents) : undefined,
       cents, cash: entry.pago ? (type === 'despesa' ? -cents : cents) : 0, status: entry.pago ? undefined : 'Em aberto',
     });
   }
