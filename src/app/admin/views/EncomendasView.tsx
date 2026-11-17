@@ -6,7 +6,7 @@ import type { ERPData, AdminEncomenda, AdminProduto } from '../types';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
 import { normalizeImageUrl } from '@/lib/image-url';
 import { getBrandCollectionNumber } from '@/lib/product-order';
-import { Clock, Download, Package, Plus, Search, MessageCircle, Pencil, X, Loader2 } from 'lucide-react';
+import { Check, Clock, Download, Package, Plus, Search, MessageCircle, Pencil, X, Loader2 } from 'lucide-react';
 import { createEncomendaAction, updateEncomendaStatusAction } from '../../actions';
 
 type Props = {
@@ -21,7 +21,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   EM_TRANSITO: { label: 'Em Trânsito Internacional', color: 'text-brand-chocolate', bg: 'bg-brand-nude', border: 'border-brand-line' },
   RECEBIDO: { label: 'Recebido na Loja', color: 'text-teal-800', bg: 'bg-teal-50', border: 'border-teal-300' },
   PRONTO_ENTREGA: { label: 'Pronto para Entrega', color: 'text-brand-chocolate', bg: 'bg-brand-nude', border: 'border-brand-line' },
-  FINALIZADO: { label: 'Finalizado / Entregue', color: 'text-brand-chocolate', bg: 'bg-brand-nude', border: 'border-brand-line' },
+  FINALIZADO: { label: 'Atendida', color: 'text-emerald-800', bg: 'bg-emerald-50', border: 'border-emerald-300' },
   CANCELADO: { label: 'Cancelado', color: 'text-brand-chocolate', bg: 'bg-brand-rose-beige', border: 'border-brand-terracotta' },
 };
 
@@ -382,9 +382,11 @@ export default function EncomendasView({ data, onConvertOrder }: Props) {
                 </tr>
               ) : (
                 filteredEncomendas.map((enc) => {
-                  const cfg = STATUS_CONFIG[enc.status] || STATUS_CONFIG.SOLICITACAO_RECEBIDA;
                   const linkedSale = data.vendas.find(sale => sale.encomendaId === enc.id || sale.id === enc.vendaId);
                   const converted = enc.vendaId !== null || Boolean(linkedSale);
+                  const saleCancelled = linkedSale?.status === 'CANCELADO';
+                  const status = saleCancelled ? 'CANCELADO' : linkedSale ? 'FINALIZADO' : enc.status;
+                  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.SOLICITACAO_RECEBIDA;
                   const readyToConvert = ['RECEBIDO', 'PRONTO_ENTREGA'].includes(enc.status) && !converted;
                   const photoUrl = normalizeImageUrl(enc.produto?.fotos[0]?.url);
                   const dataFormatada = new Date(enc.createdAt).toLocaleDateString('pt-BR', {
@@ -436,21 +438,26 @@ export default function EncomendasView({ data, onConvertOrder }: Props) {
                       </td>
 
                       <td className="py-3 px-3 text-center">
-                        <select
+                        {converted ? (
+                          <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+                            {status === 'FINALIZADO' && <Check size={14} aria-hidden="true" />}
+                            {saleCancelled ? 'Venda cancelada' : cfg.label}
+                          </span>
+                        ) : <select
                           value={enc.status}
-                          disabled={converted}
                           onChange={(e) => handleUpdateStatus(enc.id, e.target.value)}
                           className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border outline-none cursor-pointer ${cfg.bg} ${cfg.color} ${cfg.border}`}
                         >
                           {Object.entries(STATUS_CONFIG).map(([st, c]) => (
                             <option key={st} value={st}>{c.label}</option>
                           ))}
-                        </select>
+                        </select>}
                       </td>
 
                       <td className="py-3 px-4 text-right">
-                        <div className="inline-flex items-center gap-1.5">
-                          {converted && <span className="text-xs font-semibold text-brand-muted">{linkedSale?.status === 'CANCELADO' ? 'Venda cancelada' : 'Venda registrada'}{linkedSale && <span className="block">{linkedSale.numero}</span>}</span>}
+                        {converted ? (
+                          <span className="text-xs text-brand-muted">{linkedSale?.numero ?? '—'}</span>
+                        ) : <div className="inline-flex items-center gap-1.5">
                           {readyToConvert && (enc.produtoId ? (
                             <button
                               type="button"
@@ -462,11 +469,10 @@ export default function EncomendasView({ data, onConvertOrder }: Props) {
                           ) : <span className="text-xs text-brand-muted">Vincule o perfume para vender</span>)}
                           <button
                             type="button"
-                            disabled={converted}
                             onClick={() => openOrderForm(enc)}
                             aria-label={`Editar encomenda ${enc.numero}`}
                             title="Editar encomenda"
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-line bg-brand-card px-2.5 py-1 text-brand-chocolate hover:bg-brand-nude disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-line bg-brand-card px-2.5 py-1 text-brand-chocolate hover:bg-brand-nude"
                           >
                             <Pencil size={14} aria-hidden="true" />
                             Editar
@@ -482,7 +488,7 @@ export default function EncomendasView({ data, onConvertOrder }: Props) {
                               <MessageCircle size={14} />
                             </a>
                           )}
-                        </div>
+                        </div>}
                       </td>
                     </tr>
                   );
