@@ -46,7 +46,7 @@ export default function DashboardView({ data, onNavigate }: Props) {
   const paymentSummary = useMemo(() => summarizeSalePayments(vendasDoPeriodo), [vendasDoPeriodo]);
   const lucroMes = useMemo(() => fromCents(vendasDoPeriodo.reduce((sum, venda) => sum + toCents(venda.valorTotal) - toCents(venda.custoTotal), 0)), [vendasDoPeriodo]);
   const despesasCentavos = useMemo(() => despesas
-    .filter(despesa => despesa.tipo !== 'APORTE' && isInMonth(despesa.data, selectedMonth))
+    .filter(despesa => despesa.tipo === 'DESPESA' && isInMonth(despesa.data, selectedMonth))
     .reduce((sum, despesa) => sum + toCents(despesa.valor), 0), [despesas, selectedMonth]);
   const lucroLiquido = fromCents(toCents(lucroMes) - despesasCentavos);
 

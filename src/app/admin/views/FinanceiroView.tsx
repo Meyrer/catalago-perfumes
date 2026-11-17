@@ -30,6 +30,9 @@ export default function FinanceiroView({ data }: Props) {
   const [view, setView] = useState<(typeof financeViews)[number]['id']>('caixa');
   const resumo = view === 'caixa' ? 'recebimentos' : 'vendas';
   const [isNewDespesaOpen, setIsNewDespesaOpen] = useState(false);
+  const [isCashEntry, setIsCashEntry] = useState(false);
+  const [entryDate, setEntryDate] = useState(getDayKey);
+  const [formError, setFormError] = useState('');
   const [descDespesa, setDescDespesa] = useState('');
   const [catDespesa, setCatDespesa] = useState('EMBALAGENS');
   const [valDespesa, setValDespesa] = useState<number>(0);
@@ -62,7 +65,7 @@ export default function FinanceiroView({ data }: Props) {
 
   // Despesas no Período
   const despesasFiltradas = useMemo(() => {
-    return despesas.filter(d => d.tipo !== 'APORTE' && (periodo === 'mes' ? isInMonth(d.data, selectedMonth) : new Date(d.data) >= dataCorte));
+    return despesas.filter(d => d.tipo === 'DESPESA' && (periodo === 'mes' ? isInMonth(d.data, selectedMonth) : new Date(d.data) >= dataCorte));
   }, [despesas, dataCorte, periodo, selectedMonth]);
 
   // Indicadores DRE
@@ -78,17 +81,19 @@ export default function FinanceiroView({ data }: Props) {
     ...entry, vendaId: venda.id, numero: venda.numero, key: `${venda.id}-${index}`,
   }))), [vendas]);
   const aportes = useMemo(() => despesas.filter(lancamento => lancamento.tipo === 'APORTE' && lancamento.pago), [despesas]);
+  const entradasExtras = useMemo(() => despesas.filter(lancamento => lancamento.tipo === 'RECEITA_EXTRA' && lancamento.pago), [despesas]);
   const caixa = useMemo(() => {
     const vendasRecebidas = recebimentos.reduce((sum, entry) => sum + toCents(entry.valor), 0);
     const capital = aportes.reduce((sum, aporte) => sum + toCents(aporte.valor), 0);
-    const entradas = vendasRecebidas + capital;
+    const outrosCreditos = entradasExtras.reduce((sum, entrada) => sum + toCents(entrada.valor), 0);
+    const entradas = vendasRecebidas + capital + outrosCreditos;
     const despesasPagas = despesas.reduce((sum, despesa) => (
       despesa.tipo === 'DESPESA' && despesa.pago ? sum + toCents(despesa.valor) : sum
     ), 0);
     const comprasPagas = compras.reduce((sum, compra) => sum + toCents(compra.valorPagoCaixa ?? 0), 0);
     const saidas = despesasPagas + comprasPagas;
     return { entradas: fromCents(entradas), aportes: fromCents(capital), saidas: fromCents(saidas), saldo: fromCents(entradas - saidas) };
-  }, [recebimentos, despesas, compras, aportes]);
+  }, [recebimentos, despesas, compras, aportes, entradasExtras]);
   const aportesDoPeriodo = aportes.filter(aporte => periodo === 'mes' ? isInMonth(aporte.data, selectedMonth) : new Date(aporte.data) >= dataCorte);
   const aportesCentavos = aportesDoPeriodo.reduce((sum, aporte) => sum + toCents(aporte.valor), 0);
 
@@ -99,6 +104,9 @@ export default function FinanceiroView({ data }: Props) {
   const despesasExibidas = resumo === 'recebimentos' ? despesasFiltradas.filter(despesa => despesa.pago) : despesasFiltradas;
   const despesasPagas = fromCents(despesasExibidas.reduce((sum, despesa) => sum + toCents(despesa.valor), 0));
   const corteCaixa = getDayKey(periodo === 'hoje' ? agora : dataCorte);
+  const entradasExtrasDoPeriodo = entradasExtras.filter(entrada =>
+    periodo === 'mes' ? isInMonth(entrada.data, selectedMonth) : getDayKey(new Date(entrada.data)) >= corteCaixa);
+  const entradasExtrasCentavos = entradasExtrasDoPeriodo.reduce((sum, entrada) => sum + toCents(entrada.valor), 0);
   const comprasPagas = compras.filter(compra => {
     if (!compra.dataPagamentoCaixa || compra.valorPagoCaixa === null) return false;
     const diaPagamento = new Date(compra.dataPagamentoCaixa).toISOString().slice(0, 10);
@@ -125,23 +133,33 @@ export default function FinanceiroView({ data }: Props) {
 
   const handleCreateDespesa = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!descDespesa.trim() || valDespesa <= 0) return;
+    if (isSubmitting || !descDespesa.trim() || valDespesa <= 0) return;
     setIsSubmitting(true);
+    setFormError('');
     try {
       await createDespesaAction({
         descricao: descDespesa,
-        categoria: catDespesa,
+        categoria: isCashEntry ? 'OUTROS' : catDespesa,
         valor: valDespesa,
-        formaPagamento: formaPagDespesa
+        ...(isCashEntry ? { tipo: 'RECEITA_EXTRA', data: `${entryDate}T12:00:00.000Z` } : { formaPagamento: formaPagDespesa }),
       });
-      setFeedback('Despesa registrada com sucesso!');
+      setFeedback(isCashEntry ? 'Entrada registrada.' : 'Despesa registrada.');
       setIsNewDespesaOpen(false);
       window.location.reload();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao salvar despesa.';
-      setFeedback(msg);
+      const msg = err instanceof Error ? err.message : 'Não foi possível salvar o lançamento.';
+      setFormError(msg);
       setIsSubmitting(false);
     }
+  };
+
+  const openFinancialEntry = (cashEntry: boolean) => {
+    setIsCashEntry(cashEntry);
+    setDescDespesa(cashEntry ? 'Rendimento bancário' : '');
+    setEntryDate(getDayKey());
+    setValDespesa(0);
+    setFormError('');
+    setIsNewDespesaOpen(true);
   };
 
   const handleDeleteDespesa = async (id: number) => {
@@ -187,12 +205,13 @@ export default function FinanceiroView({ data }: Props) {
             ))}
           </div>}
 
+          {view === 'caixa' && <button type="button" onClick={() => openFinancialEntry(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-brand-line bg-brand-card px-4 py-2 text-xs font-bold text-brand-chocolate cursor-pointer">
+            <Plus size={15} aria-hidden="true" /> Registrar entrada
+          </button>}
           <button
-            onClick={() => {
-              setIsNewDespesaOpen(true);
-              setDescDespesa('');
-              setValDespesa(0);
-            }}
+            type="button"
+            onClick={() => openFinancialEntry(false)}
             className="px-4 py-2 bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
           >
             <Plus size={15} className="text-brand-caramel" />
@@ -216,7 +235,7 @@ export default function FinanceiroView({ data }: Props) {
         <div>
           <p className="text-xs font-semibold text-brand-muted">Entradas</p>
           <p className="mt-1 text-lg font-bold text-brand-chocolate">{moedaBRL.format(caixa.entradas)}</p>
-          <p className="mt-1 text-[11px] text-brand-muted">Vendas recebidas e aportes dos sócios</p>
+          <p className="mt-1 text-[11px] text-brand-muted">Vendas recebidas, aportes e outras entradas</p>
         </div>
         <div>
           <p className="text-xs font-semibold text-brand-muted">Saídas</p>
@@ -268,7 +287,7 @@ export default function FinanceiroView({ data }: Props) {
           { label: 'Aportes do período', value: fromCents(aportesCentavos), detail: `${aportesDoPeriodo.length} aporte(s) dos sócios` },
           { label: 'Despesas pagas', value: -despesasPagas, detail: `${despesasExibidas.length} lançamento(s) pago(s)` },
           { label: 'Compras pagas pelo caixa', value: -fromCents(comprasPagasCentavos), detail: `${comprasPagas.length} compra(s) com pagamento registrado` },
-          { label: 'Saldo do período', value: fromCents(toCents(recebidoNoPeriodo) + aportesCentavos - toCents(despesasPagas) - comprasPagasCentavos), detail: 'Entradas menos despesas e compras pagas, sem saldo anterior' },
+          { label: 'Saldo do período', value: fromCents(toCents(recebidoNoPeriodo) + aportesCentavos + entradasExtrasCentavos - toCents(despesasPagas) - comprasPagasCentavos), detail: 'Entradas menos despesas e compras pagas, sem saldo anterior' },
         ]).map(card => (
           <div key={card.label} className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs min-w-0">
             <p className="text-xs font-semibold text-brand-muted">{card.label}</p>
@@ -293,6 +312,18 @@ export default function FinanceiroView({ data }: Props) {
             {comprasPagas.map(compra => <li key={compra.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
               <span>{new Date(compra.dataPagamentoCaixa!).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} · {compra.numero}{compra.fornecedor ? ` · ${compra.fornecedor.nome}` : ''}</span>
               <strong>{moedaBRL.format(compra.valorPagoCaixa ?? 0)}</strong>
+            </li>)}
+          </ul>
+        </section>
+      )}
+
+      {view === 'caixa' && entradasExtrasDoPeriodo.length > 0 && (
+        <section className="rounded-2xl border border-brand-line bg-brand-card p-4">
+          <h3 className="mb-2 text-sm font-bold text-brand-chocolate">Outras entradas · {moedaBRL.format(fromCents(entradasExtrasCentavos))}</h3>
+          <ul className="divide-y divide-brand-line text-xs">
+            {entradasExtrasDoPeriodo.map(entrada => <li key={entrada.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+              <span>{new Date(entrada.data).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} · {entrada.descricao}</span>
+              <strong>{moedaBRL.format(entrada.valor)}</strong>
             </li>)}
           </ul>
         </section>
@@ -416,34 +447,36 @@ export default function FinanceiroView({ data }: Props) {
       {/* MODAL REGISTRAR DESPESA */}
       {isNewDespesaOpen && (
         <div className="fixed inset-0 bg-brand-deep/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-brand-card w-full max-w-md max-h-[calc(100dvh-2rem)] rounded-3xl border border-brand-line shadow-2xl p-6 relative overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+          <div role="dialog" aria-modal="true" aria-labelledby="finance-entry-title" className="bg-brand-card w-full max-w-md max-h-[calc(100dvh-2rem)] rounded-3xl border border-brand-line shadow-2xl p-6 relative overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-caramel to-brand-caramel" />
 
             <div className="flex items-center justify-between pb-3 border-b border-brand-line mb-4">
               <div>
-                <h3 className="text-xl font-serif font-bold text-brand-chocolate">Registrar Despesa</h3>
-                <p className="text-xs text-brand-muted">Lançamento financeiro no DRE</p>
+                <h3 id="finance-entry-title" className="text-xl font-serif font-bold text-brand-chocolate">{isCashEntry ? 'Registrar entrada' : 'Registrar Despesa'}</h3>
+                <p className="text-xs text-brand-muted">{isCashEntry ? 'Crédito recebido no caixa' : 'Lançamento financeiro no DRE'}</p>
               </div>
-              <button onClick={() => setIsNewDespesaOpen(false)} className="p-1 text-brand-muted hover:text-brand-chocolate rounded-full hover:bg-brand-nude cursor-pointer">
+              <button type="button" aria-label="Fechar lançamento" disabled={isSubmitting} onClick={() => setIsNewDespesaOpen(false)} className="p-1 text-brand-muted hover:text-brand-chocolate rounded-full hover:bg-brand-nude cursor-pointer">
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleCreateDespesa} className="space-y-3.5">
+              {formError && <p role="alert" className="text-sm text-red-700">{formError}</p>}
               <div>
-                <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1">Descrição do Gasto *</label>
+                <label htmlFor="finance-entry-description" className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1">Descrição *</label>
                 <input
+                  id="finance-entry-description"
                   type="text"
                   required
                   value={descDespesa}
                   onChange={e => setDescDespesa(e.target.value)}
-                  placeholder="Ex: Embalagens para presente"
+                  placeholder={isCashEntry ? 'Ex: Rendimento bancário' : 'Ex: Embalagens para presente'}
                   className="w-full px-3.5 py-2 bg-brand-cream text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-1 gap-3">
-                <div>
+                {!isCashEntry && <div>
                   <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1">Categoria</label>
                   <select
                     value={catDespesa}
@@ -457,11 +490,12 @@ export default function FinanceiroView({ data }: Props) {
                     <option value="ESTRUTURA">Estrutura & Loja</option>
                     <option value="OUTROS">Outros</option>
                   </select>
-                </div>
+                </div>}
 
                 <div>
-                  <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1">Valor (R$) *</label>
+                  <label htmlFor="finance-entry-amount" className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1">Valor (R$) *</label>
                   <input
+                    id="finance-entry-amount"
                     type="number"
                     step="0.01"
                     min="0.01"
@@ -474,7 +508,11 @@ export default function FinanceiroView({ data }: Props) {
                 </div>
               </div>
 
-              <div>
+              {isCashEntry ? <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider">
+                Data do crédito
+                <input type="date" required value={entryDate} onChange={event => setEntryDate(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-brand-line bg-brand-cream px-3 py-2 text-xs text-brand-chocolate" />
+              </label> : <div>
                 <label className="block text-[11px] font-bold text-brand-muted uppercase tracking-wider mb-1">Forma de Pagamento</label>
                 <select
                   value={formaPagDespesa}
@@ -486,14 +524,14 @@ export default function FinanceiroView({ data }: Props) {
                   <option value="DINHEIRO">Dinheiro</option>
                   <option value="BOLETO">Boleto Bancário</option>
                 </select>
-              </div>
+              </div>}
 
               <div className="pt-3 border-t border-brand-line flex items-center justify-end gap-2.5">
                 <button type="button" disabled={isSubmitting} onClick={() => setIsNewDespesaOpen(false)} className="px-4 py-2 rounded-xl border border-brand-line text-xs font-bold text-brand-muted hover:bg-brand-nude transition-colors cursor-pointer">
                   Cancelar
                 </button>
                 <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-xl bg-brand-chocolate hover:bg-brand-deep text-brand-cream text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50">
-                  {isSubmitting ? <Loader2 size={14} className="animate-spin text-brand-caramel" /> : <span>Lançar Despesa</span>}
+                  {isSubmitting ? <Loader2 size={14} className="animate-spin text-brand-caramel" /> : <span>{isCashEntry ? 'Salvar entrada' : 'Lançar Despesa'}</span>}
                 </button>
               </div>
             </form>
