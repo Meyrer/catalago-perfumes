@@ -7,7 +7,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { plainPrismaData } from "@/lib/admin-api";
 import { fromCents, roundMoney, toCents } from "@/lib/money";
-import { getSaleReceivedAmount, recordSalePayment, validateSaleReceivedAmount, type SalePaymentEntry } from "@/lib/sale-payment";
+import { getSaleDisplayStatus, getSaleReceivedAmount, recordSalePayment, validateSaleReceivedAmount, type SalePaymentEntry } from "@/lib/sale-payment";
 
 function parsePaymentForecast(value: string | null | undefined) {
   if (value === undefined || value === null) return value;
@@ -142,7 +142,7 @@ export async function createSale(data: {
       clienteId: encomenda ? encomenda.clienteId : clienteDaVenda?.id ?? (clienteId || null),
       nomeClienteAvulso: encomenda ? (encomenda.clienteId ? null : encomenda.nomeCliente) : clienteDaVenda ? null : nomeClienteAvulso || null,
       contatoClienteAvulso: encomenda ? (encomenda.clienteId ? null : encomenda.whatsappCliente) : clienteDaVenda ? null : contatoClienteAvulso || null,
-      status,
+      status: getSaleDisplayStatus({ status, valorTotal, valorRecebido }),
       formaPagamento,
       subtotal,
       desconto,
@@ -344,7 +344,7 @@ export async function updateSale(vendaId: number, data: Parameters<typeof create
       nomeClienteAvulso: data.clienteId ? null : data.nomeClienteAvulso?.trim() || null,
       contatoClienteAvulso: data.clienteId ? null : data.contatoClienteAvulso?.trim() || null,
       formaPagamento: data.formaPagamento,
-      status,
+      status: getSaleDisplayStatus({ status, valorTotal, valorRecebido }),
       data: date,
       desconto,
       frete,
@@ -388,7 +388,7 @@ export async function registerSaleReceipt(vendaId: number, data: {
     await tx.venda.update({ where: { id: vendaId }, data: {
       valorRecebido,
       historicoPagamentos: recordSalePayment(venda, valorRecebido, data.formaPagamento, actor, data.dataPagamento),
-      ...(quitada && venda.status === 'AGUARDANDO_PAGAMENTO' ? { status: 'PAGO' } : {}),
+      ...(quitada ? { status: 'PAGO' } : {}),
     } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
