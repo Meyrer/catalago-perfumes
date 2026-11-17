@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import { apiError, apiSuccess, isAdminApiAuthorized, optionalText, positiveId, readJsonObject } from "@/lib/admin-api";
-import { dateField, enumField, erpError, purchaseStatuses } from "@/lib/admin-erp-api";
+import { dateField, enumField, erpError, idField, purchaseStatuses } from "@/lib/admin-erp-api";
 import { updatePurchaseCashPayment } from "@/lib/erp-operations";
 
 export const dynamic = "force-dynamic";
@@ -30,14 +30,19 @@ export async function PATCH(request: Request, context: Context) {
       await updatePurchaseCashPayment(id, body.pagamentoCaixa, body.updatedAt === undefined ? undefined : dateField(body.updatedAt, "updatedAt"));
       return apiSuccess(await prisma.compra.findUnique({ where: { id }, include }));
     }
-    if (!Object.keys(body).some(key => ["observacoes", "data", "status"].includes(key)) || Object.keys(body).some(key => !["observacoes", "data", "status", "updatedAt"].includes(key))) return apiError("PATCH aceita observacoes, data, status e updatedAt. Custos e itens não são editáveis por este endpoint.", 400);
+    const editableFields = ["observacoes", "data", "status", "fornecedorId"];
+    if (!Object.keys(body).some(key => editableFields.includes(key)) || Object.keys(body).some(key => key !== "updatedAt" && !editableFields.includes(key))) return apiError("PATCH aceita observacoes, data, status, fornecedorId e updatedAt. Custos e itens não são editáveis por este endpoint.", 400);
     const current = await prisma.compra.findUnique({ where: { id } });
     if (!current) return apiError("Compra não encontrada.", 404);
     const status = body.status === undefined ? undefined : enumField(body.status, "status", purchaseStatuses);
     if (status === "RECEBIDO" || (current.status === "RECEBIDO" && status !== undefined && status !== current.status)) return apiError("Use /receive para receber a compra. Uma compra recebida não pode ser cancelada ou voltar de status sem estornar o estoque.", 409);
+    const fornecedorId = body.fornecedorId === null ? null : idField(body.fornecedorId, "fornecedorId");
+    if (typeof fornecedorId === "number" && (fornecedorId > 2147483647 || !await prisma.fornecedor.findUnique({ where: { id: fornecedorId }, select: { id: true } }))) {
+      return apiError("Fornecedor não encontrado.", 404);
+    }
     const changed = await prisma.compra.updateMany({
       where: { id, updatedAt: body.updatedAt === undefined ? current.updatedAt : dateField(body.updatedAt, "updatedAt") },
-      data: { status, observacoes: optionalText(body.observacoes, "observacoes", 5000), data: body.data === undefined ? undefined : dateField(body.data) },
+      data: { status, fornecedorId, observacoes: optionalText(body.observacoes, "observacoes", 5000), data: body.data === undefined ? undefined : dateField(body.data) },
     });
     if (changed.count !== 1) return apiError("A compra foi alterada. Consulte novamente antes de editar.", 409);
     revalidatePath("/admin");
