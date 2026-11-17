@@ -1,17 +1,17 @@
 "use client";
 
 import StatCard from '../StatCard';
+import MetricHelp from '../MetricHelp';
 import { getFifoNextCost } from '@/lib/fifo';
 
-import { useState, useMemo, useEffect, useId } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useMemo, useEffect } from 'react';
 import type { ERPData, AdminProduto } from '../types';
 import { 
   Package, Boxes as BoxesIcon, Search, Plus, Sparkles, Edit3, Copy, Trash2,
   Eye, EyeOff, Check, X, Loader2, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown,
   ExternalLink, DollarSign, Percent, Tag, SlidersHorizontal,
   ZoomIn, ZoomOut, Clock, CalendarCheck, CheckCircle2, AlertTriangle, Layers,
-  Maximize2, RotateCcw, ChevronLeft, ChevronRight, CircleHelp
+  Maximize2, RotateCcw, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { 
   createProduto, updateProduto, deleteProduto, duplicarProdutoAction, 
@@ -28,63 +28,6 @@ type Props = {
 function SortIndicator({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) {
   const Icon = active ? (direction === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
   return <Icon size={12} aria-hidden="true" />;
-}
-
-function ColumnHelp({ label, explanation }: { label: string; explanation: string }) {
-  const id = useId();
-  const [position, setPosition] = useState<{ top: number; left: number; above: boolean } | null>(null);
-  const isOpen = position !== null;
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const close = () => setPosition(null);
-    window.addEventListener('scroll', close, true);
-    window.addEventListener('resize', close);
-    return () => {
-      window.removeEventListener('scroll', close, true);
-      window.removeEventListener('resize', close);
-    };
-  }, [isOpen]);
-
-  const show = (target: HTMLButtonElement) => {
-    const rect = target.getBoundingClientRect();
-    const above = rect.top > 160;
-    setPosition({
-      top: above ? rect.top - 8 : rect.bottom + 8,
-      left: Math.max(16, Math.min(rect.left + rect.width / 2 - 144, window.innerWidth - 304)),
-      above,
-    });
-  };
-
-  return (
-    <>
-      <button
-        type="button"
-        aria-label={`Entenda ${label}`}
-        aria-describedby={isOpen ? id : undefined}
-        className="inline-flex shrink-0 rounded-full p-0.5 text-brand-muted hover:text-brand-chocolate focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-chocolate cursor-help"
-        onMouseEnter={e => show(e.currentTarget)}
-        onMouseLeave={e => { if (document.activeElement !== e.currentTarget) setPosition(null); }}
-        onFocus={e => show(e.currentTarget)}
-        onBlur={() => setPosition(null)}
-        onClick={e => { e.stopPropagation(); show(e.currentTarget); }}
-        onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setPosition(null); } }}
-      >
-        <CircleHelp size={13} aria-hidden="true" />
-      </button>
-      {position && createPortal(
-        <div
-          id={id}
-          role="tooltip"
-          className="fixed z-[100] w-72 max-w-[calc(100vw-2rem)] rounded-xl bg-brand-deep px-3 py-2.5 text-xs font-normal normal-case tracking-normal leading-relaxed text-brand-cream shadow-lg pointer-events-none"
-          style={{ top: position.top, left: position.left, transform: position.above ? 'translateY(-100%)' : undefined }}
-        >
-          {explanation}
-        </div>,
-        document.body,
-      )}
-    </>
-  );
 }
 
 export default function ProdutosView({ data }: Props) {
@@ -403,12 +346,12 @@ export default function ProdutosView({ data }: Props) {
 
                   </span>
                   </button>
-                  <ColumnHelp label="Margem" explanation="Percentual do preço de venda que sobra após descontar o custo do produto, antes das demais despesas. Ex.: venda de R$ 50 e custo de R$ 20 resultam em margem de 60%." />
+                  <MetricHelp label="Margem" explanation="Percentual do preço de venda que sobra após descontar o custo do produto, antes das demais despesas. Ex.: venda de R$ 50 e custo de R$ 20 resultam em margem de 60%." />
                 </th>
                 <th className="py-3 px-3 text-center">
                   <span className="flex items-center justify-center gap-1">
                     Markup
-                    <ColumnHelp label="Markup" explanation="Quantas vezes o preço de venda representa o custo do produto. É calculado dividindo a venda pelo custo. Ex.: venda de R$ 50 e custo de R$ 20 resultam em markup de 2,5x." />
+                    <MetricHelp label="Markup" explanation="Quantas vezes o preço de venda representa o custo do produto. É calculado dividindo a venda pelo custo. Ex.: venda de R$ 50 e custo de R$ 20 resultam em markup de 2,5x." />
                   </span>
                 </th>
                 <th className="py-3 px-3 text-center whitespace-nowrap">Status</th>
