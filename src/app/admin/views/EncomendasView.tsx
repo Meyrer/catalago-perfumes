@@ -25,6 +25,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   CANCELADO: { label: 'Cancelado', color: 'text-brand-chocolate', bg: 'bg-brand-rose-beige', border: 'border-brand-terracotta' },
 };
 
+function isClosedOrder(status: string) {
+  return status === 'FINALIZADO' || status === 'CANCELADO';
+}
+
 function getOrderCode(order: AdminEncomenda): string {
   const sku = order.produto?.sku?.trim() ?? '';
   const nome = order.produto?.nome ?? order.descricaoItem.trim();
@@ -55,10 +59,11 @@ function downloadOrderReport(file: Blob, filename: string) {
 
 export default function EncomendasView({ data, onConvertOrder }: Props) {
   const router = useRouter();
-  const { encomendas, clientes, fornecedores, produtos } = data;
+  const { encomendas, clientes, fornecedores, produtos, vendas } = data;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [pendingOnly, setPendingOnly] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(() => getMonthKey());
 
   // Formulário compartilhado entre cadastro e edição
@@ -96,8 +101,20 @@ export default function EncomendasView({ data, onConvertOrder }: Props) {
   }, [produtos, productSearch]);
 
   // Encomendas filtradas
+  const orderDetails = useMemo(() => {
+    const salesById = new Map(vendas.map(sale => [sale.id, sale]));
+    const salesByOrder = new Map(vendas.filter(sale => sale.encomendaId !== null).map(sale => [sale.encomendaId, sale]));
+    return new Map(encomendas.map(order => {
+      const linkedSale = (order.vendaId === null ? undefined : salesById.get(order.vendaId)) ?? salesByOrder.get(order.id);
+      const status = linkedSale?.status === 'CANCELADO' ? 'CANCELADO' : linkedSale ? 'FINALIZADO' : order.status;
+      return [order.id, { linkedSale, status }] as const;
+    }));
+  }, [encomendas, vendas]);
+
   const filteredEncomendas = useMemo(() => {
     return encomendas.filter(e => {
+      const status = orderDetails.get(e.id)?.status ?? e.status;
+      if (pendingOnly && isClosedOrder(status)) return false;
       const matchSearch = 
         e.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
         e.nomeCliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -105,16 +122,17 @@ export default function EncomendasView({ data, onConvertOrder }: Props) {
         e.produto?.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (e.marca && e.marca.toLowerCase().includes(searchTerm.toLowerCase()));
 
-      const matchStatus = filterStatus === 'ALL' || e.status === filterStatus;
+      const matchStatus = filterStatus === 'ALL' || status === filterStatus;
       return matchSearch && matchStatus && isInMonth(e.createdAt, selectedMonth);
     });
-  }, [encomendas, searchTerm, filterStatus, selectedMonth]);
+  }, [encomendas, orderDetails, pendingOnly, searchTerm, filterStatus, selectedMonth]);
 
   const exportOrders = () => {
     const textCell = (value: string) => `"${(/^(?:[\t\r\n]|\s*[=+@-])/.test(value) ? "'" + value : value).replaceAll('"', '""')}"`;
     const moneyCell = (value: number | null) => value === null ? '' : value.toFixed(2).replace('.', ',');
     const rows = ['Encomenda;Data;Cliente;Perfume;SKU;Marca;Volume;Quantidade;Fornecedor;Preço estimado (R$);Custo estimado (R$);Sinal pago (R$);Previsão;Status;Observações'];
     for (const order of filteredEncomendas) {
+      const status = orderDetails.get(order.id)?.status ?? order.status;
       rows.push([
         textCell(order.numero),
         new Date(order.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
@@ -129,7 +147,7 @@ export default function EncomendasView({ data, onConvertOrder }: Props) {
         moneyCell(order.custoEstimado),
         moneyCell(order.valorAdiantamento),
         textCell(order.previsaoChegada ?? ''),
-        textCell(STATUS_CONFIG[order.status]?.label ?? order.status),
+        textCell(STATUS_CONFIG[status]?.label ?? status),
         textCell(order.observacoes ?? ''),
       ].join(';'));
     }
@@ -345,12 +363,31 @@ export default function EncomendasView({ data, onConvertOrder }: Props) {
           />
         </div>
 
+        <label className="flex shrink-0 items-center gap-2 text-xs font-semibold text-brand-chocolate cursor-pointer">
+          <input
+            type="checkbox"
+            checked={pendingOnly}
+            onChange={event => {
+              const checked = event.target.checked;
+              setPendingOnly(checked);
+              if (checked && isClosedOrder(filterStatus)) setFilterStatus('ALL');
+            }}
+            className="h-4 w-4 cursor-pointer accent-blue-600"
+          />
+          Só pendentes
+        </label>
+
         <select
           value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
+          aria-label="Estágio da encomenda"
+          onChange={event => {
+            const status = event.target.value;
+            setFilterStatus(status);
+            if (isClosedOrder(status)) setPendingOnly(false);
+          }}
           className="px-3 py-2 bg-brand-nude text-xs font-bold text-brand-chocolate rounded-xl border border-brand-line outline-none cursor-pointer"
         >
-          <option value="ALL">Todos os Estágios ({encomendas.length})</option>
+          <option value="ALL">Todos os estágios</option>
           {Object.entries(STATUS_CONFIG).map(([st, cfg]) => (
             <option key={st} value={st}>{cfg.label}</option>
           ))}
@@ -382,10 +419,9 @@ export default function EncomendasView({ data, onConvertOrder }: Props) {
                 </tr>
               ) : (
                 filteredEncomendas.map((enc) => {
-                  const linkedSale = data.vendas.find(sale => sale.encomendaId === enc.id || sale.id === enc.vendaId);
+                  const { linkedSale, status } = orderDetails.get(enc.id) ?? { linkedSale: undefined, status: enc.status };
                   const converted = enc.vendaId !== null || Boolean(linkedSale);
                   const saleCancelled = linkedSale?.status === 'CANCELADO';
-                  const status = saleCancelled ? 'CANCELADO' : linkedSale ? 'FINALIZADO' : enc.status;
                   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.SOLICITACAO_RECEBIDA;
                   const readyToConvert = ['RECEBIDO', 'PRONTO_ENTREGA'].includes(enc.status) && !converted;
                   const photoUrl = normalizeImageUrl(enc.produto?.fotos[0]?.url);
