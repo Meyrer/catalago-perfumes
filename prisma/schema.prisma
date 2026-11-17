@@ -99,6 +99,11 @@ model AdminUser {
   username           String   @unique
   name               String
   passwordHash       String
+  email              String?
+  active             Boolean  @default(true)
+  sessionVersion     Int      @default(0)
+  resetTokenHash     String?
+  resetExpiresAt     DateTime?
   mustChangePassword Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
