@@ -10,6 +10,7 @@ import { searchPerfume } from "@/services/perfumeApi";
 import { loginAdmin, logoutAdmin, requireAdminAuth, changeAdminPassword } from "@/lib/auth";
 import { plainPrismaData } from "@/lib/admin-api";
 import { changeFifoStock, initialFifoStock } from "@/lib/fifo-stock";
+import { fromCents, toCents } from "@/lib/money";
 
 export async function loginAdminAction(formData: FormData) {
   const username = formData.get("username") as string;
@@ -843,21 +844,27 @@ export async function createDespesaAction(data: {
   categoria: string;
   valor: number;
   data?: string;
-  tipo?: string;
+  tipo?: 'DESPESA' | 'RECEITA_EXTRA';
   pago?: boolean;
   formaPagamento?: string;
   observacoes?: string;
 }) {
   await requireAdminAuth();
-  if (!data.descricao?.trim() || !Number.isFinite(data.valor) || data.valor <= 0) throw new Error('Informe uma descrição e um valor positivo para a despesa.');
-  if (data.data && !Number.isFinite(new Date(data.data).getTime())) throw new Error('Data da despesa inválida.');
+  const tipo = data.tipo ?? 'DESPESA';
+  if (tipo !== 'DESPESA' && tipo !== 'RECEITA_EXTRA') throw new Error('Tipo de lançamento inválido.');
+  const cents = Number.isFinite(data.valor) ? toCents(data.valor) : 0;
+  if (!data.descricao?.trim() || !Number.isSafeInteger(cents) || cents <= 0) throw new Error('Informe uma descrição e um valor positivo.');
+  const date = data.data ? new Date(data.data) : new Date();
+  if (!Number.isFinite(date.getTime()) || (tipo === 'RECEITA_EXTRA' && (!data.data || date.toISOString() !== data.data))) {
+    throw new Error('Informe uma data válida para o lançamento.');
+  }
   const despesa = await prisma.despesaFinanceira.create({
     data: {
       descricao: data.descricao.trim(),
       categoria: data.categoria || "OUTROS",
-      valor: data.valor,
-      data: data.data ? new Date(data.data) : new Date(),
-      tipo: data.tipo || "DESPESA",
+      valor: fromCents(cents),
+      data: date,
+      tipo,
       pago: data.pago !== undefined ? data.pago : true,
       formaPagamento: data.formaPagamento || null,
       observacoes: data.observacoes?.trim() || null
