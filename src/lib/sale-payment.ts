@@ -112,6 +112,10 @@ export function getSalePaymentStatus(sale: PaymentSale): 'PAGO' | 'PARCIAL' | 'P
   return received > 0 ? 'PARCIAL' : 'PENDENTE';
 }
 
+export function getSaleDisplayStatus(sale: PaymentSale): string {
+  return toCents(sale.valorTotal) > 0 && getSalePaymentStatus(sale) === 'PAGO' ? 'PAGO' : sale.status;
+}
+
 export function summarizeSalePayments(sales: PaymentSale[]) {
   let total = 0, received = 0, outstanding = 0, count = 0;
   for (const sale of sales) {

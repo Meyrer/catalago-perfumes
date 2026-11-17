@@ -145,10 +145,10 @@ export default function FinanceiroView({ data }: Props) {
       });
       setFeedback(isCashEntry ? 'Entrada registrada.' : 'Despesa registrada.');
       setIsNewDespesaOpen(false);
-      window.location.reload();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Não foi possível salvar o lançamento.';
       setFormError(msg);
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -167,7 +167,6 @@ export default function FinanceiroView({ data }: Props) {
     try {
       await deleteDespesaAction(id);
       setFeedback('Despesa excluída.');
-      window.location.reload();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao excluir.';
       setFeedback(msg);
@@ -267,8 +266,8 @@ export default function FinanceiroView({ data }: Props) {
 
       {feedback && (
         <div className="p-3.5 rounded-2xl bg-brand-nude border border-brand-line text-brand-chocolate text-xs font-bold flex items-center justify-between">
-          <span>{feedback}</span>
-          <button onClick={() => setFeedback('')} className="cursor-pointer"><X size={15} /></button>
+          <span role="status">{feedback}</span>
+          <button type="button" aria-label="Fechar mensagem" onClick={() => setFeedback('')} className="cursor-pointer"><X size={15} aria-hidden="true" /></button>
         </div>
       )}
 

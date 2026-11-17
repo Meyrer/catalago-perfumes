@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import type { ERPData, AdminEncomenda, AdminVenda, AdminProduto } from '../types';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
-import { getSalePaymentHistory, getSalePaymentStatus, getSaleReceivedAmount, summarizeSalePayments } from '@/lib/sale-payment';
+import { getSaleDisplayStatus, getSalePaymentHistory, getSalePaymentStatus, getSaleReceivedAmount, summarizeSalePayments } from '@/lib/sale-payment';
 import { fromCents, toCents } from '@/lib/money';
 import { getFifoLots, takeFifo, fifoCost, releaseFifo, saleFifoAllocations } from '@/lib/fifo';
 import { 
@@ -18,6 +19,15 @@ type Props = {
   openQuickSale?: boolean;
   orderForSale?: AdminEncomenda | null;
   onReturnToOrders: () => void;
+};
+
+const statusLabels: Record<string, string> = {
+  AGUARDANDO_PAGAMENTO: 'Aguardando pagamento',
+  PAGO: 'Pago',
+  PREPARANDO: 'Preparando',
+  ENVIADO: 'Enviado',
+  ENTREGUE: 'Entregue',
+  CANCELADO: 'Cancelado',
 };
 
 function PaymentBadge({ sale }: { sale: Parameters<typeof getSalePaymentStatus>[0] }) {
@@ -64,6 +74,7 @@ function PaymentForecast({ date }: { date: Date }) {
 }
 
 export default function VendasView({ data, openQuickSale = false, orderForSale = null, onReturnToOrders }: Props) {
+  const router = useRouter();
   const { vendas, produtos, clientes, user } = data;
   const orderDeposit = fromCents(toCents(orderForSale?.valorAdiantamento ?? 0));
 
@@ -80,6 +91,7 @@ export default function VendasView({ data, openQuickSale = false, orderForSale =
   const [dataVenda, setDataVenda] = useState('');
   const [feedback, setFeedback] = useState('');
   const [deletingVendaId, setDeletingVendaId] = useState<number | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
 
   // Formulário Nova Venda
   const [clienteId, setClienteId] = useState<string>('');
@@ -119,7 +131,7 @@ export default function VendasView({ data, openQuickSale = false, orderForSale =
         (v.cliente?.nome && v.cliente.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (v.nomeClienteAvulso && v.nomeClienteAvulso.toLowerCase().includes(searchTerm.toLowerCase()));
 
-      const matchStatus = selectedStatus === 'ALL' || v.status === selectedStatus;
+      const matchStatus = selectedStatus === 'ALL' || getSaleDisplayStatus(v) === selectedStatus;
       const matchPag = selectedFormaPagamento === 'ALL' || v.formaPagamento === selectedFormaPagamento;
       const payment = getSalePaymentStatus(v);
       const matchPayment = selectedPayment === 'ALL' || payment === selectedPayment
@@ -305,6 +317,7 @@ export default function VendasView({ data, openQuickSale = false, orderForSale =
         if (!response.ok || !result?.success) {
           throw new Error(result?.error || 'Não foi possível salvar a venda. Os dados preenchidos foram mantidos; tente novamente.');
         }
+        router.refresh();
       } else if (orderForSale) {
         const result = await converterEncomendaAction(payload, {
           id: orderForSale.id,
@@ -318,10 +331,10 @@ export default function VendasView({ data, openQuickSale = false, orderForSale =
       setFeedback(editingVenda ? 'Venda atualizada com sucesso e estoque ajustado!' : 'Venda registrada com sucesso e estoque atualizado!');
       setIsNewVendaOpen(false);
       if (orderForSale) onReturnToOrders();
-      window.location.reload();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao processar venda.';
       setFormError(msg);
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -332,13 +345,16 @@ export default function VendasView({ data, openQuickSale = false, orderForSale =
   };
 
   const handleUpdateStatus = async (vendaId: number, newStatus: string) => {
+    if (updatingStatusId !== null) return;
+    setUpdatingStatusId(vendaId);
     try {
       await updateVendaStatusAction(vendaId, newStatus);
-      setFeedback(`Status da venda atualizado para ${newStatus}.`);
-      window.location.reload();
+      setFeedback(newStatus === 'ENTREGUE' ? 'Entrega registrada.' : 'Venda marcada como paga.');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao atualizar status.';
       setFeedback(msg);
+    } finally {
+      setUpdatingStatusId(null);
     }
   };
 
@@ -348,9 +364,10 @@ export default function VendasView({ data, openQuickSale = false, orderForSale =
     setDeletingVendaId(venda.id);
     try {
       await deleteVendaAction(venda.id);
-      window.location.reload();
+      setFeedback('Venda excluída.');
     } catch (err: unknown) {
       setFeedback(err instanceof Error ? err.message : 'Erro ao excluir venda.');
+    } finally {
       setDeletingVendaId(null);
     }
   };
@@ -498,6 +515,7 @@ export default function VendasView({ data, openQuickSale = false, orderForSale =
                   const clienteNome = v.cliente?.nome || v.nomeClienteAvulso || 'Cliente Balcão';
                   const received = getSaleReceivedAmount(v);
                   const paymentStatus = getSalePaymentStatus(v);
+                  const displayStatus = getSaleDisplayStatus(v);
                   const paymentLabel = paymentStatus === 'CANCELADO' ? 'Cancelada'
                     : paymentStatus === 'PAGO' ? 'Quitado'
                     : `Falta ${Math.max(0, v.valorTotal - received).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
@@ -553,22 +571,22 @@ export default function VendasView({ data, openQuickSale = false, orderForSale =
 
                       <td className="py-3 px-2 text-center">
                         <select
-                          value={v.status}
+                          aria-label={`Status da venda ${v.numero}`}
+                          aria-busy={updatingStatusId === v.id}
+                          disabled={updatingStatusId !== null}
+                          value={displayStatus}
                           onChange={(e) => handleUpdateStatus(v.id, e.target.value)}
                           className={`w-[150px] max-w-[150px] px-2 py-1 rounded-lg text-[10px] font-bold border outline-none cursor-pointer ${
-                            v.status === 'PAGO' ? 'bg-green-50 text-green-800 border-green-300' :
-                            v.status === 'ENVIADO' ? 'bg-brand-nude text-brand-chocolate border-brand-line' :
-                            v.status === 'ENTREGUE' ? 'bg-brand-nude text-brand-chocolate border-brand-line' :
-                            v.status === 'CANCELADO' ? 'bg-brand-rose-beige text-brand-chocolate border-brand-terracotta' :
+                            displayStatus === 'PAGO' ? 'bg-green-50 text-green-800 border-green-300' :
+                            displayStatus === 'CANCELADO' ? 'bg-brand-rose-beige text-brand-chocolate border-brand-terracotta' :
                             'bg-brand-nude text-brand-chocolate border-brand-line'
                           }`}
                         >
-                          <option value="AGUARDANDO_PAGAMENTO">Aguardando Pagamento</option>
-                          <option value="PAGO">Pago</option>
-                          <option value="PREPARANDO">Preparando</option>
-                          <option value="ENVIADO">Enviado</option>
+                          {displayStatus !== 'PAGO' && displayStatus !== 'ENTREGUE' && (
+                            <option value={displayStatus} disabled hidden>{statusLabels[displayStatus] ?? displayStatus}</option>
+                          )}
                           <option value="ENTREGUE">Entregue</option>
-                          {v.status === 'CANCELADO' && <option value="CANCELADO" disabled hidden>Cancelado</option>}
+                          <option value="PAGO">Pago</option>
                         </select>
                       </td>
 
