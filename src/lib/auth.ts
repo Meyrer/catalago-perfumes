@@ -58,9 +58,9 @@ function createSignature(payload: string): string {
 /**
  * Cria token assinado de sessão para o usuário
  */
-function createSessionToken(userId: number, durationDays: number): string {
+function createSessionToken(userId: number, sessionVersion: number, durationDays: number): string {
   const expiresAt = Date.now() + durationDays * 24 * 60 * 60 * 1000;
-  const payload = JSON.stringify({ userId, expiresAt });
+  const payload = JSON.stringify({ userId, sessionVersion, expiresAt });
   const encodedPayload = Buffer.from(payload).toString("base64url");
   const signature = createSignature(encodedPayload);
   return `${encodedPayload}.${signature}`;
@@ -69,7 +69,7 @@ function createSessionToken(userId: number, durationDays: number): string {
 /**
  * Obtém a sessão do administrador ativo a partir do cookie assinado
  */
-export async function getAdminSession(): Promise<AdminSessionUser | null> {
+async function readAdminSession() {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get(COOKIE_NAME);
@@ -88,7 +88,7 @@ export async function getAdminSession(): Promise<AdminSessionUser | null> {
     if (!crypto.timingSafeEqual(receivedBuf, expectedBuf)) return null;
 
     const rawPayload = Buffer.from(encodedPayload, "base64url").toString("utf-8");
-    const { userId, expiresAt } = JSON.parse(rawPayload);
+    const { userId, sessionVersion = 0, expiresAt } = JSON.parse(rawPayload);
 
     if (typeof expiresAt !== "number" || Date.now() > expiresAt) {
       return null;
@@ -102,15 +102,22 @@ export async function getAdminSession(): Promise<AdminSessionUser | null> {
         username: true,
         name: true,
         mustChangePassword: true,
+        active: true,
+        sessionVersion: true,
       },
     });
 
-    if (!user) return null;
+    if (!user?.active || user.sessionVersion !== sessionVersion) return null;
 
-    return user;
+    const { id, username, name, mustChangePassword } = user;
+    return { user: { id, username, name, mustChangePassword }, sessionVersion: user.sessionVersion };
   } catch {
     return null;
   }
+}
+
+export async function getAdminSession(): Promise<AdminSessionUser | null> {
+  return (await readAdminSession())?.user ?? null;
 }
 
 /**
@@ -141,7 +148,7 @@ export async function loginAdmin(
     where: { username },
   });
 
-  if (!user) {
+  if (!user?.active) {
     return { success: false, error: "Usuário ou senha incorretos." };
   }
 
@@ -153,16 +160,7 @@ export async function loginAdmin(
 
   // Gera o token de sessão assinado
   const durationDays = rememberAccess ? REMEMBERED_SESSION_DURATION_DAYS : SESSION_DURATION_DAYS;
-  const token = createSessionToken(user.id, durationDays);
-  const cookieStore = await cookies();
-
-  cookieStore.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: durationDays * 24 * 60 * 60,
-    path: "/",
-  });
+  await setAdminSession(user.id, user.sessionVersion, durationDays);
 
   const sessionUser: AdminSessionUser = {
     id: user.id,
@@ -181,7 +179,7 @@ export async function changeAdminPassword(
   newPasswordInput: string,
   confirmPasswordInput: string
 ): Promise<{ success: boolean; error?: string }> {
-  const session = await getAdminSession();
+  const session = await readAdminSession();
   if (!session) {
     return { success: false, error: "Sessão expirada. Faça login novamente." };
   }
@@ -203,17 +201,31 @@ export async function changeAdminPassword(
     return { success: false, error: "Defina uma senha pessoal diferente da senha temporária inicial." };
   }
 
-  const newHash = hashPassword(newPassword);
-
-  await prisma.adminUser.update({
-    where: { id: session.id },
+  const updated = await prisma.adminUser.updateMany({
+    where: { id: session.user.id, active: true, sessionVersion: session.sessionVersion },
     data: {
-      passwordHash: newHash,
+      passwordHash: hashPassword(newPassword),
       mustChangePassword: false,
+      sessionVersion: { increment: 1 },
+      resetTokenHash: null,
+      resetExpiresAt: null,
     },
   });
+  if (!updated.count) return { success: false, error: "Sessão expirada. Faça login novamente." };
+  await setAdminSession(session.user.id, session.sessionVersion + 1, SESSION_DURATION_DAYS);
 
   return { success: true };
+}
+
+async function setAdminSession(userId: number, sessionVersion: number, durationDays: number) {
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE_NAME, createSessionToken(userId, sessionVersion, durationDays), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: durationDays * 24 * 60 * 60,
+    path: "/",
+  });
 }
 
 /**

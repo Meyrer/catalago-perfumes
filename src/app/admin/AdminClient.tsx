@@ -271,6 +271,15 @@ export default function AdminClient({ data }: AdminClientProps) {
                       </button>
                     );
                   })}
+                  {group.id === 'mais' && (
+                    <Link href="/admin/usuarios" prefetch={false}
+                      className={`admin-nav-item flex w-full items-center ${isSidebarCollapsed ? 'justify-center' : ''}`}
+                      aria-label={isSidebarCollapsed ? 'Usuários' : undefined}
+                      title={isSidebarCollapsed ? 'Usuários' : undefined}>
+                      <Users size={18} className="shrink-0" aria-hidden="true" />
+                      {!isSidebarCollapsed && <span>Usuários</span>}
+                    </Link>
+                  )}
                   </div>
                 </div>
               ))}
