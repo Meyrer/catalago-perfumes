@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import type { ERPData } from '../types';
 import { normalizeImageUrl } from '@/lib/image-url';
 import StatCard from '../StatCard';
+import MetricHelp from '../MetricHelp';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
 import { summarizeSalePayments, getSaleItemNetAmounts } from '@/lib/sale-payment';
 import { fromCents, toCents } from '@/lib/money';
@@ -97,16 +98,21 @@ export default function DashboardView({ data, onNavigate }: Props) {
       <MonthFilter value={selectedMonth} onChange={setSelectedMonth} />
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4" aria-label="Resumo das vendas do período">
         {[
-          { label: 'Total vendido bruto', value: paymentSummary.total, icon: ShoppingBag },
-          { label: 'Lucro líquido', value: lucroLiquido, icon: DollarSign, detail: 'Após custos e despesas do período' },
-          { label: 'Já recebido bruto', value: paymentSummary.received, icon: CheckCircle2, color: 'text-emerald-700' },
-          { label: 'Falta receber bruto', value: paymentSummary.outstanding, icon: Clock, color: 'text-amber-700' },
+          { label: 'Total vendido bruto', value: paymentSummary.total, icon: ShoppingBag,
+            help: 'Soma das vendas do período, incluindo o que já foi recebido e o que ainda falta receber. Exclui vendas canceladas e encomendas ainda sem venda.' },
+          { label: 'Lucro líquido', value: lucroLiquido, icon: DollarSign, detail: 'Após custos e despesas do período',
+            help: 'Total vendido menos o custo dos produtos vendidos e as despesas lançadas no período. Inclui vendas que ainda serão recebidas.' },
+          { label: 'Já recebido bruto', value: paymentSummary.received, icon: CheckCircle2, color: 'text-emerald-700',
+            help: 'Valor já recebido pelas vendas do período selecionado, incluindo pagamentos parciais e pagamentos feitos depois do mês da venda.' },
+          { label: 'Falta receber bruto', value: paymentSummary.outstanding, icon: Clock, color: 'text-amber-700',
+            help: 'Valor que ainda falta receber pelas vendas do período selecionado. É o total vendido menos o valor já recebido.' },
         ].map(card => (
           <StatCard
             key={card.label}
             label={card.label}
             icon={card.icon}
             detail={card.detail}
+            help={<MetricHelp label={card.label} explanation={card.help} className="min-h-6! min-w-6!" />}
             value={<span className={card.color}>{card.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>}
           />
         ))}
