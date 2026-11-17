@@ -11,6 +11,7 @@ import { createEncomendaAction, updateEncomendaStatusAction } from '../../action
 
 type Props = {
   data: ERPData;
+  onConvertOrder: (order: AdminEncomenda) => void;
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -52,7 +53,7 @@ function downloadOrderReport(file: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export default function EncomendasView({ data }: Props) {
+export default function EncomendasView({ data, onConvertOrder }: Props) {
   const router = useRouter();
   const { encomendas, clientes, fornecedores, produtos } = data;
 
@@ -382,6 +383,9 @@ export default function EncomendasView({ data }: Props) {
               ) : (
                 filteredEncomendas.map((enc) => {
                   const cfg = STATUS_CONFIG[enc.status] || STATUS_CONFIG.SOLICITACAO_RECEBIDA;
+                  const linkedSale = data.vendas.find(sale => sale.encomendaId === enc.id || sale.id === enc.vendaId);
+                  const converted = enc.vendaId !== null || Boolean(linkedSale);
+                  const readyToConvert = ['RECEBIDO', 'PRONTO_ENTREGA'].includes(enc.status) && !converted;
                   const photoUrl = normalizeImageUrl(enc.produto?.fotos[0]?.url);
                   const dataFormatada = new Date(enc.createdAt).toLocaleDateString('pt-BR', {
                     day: '2-digit', month: '2-digit', year: 'numeric'
@@ -434,6 +438,7 @@ export default function EncomendasView({ data }: Props) {
                       <td className="py-3 px-3 text-center">
                         <select
                           value={enc.status}
+                          disabled={converted}
                           onChange={(e) => handleUpdateStatus(enc.id, e.target.value)}
                           className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border outline-none cursor-pointer ${cfg.bg} ${cfg.color} ${cfg.border}`}
                         >
@@ -445,12 +450,23 @@ export default function EncomendasView({ data }: Props) {
 
                       <td className="py-3 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5">
+                          {converted && <span className="text-xs font-semibold text-brand-muted">{linkedSale?.status === 'CANCELADO' ? 'Venda cancelada' : 'Venda registrada'}{linkedSale && <span className="block">{linkedSale.numero}</span>}</span>}
+                          {readyToConvert && (enc.produtoId ? (
+                            <button
+                              type="button"
+                              onClick={() => onConvertOrder(enc)}
+                              className="rounded-lg bg-brand-chocolate px-2.5 py-1 text-xs font-semibold text-brand-cream"
+                            >
+                              Transformar em venda
+                            </button>
+                          ) : <span className="text-xs text-brand-muted">Vincule o perfume para vender</span>)}
                           <button
                             type="button"
+                            disabled={converted}
                             onClick={() => openOrderForm(enc)}
                             aria-label={`Editar encomenda ${enc.numero}`}
                             title="Editar encomenda"
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-line bg-brand-card px-2.5 py-1 text-brand-chocolate hover:bg-brand-nude"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-line bg-brand-card px-2.5 py-1 text-brand-chocolate hover:bg-brand-nude disabled:opacity-50"
                           >
                             <Pencil size={14} aria-hidden="true" />
                             Editar

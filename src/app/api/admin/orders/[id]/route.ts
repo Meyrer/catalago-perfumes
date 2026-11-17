@@ -25,7 +25,11 @@ export async function PATCH(request: Request, context: Context) {
   if (!body || !Object.keys(body).some(key => ["status", "observacoes", "previsaoChegada"].includes(key)) || Object.keys(body).some(key => !["status", "observacoes", "previsaoChegada", "updatedAt"].includes(key))) return apiError("Envie status, observacoes ou previsaoChegada. updatedAt é opcional para controle de concorrência.", 400);
   try {
     const changed = await prisma.encomenda.updateMany({
-      where: { id, updatedAt: body.updatedAt === undefined ? undefined : dateField(body.updatedAt, "updatedAt") },
+      where: {
+        id,
+        updatedAt: body.updatedAt === undefined ? undefined : dateField(body.updatedAt, "updatedAt"),
+        ...(body.status === undefined ? {} : { vendaId: null }),
+      },
       data: {
         status: body.status === undefined ? undefined : enumField(body.status, "status", orderStatuses),
         observacoes: optionalText(body.observacoes, "observacoes", 5000),

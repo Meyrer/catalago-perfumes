@@ -7,7 +7,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { plainPrismaData } from "@/lib/admin-api";
 import { fromCents, roundMoney, toCents } from "@/lib/money";
-import { getSaleReceivedAmount, recordSalePayment, validateSaleReceivedAmount } from "@/lib/sale-payment";
+import { getSaleReceivedAmount, recordSalePayment, validateSaleReceivedAmount, type SalePaymentEntry } from "@/lib/sale-payment";
 
 function parsePaymentForecast(value: string | null | undefined) {
   if (value === undefined || value === null) return value;
@@ -34,14 +34,17 @@ export async function createSale(data: {
   previsaoPagamento?: string | null;
   dataPagamento?: string;
   formaRecebimento?: string;
-}, actor: string) {
+}, actor: string, conversion?: { id: number; updatedAt: string }) {
   const { clienteId, nomeClienteAvulso, contatoClienteAvulso, itens, formaPagamento, observacoes } = data;
-  const novoCliente = !clienteId && data.cadastrarCliente === true;
+  const novoCliente = !conversion && !clienteId && data.cadastrarCliente === true;
+  if (conversion && (!Number.isSafeInteger(conversion.id) || conversion.id < 1 || conversion.id > 2147483647)) {
+    throw new Error('Encomenda inválida.');
+  }
   if (novoCliente && !nomeClienteAvulso?.trim()) throw new Error('Informe o nome do cliente.');
   const desconto = data.desconto ?? 0;
   const frete = data.frete ?? 0;
   const previsaoPagamento = parsePaymentForecast(data.previsaoPagamento);
-  const status = data.status || "PREPARANDO";
+  const status = conversion ? 'ENTREGUE' : data.status || "PREPARANDO";
   if (!['AGUARDANDO_PAGAMENTO', 'PAGO', 'PREPARANDO', 'ENVIADO', 'ENTREGUE', 'CANCELADO'].includes(status)) throw new Error('Status inválido.');
   if (!['PIX', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'DINHEIRO', 'LINK_PAGAMENTO'].includes(formaPagamento)) throw new Error('Forma de pagamento inválida.');
 
@@ -94,6 +97,33 @@ export async function createSale(data: {
   const numeroVenda = `VND-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 8).toUpperCase()}`;
 
   const venda = await prisma.$transaction(async (tx) => {
+  const encomenda = conversion ? await tx.encomenda.findUnique({ where: { id: conversion.id } }) : null;
+  if (conversion) {
+    if (!encomenda || encomenda.updatedAt.toISOString() !== conversion.updatedAt) {
+      throw new Error('A encomenda foi alterada. Atualize a página e tente novamente.');
+    }
+    if (encomenda.vendaId !== null || await tx.venda.findFirst({ where: { encomendaId: encomenda.id }, select: { id: true } })) {
+      throw new Error('Esta encomenda já está vinculada a uma venda.');
+    }
+    if (!['RECEBIDO', 'PRONTO_ENTREGA'].includes(encomenda.status)) {
+      throw new Error('Marque a encomenda como recebida ou pronta para entrega antes de converter.');
+    }
+    if (!encomenda.produtoId || itens.length !== 1 || itens[0].produtoId !== encomenda.produtoId || itens[0].quantidade !== encomenda.quantidade) {
+      throw new Error('Confira o produto e a quantidade vinculados à encomenda.');
+    }
+    if (toCents(itens[0].precoUnitario) <= 0) throw new Error('Informe o preço unitário da venda.');
+  }
+
+  const sinal = roundMoney(encomenda?.valorAdiantamento ?? 0);
+  if (valorRecebido < sinal) throw new Error('O valor já recebido deve incluir o sinal da encomenda.');
+  const historicoInicial: SalePaymentEntry[] = sinal > 0 ? [{
+    tipo: 'SALDO_INICIAL', valor: sinal, totalRecebido: sinal, data: null,
+    registradoEm: null, formaPagamento: null, responsavel: null,
+  }] : [];
+  const historicoPagamentos = recordSalePayment(
+    { status: 'PREPARANDO', valorTotal, valorRecebido: sinal, historicoPagamentos: historicoInicial },
+    valorRecebido, data.formaRecebimento || formaPagamento, actor, data.dataPagamento,
+  );
   const clienteDaVenda = novoCliente ? await tx.cliente.create({ data: {
     nome: nomeClienteAvulso!.trim(), whatsapp: contatoClienteAvulso?.trim() || null,
   } }) : null;
@@ -109,9 +139,9 @@ export async function createSale(data: {
   const venda = await tx.venda.create({
     data: {
       numero: numeroVenda,
-      clienteId: clienteDaVenda?.id ?? (clienteId || null),
-      nomeClienteAvulso: clienteDaVenda ? null : nomeClienteAvulso || null,
-      contatoClienteAvulso: clienteDaVenda ? null : contatoClienteAvulso || null,
+      clienteId: encomenda ? encomenda.clienteId : clienteDaVenda?.id ?? (clienteId || null),
+      nomeClienteAvulso: encomenda ? (encomenda.clienteId ? null : encomenda.nomeCliente) : clienteDaVenda ? null : nomeClienteAvulso || null,
+      contatoClienteAvulso: encomenda ? (encomenda.clienteId ? null : encomenda.whatsappCliente) : clienteDaVenda ? null : contatoClienteAvulso || null,
       status,
       formaPagamento,
       subtotal,
@@ -120,11 +150,12 @@ export async function createSale(data: {
       valorTotal,
       valorRecebido,
       previsaoPagamento: previsaoPagamento ?? null,
-      historicoPagamentos: recordSalePayment({ status: 'PREPARANDO', valorTotal, valorRecebido: 0 }, valorRecebido, data.formaRecebimento || formaPagamento, actor, data.dataPagamento),
+      historicoPagamentos,
       custoTotal,
       lucroTotal,
       observacoes: observacoes || null,
       usuarioResponsavel: actor,
+      encomendaId: encomenda?.id,
       itens: {
         create: itens.map(item => {
           const p = produtosMap.get(item.produtoId)!;
@@ -183,6 +214,14 @@ export async function createSale(data: {
         }
       });
     }
+  }
+
+  if (encomenda) {
+    const linked = await tx.encomenda.updateMany({
+      where: { id: encomenda.id, updatedAt: encomenda.updatedAt, vendaId: null },
+      data: { vendaId: venda.id, status: 'FINALIZADO' },
+    });
+    if (linked.count !== 1) throw new Error('A encomenda foi alterada. Atualize a página e tente novamente.');
   }
 
   return plainPrismaData(venda);
@@ -548,6 +587,12 @@ export async function deleteSale(vendaId: number, actor: string) {
       }
     }
 
+    if (venda.encomendaId !== null) {
+      await tx.encomenda.updateMany({
+        where: { id: venda.encomendaId, vendaId },
+        data: { vendaId: null, status: 'PRONTO_ENTREGA' },
+      });
+    }
     await tx.venda.delete({ where: { id: vendaId } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 

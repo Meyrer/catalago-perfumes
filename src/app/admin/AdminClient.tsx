@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import type { ERPData } from './types';
+import type { AdminEncomenda, ERPData } from './types';
 import DashboardView from './views/DashboardView';
 import ProdutosView from './views/ProdutosView';
 import EstoqueView from './views/EstoqueView';
@@ -70,6 +70,7 @@ export default function AdminClient({ data }: AdminClientProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [moreMenuPreference, setMoreMenuPreference] = useState<boolean | null>(null);
   const [quickSaleRequest, setQuickSaleRequest] = useState(0);
+  const [orderForSale, setOrderForSale] = useState<AdminEncomenda | null>(null);
 
   useEffect(() => {
     if (!isMobileMenuOpen) return;
@@ -94,7 +95,8 @@ export default function AdminClient({ data }: AdminClientProps) {
 
   const handleSelectTab = (tab: AdminTab) => {
     setActiveTab(tab);
-    if (tab !== 'vendas') setQuickSaleRequest(0);
+    setOrderForSale(null);
+    if (tab !== 'vendas' || orderForSale) setQuickSaleRequest(0);
     setMoreMenuPreference(null);
     localStorage.setItem('elegance_admin_tab', tab);
     setIsMobileMenuOpen(false);
@@ -104,6 +106,11 @@ export default function AdminClient({ data }: AdminClientProps) {
   const handleQuickSale = () => {
     handleSelectTab('vendas');
     setQuickSaleRequest(request => request + 1);
+  };
+
+  const handleConvertOrder = (order: AdminEncomenda) => {
+    handleQuickSale();
+    setOrderForSale(order);
   };
 
   // Contadores para Badges no Menu
@@ -405,11 +412,12 @@ export default function AdminClient({ data }: AdminClientProps) {
             )}
 
             {activeTab === 'vendas' && (
-              <VendasView key={quickSaleRequest} data={data} openQuickSale={quickSaleRequest > 0} />
+              <VendasView key={quickSaleRequest} data={data} openQuickSale={quickSaleRequest > 0}
+                orderForSale={orderForSale} onReturnToOrders={() => handleSelectTab('encomendas')} />
             )}
 
             {activeTab === 'encomendas' && (
-              <EncomendasView data={data} />
+              <EncomendasView data={data} onConvertOrder={handleConvertOrder} />
             )}
 
             {activeTab === 'clientes' && (

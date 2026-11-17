@@ -36,7 +36,7 @@ export async function PUT(request: Request, context: Context) {
     }
 
     const changed = await prisma.encomenda.updateMany({
-      where: { id, updatedAt },
+      where: { id, updatedAt, vendaId: null },
       data: {
         clienteId: idField(body.clienteId, "Cliente") ?? null,
         nomeCliente: requiredText(body.nomeCliente, "Nome do cliente"),
