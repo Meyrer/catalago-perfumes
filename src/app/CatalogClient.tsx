@@ -15,7 +15,7 @@ import { normalizeImageUrl } from '@/lib/image-url';
 import { sortBrandCollectionProducts, sortProductsWithStockFirst } from '@/lib/product-order';
 
 type Foto = { id: number; url: string };
-type Categoria = { id: number; nome: string; imagemUrl?: string | null };
+type Categoria = { id: number; nome: string };
 
 type Produto = {
   id: number;
@@ -32,7 +32,6 @@ type Produto = {
   modoUso: string | null;
   caracteristicas: string | null;
   badge: string | null;
-  disponivel: boolean;
   tipoDisponibilidade: 'PRONTA_ENTREGA' | 'ENCOMENDA' | string;
   previsaoEntrega: string | null;
   destaque: boolean;
@@ -53,14 +52,6 @@ type Produto = {
   longevidade?: string | null;
   projecao?: string | null;
   createdAt?: Date | string;
-};
-
-type Banner = {
-  id: number;
-  imagemUrl: string;
-  link: string | null;
-  titulo?: string | null;
-  subtitulo?: string | null;
 };
 
 export function isProdutoProntaEntrega(p?: { tipoDisponibilidade: string; quantidade?: number | null } | null): boolean {
@@ -220,11 +211,9 @@ function useCatalogFilter<T extends string>(name: string, fallback: T, options?:
 export default function CatalogClient({
   initialProdutos,
   categorias,
-  banners
 }: {
   initialProdutos: Produto[];
   categorias: Categoria[];
-  banners: Banner[];
 }) {
   // Navigation & Filter States
   const [activeCategory, setActiveCategory] = useCatalogFilter<string>('categoria', 'todos', ['todos', 'promocoes', ...categorias.map(c => c.nome)]);
