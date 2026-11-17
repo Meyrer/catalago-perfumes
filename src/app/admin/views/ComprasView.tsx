@@ -9,7 +9,7 @@ import {
   X, Loader2, DollarSign, Calendar, ArrowDownRight, 
   Globe, ChevronRight, Eye, Coins, ShoppingCart, Package, Check
 } from 'lucide-react';
-import { createCompraAction, receberCompraAction, marcarCompraEmTransitoAction, atualizarPagamentoCompraAction } from '../../actions';
+import { createCompraAction, receberCompraAction, marcarCompraEmTransitoAction, atualizarPagamentoCompraAction, atualizarObservacaoCompraAction } from '../../actions';
 
 type Props = {
   data: ERPData;
@@ -57,6 +57,9 @@ export default function ComprasView({ data }: Props) {
   const [isSavingCash, setIsSavingCash] = useState(false);
   const [cashError, setCashError] = useState('');
   const [observacoes, setObservacoes] = useState('');
+  const [observacaoDetalhes, setObservacaoDetalhes] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [noteFeedback, setNoteFeedback] = useState<{ error: boolean; message: string } | null>(null);
 
   // Itens da Compra
   const [compraItens, setCompraItens] = useState<Array<{ produtoId: number; quantidade: number; valorUnitarioMoeda: number }>>([]);
@@ -185,12 +188,35 @@ export default function ComprasView({ data }: Props) {
       data: compra.dataPagamentoCaixa ? new Date(compra.dataPagamentoCaixa).toISOString().slice(0, 10) : getDayKey(),
     });
     setCashError('');
+    setObservacaoDetalhes(compra.observacoes ?? '');
+    setNoteFeedback(null);
     setViewingCompra(compra);
+  };
+
+  const handleSaveNote = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!viewingCompra || isSavingNote || isSavingCash) return;
+    setIsSavingNote(true);
+    setNoteFeedback(null);
+    try {
+      const result = await atualizarObservacaoCompraAction(
+        viewingCompra.id, observacaoDetalhes, new Date(viewingCompra.updatedAt).toISOString(),
+      );
+      if (!result.compra) throw new Error(result.error);
+      const saved = result.compra;
+      setViewingCompra({ ...viewingCompra, ...saved });
+      setObservacaoDetalhes(saved.observacoes ?? '');
+      setNoteFeedback({ error: false, message: 'Observação salva.' });
+    } catch (error) {
+      setNoteFeedback({ error: true, message: error instanceof Error ? error.message : 'Erro ao salvar a observação.' });
+    } finally {
+      setIsSavingNote(false);
+    }
   };
 
   const handleSaveCashPayment = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!viewingCompra) return;
+    if (!viewingCompra || isSavingNote || isSavingCash) return;
     setIsSavingCash(true);
     setCashError('');
     try {
@@ -692,7 +718,7 @@ export default function ComprasView({ data }: Props) {
                 <span className="font-mono text-xs font-bold text-brand-muted">{viewingCompra.numero}</span>
                 <h3 id="compra-detalhes-title" className="text-xl font-serif font-bold text-brand-chocolate">Detalhes da Compra / Lote</h3>
               </div>
-              <button type="button" aria-label="Fechar detalhes da compra" onClick={() => setViewingCompra(null)} className="p-1 text-brand-muted hover:text-brand-chocolate rounded-full hover:bg-brand-nude cursor-pointer">
+              <button type="button" disabled={isSavingNote || isSavingCash} aria-label="Fechar detalhes da compra" onClick={() => setViewingCompra(null)} className="p-1 text-brand-muted hover:text-brand-chocolate rounded-full hover:bg-brand-nude cursor-pointer disabled:opacity-60">
                 <X size={18} />
               </button>
             </div>
@@ -721,18 +747,30 @@ export default function ComprasView({ data }: Props) {
                 </div>
               </div>
 
-              {viewingCompra.observacoes && (
-                <div className="rounded-xl border border-brand-line bg-brand-cream p-3 text-xs text-brand-muted">
-                  <p className="mb-1 font-bold">Observação</p>
-                  <p className="whitespace-pre-wrap leading-relaxed">{viewingCompra.observacoes}</p>
-                </div>
-              )}
+              <form onSubmit={handleSaveNote} className="rounded-xl border border-brand-line bg-brand-cream p-3 space-y-2">
+                <label htmlFor="compra-detalhes-observacao" className="block font-bold text-brand-muted">Observação</label>
+                <textarea
+                  id="compra-detalhes-observacao"
+                  value={observacaoDetalhes}
+                  onChange={event => { setObservacaoDetalhes(event.target.value); setNoteFeedback(null); }}
+                  disabled={isSavingNote}
+                  rows={3}
+                  maxLength={5000}
+                  placeholder="Adicione uma observação sobre a compra"
+                  className="w-full resize-y rounded-xl border border-brand-line bg-brand-card px-3 py-2 text-sm text-brand-chocolate"
+                />
+                {noteFeedback && <p role={noteFeedback.error ? 'alert' : 'status'} className={noteFeedback.error ? 'text-red-700' : 'text-emerald-700'}>{noteFeedback.message}</p>}
+                <button type="submit" disabled={isSavingNote || isSavingCash || observacaoDetalhes.trim() === (viewingCompra.observacoes ?? '').trim()}
+                  className="rounded-lg border border-brand-line bg-brand-card px-3 py-2 font-semibold text-brand-chocolate disabled:opacity-60">
+                  {isSavingNote ? 'Salvando…' : 'Salvar observação'}
+                </button>
+              </form>
 
               <form onSubmit={handleSaveCashPayment} className="rounded-xl border border-brand-line bg-brand-cream p-3 space-y-2">
                 <h4 className="font-bold text-brand-chocolate">Pagamento pelo caixa</h4>
                 <PurchaseCashFields value={pagamentoCaixa} onChange={setPagamentoCaixa} total={viewingCompra.custoTotalBRL} />
                 {cashError && <p role="alert" className="text-red-700">{cashError}</p>}
-                <button type="submit" disabled={isSavingCash} className="rounded-lg border border-brand-line bg-brand-card px-3 py-2 font-semibold text-brand-chocolate disabled:opacity-60">
+                <button type="submit" disabled={isSavingCash || isSavingNote} className="rounded-lg border border-brand-line bg-brand-card px-3 py-2 font-semibold text-brand-chocolate disabled:opacity-60">
                   {isSavingCash ? 'Salvando…' : 'Salvar pagamento'}
                 </button>
               </form>

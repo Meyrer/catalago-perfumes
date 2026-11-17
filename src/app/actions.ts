@@ -687,6 +687,29 @@ export async function atualizarPagamentoCompraAction(compraId: number, pagamento
   await updatePurchaseCashPayment(compraId, pagamento, version);
 }
 
+export async function atualizarObservacaoCompraAction(compraId: number, observacao: string, updatedAt: string) {
+  await requireAdminAuth();
+  if (!Number.isInteger(compraId) || compraId < 1 || compraId > 2147483647) return { error: 'Compra inválida.' };
+  if (typeof observacao !== 'string' || observacao.length > 5000) return { error: 'A observação deve ter até 5.000 caracteres.' };
+  const version = new Date(updatedAt);
+  if (!Number.isFinite(version.getTime())) return { error: 'Atualize a página antes de editar a observação.' };
+
+  try {
+    const compra = await prisma.compra.update({
+      where: { id: compraId, updatedAt: version },
+      data: { observacoes: observacao.trim() || null },
+      select: { updatedAt: true, observacoes: true },
+    });
+    revalidatePath('/admin');
+    return { compra };
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return { error: 'A compra foi alterada ou removida. Atualize a página antes de salvar.' };
+    }
+    return { error: 'Não foi possível salvar a observação. Tente novamente.' };
+  }
+}
+
 export async function deleteCompraAction(compraId: number) {
   await requireAdminAuth();
   await prisma.$transaction(async tx => {
