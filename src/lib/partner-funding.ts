@@ -18,14 +18,18 @@ export function getPartnerContributions(entries: Entry[]) {
 }
 
 export function getExpensePartnerFunding(contributions: Map<string, number>, id: number, cents: number): PartnerFunding | undefined {
-  const contribution = contributions.get(`Despesa #${id}`);
+  const contribution = getPartnerContributionAmount(contributions, 'despesa', id);
   return contribution ? contribution >= cents ? 'aporte' : 'parcial' : undefined;
 }
 
 export function getPurchasePartnerFunding(contributions: Map<string, number>, purchase: Purchase): PartnerFunding | undefined {
   const cash = toCents(purchase.valorPagoCaixa ?? 0);
-  const contribution = contributions.get(`Compra #${purchase.id}`);
+  const contribution = getPartnerContributionAmount(contributions, 'compra', purchase.id);
   if (cash > 0 && contribution) return contribution >= cash ? 'aporte' : 'parcial';
   if (cash === 0 && purchase.observacoes?.split(/\r?\n/).some(line => line.trim() === 'Origem do pagamento: sócios.')) return 'direto';
   return undefined;
+}
+
+export function getPartnerContributionAmount(contributions: Map<string, number>, type: 'compra' | 'despesa', id: number) {
+  return contributions.get(`${type === 'compra' ? 'Compra' : 'Despesa'} #${id}`) ?? 0;
 }

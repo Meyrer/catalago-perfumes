@@ -230,8 +230,9 @@ function CashSummary({ overview }: { overview: FinanceOverview }) {
       <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         <Detail label="Saldo anterior com data" value={amount(cash.opening)} />
         <Detail label="Outras entradas no período" value={amount(cash.other)} />
-        <Detail label="Compras pagas no período" value={amount(cash.purchases)} />
-        <Detail label="Despesas pagas no período" value={amount(cash.expenses)} />
+        <Detail label="Compras pagas pela loja" value={amount(cash.purchases)} />
+        <Detail label="Despesas pagas pela loja" value={amount(cash.expenses)} />
+        {cash.coveredByPartners > 0 && <Detail label="Pagamentos cobertos por aportes" value={amount(cash.coveredByPartners)} />}
         <Detail label="Entradas menos saídas no período" value={amount(cash.net)} />
         <Detail label="Saldo de lançamentos sem data" value={amount(cash.undatedNet)} />
       </dl>
