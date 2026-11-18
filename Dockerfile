@@ -38,6 +38,7 @@ RUN mkdir -p public/uploads && chown -R nextjs:nodejs public
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/scripts/init-fifo.js ./scripts/init-fifo.js
+COPY --from=builder /app/scripts/distribute-stock-locations.js ./scripts/distribute-stock-locations.js
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static

@@ -4,6 +4,7 @@ import { getFifoStockValue, getFifoLots, getFifoNextCost } from '@/lib/fifo';
 
 import { useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { ERPData, AdminProduto } from '../types';
 import StockMovementHistory from '../StockMovementHistory';
 import { 
@@ -11,9 +12,10 @@ import {
   Search, History, RefreshCw, X, Loader2,
   Package, Calendar, CheckCircle2, ShieldAlert, FileText
 } from 'lucide-react';
-import { movimentarEstoqueAction } from '../../actions';
+import { distribuirEstoqueAction, movimentarEstoqueAction } from '../../actions';
 import { normalizeImageUrl } from '@/lib/image-url';
 import { sortBrandCollectionProducts } from '@/lib/product-order';
+import { stockLocations, stockLocationLabels, type CityQuantities, type StockLocation } from '@/lib/stock-locations';
 
 type Props = {
   data: ERPData;
@@ -24,19 +26,29 @@ const STOCK_PAGE_SIZE = 20;
 
 export default function EstoqueView({ data }: Props) {
   const { produtos, movimentacoesTotal, user } = data;
+  const router = useRouter();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'BAIXO' | 'ZERADO' | 'PRONTA_ENTREGA' | 'ENCOMENDA'>('ALL');
+  const [locationFilter, setLocationFilter] = useState<StockLocation | ''>('');
   const [activeSubTab, setActiveSubTab] = useState<'saldo' | 'historico'>('saldo');
   const [page, setPage] = useState(1);
   const [previewProduct, setPreviewProduct] = useState<AdminProduto | null>(null);
   const photoDialogRef = useRef<HTMLDialogElement>(null);
+  const locationDialogRef = useRef<HTMLDialogElement>(null);
+  const [locationProduct, setLocationProduct] = useState<AdminProduto | null>(null);
+  const [cities, setCities] = useState<CityQuantities>({ sapiranga: 0, igrejinha: 0 });
+  const [transferOrigin, setTransferOrigin] = useState<keyof CityQuantities | null>(null);
+  const [transferQuantity, setTransferQuantity] = useState(1);
+  const [savingLocations, setSavingLocations] = useState(false);
+  const [locationError, setLocationError] = useState('');
 
   // Modal de Movimentação
   const [movingProduct, setMovingProduct] = useState<AdminProduto | null>(null);
   const [movTipo, setMovTipo] = useState<'ENTRADA' | 'SAIDA' | 'AJUSTE' | 'PERDA' | 'DEVOLUCAO' | 'RESERVA'>('ENTRADA');
   const [movQtd, setMovQtd] = useState<number>(1);
   const [movMotivo, setMovMotivo] = useState('');
+  const [movementCity, setMovementCity] = useState<StockLocation | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
 
@@ -58,9 +70,9 @@ export default function EstoqueView({ data }: Props) {
         matchFilter = p.tipoDisponibilidade === 'ENCOMENDA';
       }
 
-      return matchSearch && matchFilter;
+      return matchSearch && matchFilter && (!locationFilter || stockLocations(p)[locationFilter] > 0);
     }).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })));
-  }, [produtos, searchTerm, filterType]);
+  }, [produtos, searchTerm, filterType, locationFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProdutos.length / STOCK_PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -78,12 +90,48 @@ export default function EstoqueView({ data }: Props) {
   const totalCusto = useMemo(() => produtos.reduce((acc, p) => acc + getFifoStockValue(p), 0), [produtos]);
   const totalVenda = useMemo(() => produtos.reduce((acc, p) => acc + (p.precoVista || 0) * (p.quantidade || 0), 0), [produtos]);
   const totalReservado = useMemo(() => produtos.reduce((acc, p) => acc + (p.quantidadeReservada || 0), 0), [produtos]);
+  const totalSapiranga = produtos.reduce((sum, product) => sum + product.estoqueSapiranga, 0);
+  const totalIgrejinha = produtos.reduce((sum, product) => sum + product.estoqueIgrejinha, 0);
+  const totalSemLocal = totalFisico - totalSapiranga - totalIgrejinha;
+  const movementDelta = !movingProduct || movTipo === 'RESERVA' ? 0 : movTipo === 'AJUSTE'
+    ? movQtd - movingProduct.quantidade : ['SAIDA', 'PERDA'].includes(movTipo) ? -movQtd : movQtd;
+
+  const transferDestination = transferOrigin === 'sapiranga' ? 'igrejinha' : 'sapiranga';
+
+  const openLocations = (product: AdminProduto, transfer = false) => {
+    const { sapiranga, igrejinha } = stockLocations(product);
+    setLocationProduct(product);
+    setCities({ sapiranga, igrejinha });
+    setTransferOrigin(transfer ? (sapiranga > 0 ? 'sapiranga' : 'igrejinha') : null);
+    setTransferQuantity(1);
+    setLocationError('');
+    locationDialogRef.current?.showModal();
+  };
+
+  const saveLocations = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!locationProduct) return;
+    setSavingLocations(true);
+    setLocationError('');
+    try {
+      const distribution = transferOrigin ? { origem: transferOrigin, quantidade: transferQuantity } : cities;
+      const result = await distribuirEstoqueAction(locationProduct.id, new Date(locationProduct.updatedAt).toISOString(), distribution);
+      if (!result.success) throw new Error(result.error);
+      locationDialogRef.current?.close();
+      router.refresh();
+    } catch (error) {
+      setLocationError(error instanceof Error ? error.message : 'Não foi possível atualizar o estoque por cidade.');
+    } finally {
+      setSavingLocations(false);
+    }
+  };
 
   const handleOpenMoveModal = (p: AdminProduto, tipoPredef: typeof movTipo = 'ENTRADA') => {
     setMovingProduct(p);
     setMovTipo(tipoPredef);
     setMovQtd(tipoPredef === 'AJUSTE' ? p.quantidade : 1);
     setMovMotivo('');
+    setMovementCity('');
     setFeedbackMsg('');
   };
 
@@ -97,7 +145,8 @@ export default function EstoqueView({ data }: Props) {
         movingProduct.id,
         movTipo,
         Number(movQtd),
-        movMotivo
+        movMotivo,
+        movementCity ? { sapiranga: movementCity === 'sapiranga' ? Math.abs(movementDelta) : 0, igrejinha: movementCity === 'igrejinha' ? Math.abs(movementDelta) : 0 } : undefined,
       );
       setFeedbackMsg('Movimentação realizada com sucesso!');
       setTimeout(() => {
@@ -166,6 +215,8 @@ export default function EstoqueView({ data }: Props) {
           <span className="text-[11px] text-brand-muted font-semibold block mt-1">
             {totalReservado} un. reservadas
           </span>
+          <p className="mt-1 text-xs font-semibold text-brand-chocolate">Sapiranga {totalSapiranga} un. · Igrejinha {totalIgrejinha} un.</p>
+          {totalSemLocal > 0 && <p className="mt-1 text-[11px] text-brand-muted">Sem local definido {totalSemLocal} un.</p>}
         </div>
 
         <div className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs">
@@ -273,7 +324,15 @@ export default function EstoqueView({ data }: Props) {
                 <thead>
                   <tr className="bg-brand-cream border-b border-brand-line text-[10px] font-bold text-brand-muted uppercase tracking-wider">
                     <th className="py-3 px-4">Produto & Marca</th>
-                    <th className="py-3 px-3 text-center">Físico</th>
+                    <th className="py-3 px-3 text-center">
+                      <select aria-label="Filtrar estoque por local" value={locationFilter} onChange={event => {
+                        setLocationFilter(event.target.value as typeof locationFilter);
+                        setPage(1);
+                      }} className="rounded-lg border border-brand-line bg-brand-card px-2 py-1.5 text-brand-chocolate">
+                        <option value="">Todos os locais</option>
+                        {(Object.keys(stockLocationLabels) as StockLocation[]).map(city => <option key={city} value={city}>{stockLocationLabels[city]}</option>)}
+                      </select>
+                    </th>
                     <th className="py-3 px-3 text-center">Reservado</th>
                     <th className="py-3 px-3 text-center">Disponível</th>
                     <th className="py-3 px-3 text-right">Custo Unit.</th>
@@ -333,8 +392,17 @@ export default function EstoqueView({ data }: Props) {
                           </td>
 
                           {/* Quantidade Físico */}
-                          <td className="py-3 px-3 text-center font-bold text-brand-chocolate">
-                            {p.quantidade} un.
+                          <td className="py-3 px-3 text-center">
+                            <p className="font-semibold text-brand-chocolate">{p.quantidade} un. no total</p>
+                            <p className="mt-0.5 whitespace-nowrap text-brand-muted">Sapiranga {p.estoqueSapiranga} · Igrejinha {p.estoqueIgrejinha}</p>
+                            {stockLocations(p).unassigned > 0 && <p className="mt-0.5 text-brand-muted">Sem local definido {stockLocations(p).unassigned}</p>}
+                            {p.quantidade > 0 && <div className="mt-1.5 flex flex-wrap justify-center gap-1.5">
+                              <button type="button" onClick={() => openLocations(p)} aria-label={`Distribuir estoque de ${p.nome}`}
+                                className="rounded-md border border-brand-line bg-brand-card px-2 py-1 text-brand-chocolate hover:bg-brand-nude">Distribuir</button>
+                              {p.estoqueSapiranga + p.estoqueIgrejinha > 0 && <button type="button" onClick={() => openLocations(p, true)}
+                                aria-label={`Transferir entre cidades o estoque de ${p.nome}`}
+                                className="rounded-md border border-brand-line bg-brand-card px-2 py-1 text-brand-chocolate hover:bg-brand-nude">Transferir</button>}
+                            </div>}
                           </td>
 
                           {/* Reservado */}
@@ -463,6 +531,58 @@ export default function EstoqueView({ data }: Props) {
       </dialog>
 
       {/* ========================================================= */}
+      <dialog ref={locationDialogRef} aria-labelledby="stock-location-title" onCancel={event => { if (savingLocations) event.preventDefault(); }}
+        className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border border-brand-line bg-brand-card p-5 text-brand-chocolate shadow-xl backdrop:bg-black/40">
+        {locationProduct && <form onSubmit={saveLocations} className="space-y-4">
+          <div>
+            <h3 id="stock-location-title" className="text-lg font-bold">{transferOrigin ? 'Transferir entre cidades' : 'Distribuir estoque'}</h3>
+            <p className="text-sm text-brand-muted">{locationProduct.nome} · {locationProduct.quantidade} un.</p>
+          </div>
+          {transferOrigin ? <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-sm font-semibold">
+              Origem
+              <select value={transferOrigin} onChange={event => {
+                setTransferOrigin(event.target.value === 'sapiranga' ? 'sapiranga' : 'igrejinha');
+                setTransferQuantity(1);
+              }} className="mt-1 block w-full rounded-lg border border-brand-line bg-brand-card px-3 py-2">
+                {(['sapiranga', 'igrejinha'] as const).map(city => <option key={city} value={city} disabled={cities[city] === 0}>
+                  {stockLocationLabels[city]} ({cities[city]} un.)
+                </option>)}
+              </select>
+            </label>
+            <div className="text-sm font-semibold">
+              <span>Destino</span>
+              <p className="mt-1 rounded-lg border border-brand-line bg-brand-nude px-3 py-2">{stockLocationLabels[transferDestination]}</p>
+            </div>
+            <label className="text-sm font-semibold sm:col-span-2">
+              Quantidade
+              <input type="number" min="1" max={cities[transferOrigin]} required value={transferQuantity}
+                onChange={event => setTransferQuantity(Number(event.target.value))}
+                className="mt-1 block w-full rounded-lg border border-brand-line bg-brand-card px-3 py-2" />
+            </label>
+          </div> : <>
+            <div className="grid grid-cols-2 gap-3">
+              {(['sapiranga', 'igrejinha'] as const).map(city => <label key={city} className="text-sm font-semibold">
+                {stockLocationLabels[city]}
+                <input type="number" min="0" max={locationProduct.quantidade} required value={cities[city]}
+                  onChange={event => setCities(previous => ({ ...previous, [city]: Number(event.target.value) }))}
+                  className="mt-1 block w-full rounded-lg border border-brand-line bg-brand-card px-3 py-2" />
+              </label>)}
+            </div>
+            {cities.sapiranga + cities.igrejinha <= locationProduct.quantidade && <p className="text-xs text-brand-muted">
+              Sem local definido {locationProduct.quantidade - cities.sapiranga - cities.igrejinha} un.
+            </p>}
+          </>}
+          {locationError && <p role="alert" className="text-sm text-red-700">{locationError}</p>}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => locationDialogRef.current?.close()} disabled={savingLocations} className="rounded-lg border border-brand-line px-3 py-2 text-sm">Cancelar</button>
+            <button type="submit" disabled={savingLocations} className="rounded-lg bg-brand-chocolate px-3 py-2 text-sm font-semibold text-brand-cream disabled:opacity-50">
+              {savingLocations ? 'Salvando…' : transferOrigin ? 'Confirmar transferência' : 'Salvar distribuição'}
+            </button>
+          </div>
+        </form>}
+      </dialog>
+
       {/* MODAL DE MOVIMENTAÇÃO RÁPIDA DE ESTOQUE */}
       {/* ========================================================= */}
       {movingProduct && (
@@ -547,6 +667,17 @@ export default function EstoqueView({ data }: Props) {
                   className="w-full px-3.5 py-2.5 bg-brand-nude focus:bg-brand-card text-sm font-bold text-brand-chocolate rounded-xl border border-brand-line focus:border-brand-caramel outline-none"
                 />
               </div>
+
+              {movementDelta !== 0 && <label className="block text-xs font-semibold text-brand-muted">
+                {movementDelta < 0 ? 'Local da saída' : 'Local da entrada'}
+                <select value={movementCity || (movementDelta > 0 ? 'unassigned' : '')} onChange={event => setMovementCity(event.target.value as typeof movementCity)}
+                  className="mt-1 block w-full rounded-xl border border-brand-line bg-brand-card px-3 py-2 text-brand-chocolate">
+                  {movementDelta < 0 && <option value="">Usar saldo disponível</option>}
+                  {(['unassigned', 'sapiranga', 'igrejinha'] as const).map(city => <option key={city} value={city}>
+                    {stockLocationLabels[city]}{movementDelta < 0 ? ` (${stockLocations(movingProduct)[city]} un.)` : ''}
+                  </option>)}
+                </select>
+              </label>}
 
               {/* Motivo */}
               <div>

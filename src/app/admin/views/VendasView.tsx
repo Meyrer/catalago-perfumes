@@ -13,6 +13,62 @@ import {
   CreditCard, ChevronRight, Eye, AlertCircle, Pencil, Trash2
 } from 'lucide-react';
 import { converterEncomendaAction, createVendaAction, updateVendaStatusAction, deleteVendaAction } from '../../actions';
+import { singleStockLocation, stockLocations, stockLocationLabels, stockWithdrawal, type CityQuantities, type StockLocation } from '@/lib/stock-locations';
+
+type CartItem = { produtoId: number; quantidade: number; precoUnitario: number; cidadesRetirada?: CityQuantities };
+type PreviousSaleItem = AdminVenda['itens'][number];
+
+function availableSaleStock(product: AdminProduto, previous?: PreviousSaleItem) {
+  const available = stockLocations(product);
+  if (!previous) return available;
+  return {
+    sapiranga: available.sapiranga + previous.retiradoSapiranga,
+    igrejinha: available.igrejinha + previous.retiradoIgrejinha,
+    unassigned: available.unassigned + previous.quantidade - previous.retiradoSapiranga - previous.retiradoIgrejinha,
+  };
+}
+
+function SaleItemLocation({ item, product, previous, onChange }: {
+  item: CartItem;
+  product: AdminProduto;
+  previous?: PreviousSaleItem;
+  onChange: (cities: CityQuantities | undefined) => void;
+}) {
+  const available = availableSaleStock(product, previous);
+  const selected = item.cidadesRetirada;
+  const automatic = singleStockLocation(available);
+  const location = selected ? singleStockLocation({ ...selected, unassigned: item.quantidade - selected.sapiranga - selected.igrejinha }) ?? 'split' : automatic ?? '';
+  const [split, setSplit] = useState(location === 'split');
+  const choices = Object.keys(stockLocationLabels) as StockLocation[];
+  return (
+    <div className="w-full space-y-1.5 text-xs text-brand-muted">
+      <label className="block font-semibold">
+        Local da saída
+        <select required value={split ? 'split' : location} onChange={event => {
+          const value = event.target.value;
+          setSplit(value === 'split');
+          onChange(value === 'split' ? { sapiranga: 0, igrejinha: 0 } : value ? {
+            sapiranga: value === 'sapiranga' ? item.quantidade : 0,
+            igrejinha: value === 'igrejinha' ? item.quantidade : 0,
+          } : undefined);
+        }} className="mt-1 block w-full rounded-lg border border-brand-line bg-brand-card px-2 py-2 text-brand-chocolate">
+          <option value="" disabled>Selecione</option>
+          {choices.map(city => <option key={city} value={city} disabled={available[city] < item.quantidade}>{stockLocationLabels[city]} ({available[city]} un.)</option>)}
+          {(split || (!automatic && item.quantidade > 1)) && <option value="split">Dividir entre locais</option>}
+        </select>
+      </label>
+      {split && <div className="grid grid-cols-2 gap-2">
+        {(['sapiranga', 'igrejinha'] as const).map(city => <label key={city}>
+          {stockLocationLabels[city]} ({available[city]} un.)
+          <input type="number" min="0" max={Math.min(available[city], item.quantidade)} value={selected?.[city] ?? 0}
+            onChange={event => onChange({ sapiranga: selected?.sapiranga ?? 0, igrejinha: selected?.igrejinha ?? 0, [city]: Number(event.target.value) })}
+            className="mt-1 block w-full rounded-lg border border-brand-line bg-brand-card px-2 py-2 text-brand-chocolate" />
+        </label>)}
+        <p className="col-span-2">Sem local definido {item.quantidade - (selected?.sapiranga ?? 0) - (selected?.igrejinha ?? 0)} un. nesta venda</p>
+      </div>}
+    </div>
+  );
+}
 
 type Props = {
   data: ERPData;
@@ -110,7 +166,7 @@ export default function VendasView({ data, initialSearch = '', openQuickSale = f
   const [previsaoPagamento, setPrevisaoPagamento] = useState('');
   const [dataPagamento, setDataPagamento] = useState(localPaymentDate);
   const [formaRecebimento, setFormaRecebimento] = useState('PIX');
-  const [cartItens, setCartItens] = useState<Array<{ produtoId: number; quantidade: number; precoUnitario: number }>>(() => {
+  const [cartItens, setCartItens] = useState<CartItem[]>(() => {
     if (!orderForSale?.produtoId) return [];
     const produto = produtos.find(item => item.id === orderForSale.produtoId);
     return [{
@@ -200,7 +256,9 @@ export default function VendasView({ data, initialSearch = '', openQuickSale = f
     setPrevisaoPagamento(venda.previsaoPagamento ? new Date(venda.previsaoPagamento).toISOString().slice(0, 10) : '');
     setDataPagamento(localPaymentDate());
     setFormaRecebimento(venda.formaPagamento);
-    setCartItens(venda.itens.map(it => ({ produtoId: it.produtoId, quantidade: it.quantidade, precoUnitario: it.precoUnitario })));
+    setCartItens(venda.itens.map(it => ({ produtoId: it.produtoId, quantidade: it.quantidade, precoUnitario: it.precoUnitario,
+      cidadesRetirada: venda.status === 'CANCELADO' ? undefined : { sapiranga: it.retiradoSapiranga, igrejinha: it.retiradoIgrejinha },
+    })));
     const date = new Date(venda.data);
     setDataVenda(new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19));
     setProductSearch('');
@@ -240,9 +298,7 @@ export default function VendasView({ data, initialSearch = '', openQuickSale = f
 
     const existingIndex = cartItens.findIndex(it => it.produtoId === prodId);
     if (existingIndex >= 0) {
-      const updated = [...cartItens];
-      updated[existingIndex].quantidade += 1;
-      setCartItens(updated);
+      handleUpdateItemQtd(existingIndex, cartItens[existingIndex].quantidade + 1);
     } else {
       setCartItens([...cartItens, { produtoId: prodId, quantidade: 1, precoUnitario: prod.precoVista || 0 }]);
     }
@@ -253,9 +309,20 @@ export default function VendasView({ data, initialSearch = '', openQuickSale = f
   };
 
   const handleUpdateItemQtd = (idx: number, qtd: number) => {
-    const updated = [...cartItens];
-    updated[idx].quantidade = Math.max(1, qtd);
-    setCartItens(updated);
+    const quantidade = Math.max(1, qtd);
+    setCartItens(items => items.map((item, index) => {
+      if (index !== idx) return item;
+      const cities = item.cidadesRetirada;
+      const cidadesRetirada = cities && {
+        sapiranga: cities.sapiranga === item.quantidade ? quantidade : cities.sapiranga,
+        igrejinha: cities.igrejinha === item.quantidade ? quantidade : cities.igrejinha,
+      };
+      return { ...item, quantidade, cidadesRetirada };
+    }));
+  };
+
+  const setItemCities = (index: number, cidadesRetirada: CityQuantities | undefined) => {
+    setCartItens(items => items.map((item, idx) => idx === index ? { ...item, cidadesRetirada } : item));
   };
 
   const handleCreateVenda = async (e: React.FormEvent) => {
@@ -284,6 +351,12 @@ export default function VendasView({ data, initialSearch = '', openQuickSale = f
     setFormError('');
 
     try {
+      for (const item of cartItens) {
+        const product = produtos.find(product => product.id === item.produtoId);
+        if (!product || statusVenda === 'CANCELADO') continue;
+        const previous = editingVenda?.status !== 'CANCELADO' ? editingVenda?.itens.find(line => line.produtoId === item.produtoId) : undefined;
+        stockWithdrawal(availableSaleStock(product, previous), item.quantidade, item.cidadesRetirada);
+      }
       const payload = {
         clienteId: clienteId ? parseInt(clienteId) : undefined,
         nomeClienteAvulso: nomeAvulso.trim() || undefined,
@@ -326,7 +399,8 @@ export default function VendasView({ data, initialSearch = '', openQuickSale = f
         });
         if (!result.success) throw new Error(result.error);
       } else {
-        await createVendaAction(payload);
+        const result = await createVendaAction(payload);
+        if (!result.success) throw new Error(result.error);
       }
 
       setFeedback(editingVenda ? 'Venda atualizada com sucesso e estoque ajustado!' : 'Venda registrada com sucesso e estoque atualizado!');
@@ -686,6 +760,8 @@ export default function VendasView({ data, initialSearch = '', openQuickSale = f
                       onChange={event => setCartItens(items => items.map(item => ({ ...item, precoUnitario: Number(event.target.value) })))}
                       className="mt-1 block w-full rounded-xl border border-brand-line bg-brand-card px-3 py-2" />
                   </label>
+                  {cartItens[0] && carrinhoCalculado.itensDetalhados[0]?.produto && <SaleItemLocation item={cartItens[0]}
+                    product={carrinhoCalculado.itensDetalhados[0].produto} onChange={cities => setItemCities(0, cities)} />}
                 </div>
               ) : <>
               {/* SELEÇÃO DE CLIENTE */}
@@ -840,7 +916,7 @@ export default function VendasView({ data, initialSearch = '', openQuickSale = f
                 ) : (
                   <div className="divide-y divide-brand-nude border border-brand-line rounded-xl bg-brand-card overflow-hidden">
                     {carrinhoCalculado.itensDetalhados.map((it, idx) => (
-                      <div key={idx} className="p-3 flex flex-wrap items-center justify-between text-xs gap-3">
+                      <div key={it.produtoId} className="p-3 flex flex-wrap items-center justify-between text-xs gap-3">
                         <div className="flex-1 min-w-[160px]">
                           <span className="font-bold text-brand-chocolate">{it.produto?.nome}</span>
                           <span className="text-[10px] text-brand-muted ml-1">({it.produto?.marca})</span>
@@ -886,6 +962,9 @@ export default function VendasView({ data, initialSearch = '', openQuickSale = f
                             <X size={14} />
                           </button>
                         </div>
+                        {it.produto && statusVenda !== 'CANCELADO' && <SaleItemLocation item={it} product={it.produto}
+                          previous={editingVenda?.status !== 'CANCELADO' ? editingVenda?.itens.find(line => line.produtoId === it.produtoId) : undefined}
+                          onChange={cities => setItemCities(idx, cities)} />}
                       </div>
                     ))}
                   </div>
@@ -1122,6 +1201,11 @@ export default function VendasView({ data, initialSearch = '', openQuickSale = f
                       <div>
                         <span className="font-bold text-brand-chocolate">{it.produto?.nome}</span>
                         <span className="text-[11px] text-brand-muted ml-1">({it.quantidade}x a R$ {it.precoUnitario.toFixed(2)})</span>
+                        <p className="mt-0.5 text-[11px] text-brand-muted">
+                          {it.retiradoSapiranga > 0 && <span className="mr-2">Sapiranga {it.retiradoSapiranga} un.</span>}
+                          {it.retiradoIgrejinha > 0 && <span className="mr-2">Igrejinha {it.retiradoIgrejinha} un.</span>}
+                          {it.quantidade > it.retiradoSapiranga + it.retiradoIgrejinha && <span>Sem local definido {it.quantidade - it.retiradoSapiranga - it.retiradoIgrejinha} un.</span>}
+                        </p>
                       </div>
                       <span className="font-bold text-brand-chocolate">
                         R$ {it.subtotal.toFixed(2)}

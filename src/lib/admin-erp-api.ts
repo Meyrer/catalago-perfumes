@@ -71,8 +71,16 @@ export function itemFields(value: unknown, priceField: "precoUnitario" | "valorU
     seen.add(produtoId);
     const price = numberField(data[priceField], priceField, 0);
     if (!Number.isSafeInteger(toCents(price) * quantidade)) throw new Error("O valor do item excede o limite monetário permitido.");
-    return { produtoId, quantidade, price };
+    const cities = data.cidadesRetirada;
+    const cidadesRetirada = priceField === 'precoUnitario' && cities !== undefined ? parseSaleCities(cities) : undefined;
+    return { produtoId, quantidade, price, ...(cidadesRetirada ? { cidadesRetirada } : {}) };
   });
+}
+
+function parseSaleCities(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Informe as quantidades por cidade.');
+  const cities = value as Record<string, unknown>;
+  return { sapiranga: numberField(cities.sapiranga, 'Sapiranga', 0), igrejinha: numberField(cities.igrejinha, 'Igrejinha', 0) };
 }
 
 export function saleFields(body: Record<string, unknown>) {

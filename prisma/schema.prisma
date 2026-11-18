@@ -17,6 +17,8 @@ model Produto {
   precoOriginal       Float?
   precoCusto          Float?    // Custo de aquisição (apenas admin)
   quantidade          Int       @default(1) // Quantidade em estoque físico
+  estoqueSapiranga    Int       @default(0)
+  estoqueIgrejinha    Int       @default(0)
   lotesEstoque        Json      @default("[]") // Saldos FIFO; vazio permite saldo inicial legado
   quantidadeReservada Int       @default(0) // Quantidade reservada para pedidos/encomendas
   estoqueMinimo       Int       @default(2) // Alerta de estoque baixo
@@ -227,6 +229,8 @@ model VendaItem {
   precoUnitario Float
   custoUnitario Float
   lotesCusto    Json     @default("[]") // Lotes consumidos; custo unitário pode ser média dos lotes desta linha
+  retiradoSapiranga Int  @default(0)
+  retiradoIgrejinha Int  @default(0)
   lucroUnitario Float
   subtotal      Float
 }
