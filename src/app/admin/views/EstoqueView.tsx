@@ -170,11 +170,14 @@ export default function EstoqueView({ data }: Props) {
 
         <div className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs">
           <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
-            Valor Total Investido (Custo)
+            Valor do estoque atual
           </span>
           <p className="text-xl sm:text-2xl font-bold text-brand-deep">
             {totalCusto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
+          <span className="text-[11px] text-brand-muted block mt-1">
+            Custo das {totalFisico} un. em estoque
+          </span>
           <span className="text-[11px] text-brand-muted block mt-1">
             Custo médio por unidade: R$ {totalFisico > 0 ? (totalCusto / totalFisico).toFixed(2).replace('.', ',') : '0,00'}
           </span>
@@ -182,13 +185,16 @@ export default function EstoqueView({ data }: Props) {
 
         <div className="bg-brand-card p-4 rounded-2xl border border-brand-line shadow-xs">
           <span className="text-[10px] font-bold text-brand-muted uppercase tracking-wider block mb-1">
-            Valor Potencial de Venda
+            Projeção de vendas do estoque
           </span>
           <p className="text-xl sm:text-2xl font-bold text-brand-deep">
             {totalVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
+          <span className="text-[11px] text-brand-muted block mt-1">
+            Venda das {totalFisico} un. pelo preço cadastrado
+          </span>
           <span className="text-[11px] text-brand-chocolate font-bold block mt-1">
-            +{(totalVenda - totalCusto).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} lucro projetado
+            Lucro bruto projetado {(totalVenda - totalCusto).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </span>
         </div>
 
