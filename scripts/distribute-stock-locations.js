@@ -47,8 +47,13 @@ async function main() {
     });
     const transferByProduct = new Map();
     for (const [code, quantity] of transfers) {
-      const matches = products.filter(product => byProduct.has(product.id) && product.sku?.match(/(?:^|\D)(\d{3})$/)?.[1] === code);
-      if (matches.length !== 1) throw new Error(`O código ${code} precisa identificar um produto nos lotes. Confira o SKU.`);
+      const matches = products.filter(product => {
+        if (!byProduct.has(product.id)) return false;
+        const skuCode = product.sku?.match(/(?:^|\D)(\d{3})$/)?.[1];
+        const nameCode = product.nome.match(/^Mini Brand Collection\s+N[º°]\s*(\d{3})\b/i)?.[1];
+        return (skuCode ?? nameCode) === code;
+      });
+      if (matches.length !== 1) throw new Error(`O código ${code} precisa identificar um produto nos lotes. Confira o SKU e o nome.`);
       const product = matches[0];
       if (quantity > byProduct.get(product.id)) throw new Error(`O lote não tem ${quantity} un. em Igrejinha para ${product.nome}.`);
       transferByProduct.set(product.id, quantity);
