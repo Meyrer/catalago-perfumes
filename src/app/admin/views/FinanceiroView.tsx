@@ -344,7 +344,7 @@ function EntryForm({ type, entry, onClose, onSaved }: EntryEditor & { onClose: (
     setError('');
     try {
       if (entry) await updateFinanceEntryAction(entry.id, { ...payload, formaPagamento: payload.formaPagamento || null });
-      else await createDespesaAction({ ...payload, tipo: type });
+      else await createDespesaAction({ ...payload, tipo: type, pagoPelosSocios: expense && form.get('partnerPaid') === 'on' });
       onSaved(entry ? 'Lançamento atualizado.' : expense ? 'Despesa registrada.' : 'Entrada registrada.');
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Não foi possível salvar o lançamento.');
@@ -373,6 +373,7 @@ function EntryForm({ type, entry, onClose, onSaved }: EntryEditor & { onClose: (
         </>}
       </div>
       <label className="block font-medium">Observação<textarea name="notes" rows={2} defaultValue={entry?.observacoes ?? ''} className={input} /></label>
+      {expense && !entry && <label className="flex items-center gap-2"><input name="partnerPaid" type="checkbox" />Pago pelos sócios</label>}
       {entry && <label className="flex items-center gap-2"><input name="paid" type="checkbox" defaultChecked={entry.pago} />{expense ? 'Pagamento confirmado' : 'Crédito confirmado'}</label>}
       <div className="flex flex-wrap justify-end gap-2 border-t border-brand-line pt-3">
         <button type="button" className={button} disabled={busy} onClick={onClose}>Cancelar</button>
