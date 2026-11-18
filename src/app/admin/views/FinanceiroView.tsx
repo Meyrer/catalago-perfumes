@@ -213,7 +213,7 @@ function CashSummary({ overview }: { overview: FinanceOverview }) {
     { label: 'Saldo em caixa', value: cash.balance, color: cash.balance < 0 ? 'text-red-700' : 'text-[var(--admin-primary)]' },
     { label: 'Vendas recebidas', value: cash.received, color: 'text-emerald-700' },
     { label: 'Saídas', value: cash.outgoing, color: 'text-red-700' },
-    { label: 'Aportes dos sócios', value: cash.contributions, color: 'text-brand-deep' },
+    { label: 'Aportes dos sócios', value: cash.contributions + (cash.directContributions ?? 0), color: 'text-brand-deep' },
   ];
   return <section className={panel} aria-label="Resumo de caixa">
     <div className="grid grid-cols-2 gap-px overflow-hidden rounded-t-xl bg-brand-line lg:grid-cols-4">
@@ -233,6 +233,7 @@ function CashSummary({ overview }: { overview: FinanceOverview }) {
         <Detail label="Compras pagas pela loja" value={amount(cash.purchases)} />
         <Detail label="Despesas pagas pela loja" value={amount(cash.expenses)} />
         {cash.coveredByPartners > 0 && <Detail label="Pagamentos cobertos por aportes" value={amount(cash.coveredByPartners)} />}
+        {cash.directContributions > 0 && <Detail label="Compras pagas direto pelos sócios" value={amount(cash.directContributions)} />}
         <Detail label="Entradas menos saídas no período" value={amount(cash.net)} />
         <Detail label="Saldo de lançamentos sem data" value={amount(cash.undatedNet)} />
       </dl>

@@ -37,6 +37,7 @@ export type Movement = {
   category?: string;
   status?: string;
   partnerFunding?: PartnerFunding;
+  directContribution?: number;
   cents: number;
   cash: number;
 };
@@ -111,11 +112,15 @@ export function buildFinanceOverview(
     const date = payment ? purchase.dataPagamentoCaixa?.toISOString() ?? null : purchase.data.toISOString();
     const day = payment ? date?.slice(0, 10) ?? null : dayOf(date);
     const name = purchase.fornecedor?.nome || 'Importação direta';
+    const partnerFunding = getPurchasePartnerFunding(partnerContributions, purchase);
+    const directContribution = partnerFunding === 'direto' && purchase.status !== 'CANCELADO'
+      ? Math.max(0, toCents(purchase.custoTotalBRL) - getPartnerContributionAmount(partnerContributions, 'compra', purchase.id))
+      : 0;
     movements.push({
       key: `compra-${purchase.id}`, sourceId: purchase.id, type: 'compra', description: 'Compra de mercadorias',
       name, code: purchase.numero, date, day, notes: purchase.observacoes,
       cents: payment || toCents(purchase.custoTotalBRL), cash: -payment,
-      partnerFunding: getPurchasePartnerFunding(partnerContributions, purchase),
+      partnerFunding, directContribution: directContribution || undefined,
       status: purchase.status === 'CANCELADO' ? 'Compra cancelada' : payment ? undefined : 'Sem saída registrada no caixa',
     });
   }
@@ -138,7 +143,7 @@ export function buildFinanceOverview(
   );
   const opening = range.start ? movements.reduce((sum, row) => row.day && row.day < range.start ? sum + row.cash : sum, 0) : 0;
   const undatedNet = pending.reduce((sum, row) => sum + row.cash, 0);
-  const totals = { opening, received: 0, receivedFromRegistration: 0, expenses: 0, purchases: 0, contributions: 0, other: 0, coveredByPartners: 0 };
+  const totals = { opening, received: 0, receivedFromRegistration: 0, expenses: 0, purchases: 0, contributions: 0, directContributions: 0, other: 0, coveredByPartners: 0 };
   for (const row of dated) {
     if (row.type === 'venda') totals.received += row.cash;
     if (row.dateFromRegistration) totals.receivedFromRegistration += row.cash;
@@ -149,6 +154,7 @@ export function buildFinanceOverview(
       totals[row.type === 'compra' ? 'purchases' : 'expenses'] += payment - covered;
     }
     if (row.type === 'aporte') totals.contributions += row.cash;
+    totals.directContributions += row.directContribution ?? 0;
     if (row.type === 'entrada') totals.other += row.cash;
   }
   const outgoing = totals.expenses + totals.purchases;
@@ -156,7 +162,8 @@ export function buildFinanceOverview(
   const net = totals.received + totals.contributions + totals.other - outgoing - totals.coveredByPartners;
   const text = normalizeSearch(filter.query.trim());
   const filtered = (filter.scope === 'pending' ? pending : dated).filter(row =>
-    (!filter.type || row.type === filter.type) && (!text || [row.description, row.name, row.code, `#${row.sourceId}`, row.notes].some(value => value && normalizeSearch(value).includes(text))),
+    (!filter.type || row.type === filter.type || (filter.type === 'aporte' && row.directContribution)) &&
+    (!text || [row.description, row.name, row.code, `#${row.sourceId}`, row.notes].some(value => value && normalizeSearch(value).includes(text))),
   );
   const pageSize = filter.scope === 'recent' ? 5 : 15;
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
