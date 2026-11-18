@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ERPData, AdminEncomenda, AdminProduto } from '../types';
 import MonthFilter, { getMonthKey, isInMonth } from '../MonthFilter';
 import { normalizeImageUrl } from '@/lib/image-url';
 import { getBrandCollectionNumber } from '@/lib/product-order';
 import { Check, Clock, Download, Package, Plus, Search, MessageCircle, Pencil, X, Loader2 } from 'lucide-react';
-import { createEncomendaAction, updateEncomendaStatusAction } from '../../actions';
+import { createEncomendaAction } from '../../actions';
 
 type Props = {
   data: ERPData;
@@ -88,6 +88,9 @@ export default function EncomendasView({ data, onConvertOrder }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [formError, setFormError] = useState('');
+  const [updatingStatus, startStatusTransition] = useTransition();
+  const [statusChange, setStatusChange] = useState<{ id: number; status: string }>();
+  const [statusFeedback, setStatusFeedback] = useState<{ message: string; error: boolean }>();
 
   const matchingProducts = useMemo(() => {
     const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -282,15 +285,29 @@ export default function EncomendasView({ data, onConvertOrder }: Props) {
     }
   };
 
-  const handleUpdateStatus = async (id: number, status: string) => {
-    try {
-      await updateEncomendaStatusAction(id, status);
-      setFeedback('Status da encomenda atualizado!');
-      window.location.reload();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao atualizar status.';
-      setFeedback(msg);
-    }
+  const handleUpdateStatus = (order: AdminEncomenda, status: string) => {
+    if (updatingStatus || status === order.status) return;
+    setStatusChange({ id: order.id, status });
+    setStatusFeedback(undefined);
+    startStatusTransition(async () => {
+      try {
+        const response = await fetch(`/api/erp/orders/${order.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status, updatedAt: new Date(order.updatedAt).toISOString() }),
+        });
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !result?.success) {
+          if (response.status === 409) startStatusTransition(() => router.refresh());
+          throw new Error(result?.error || 'Não foi possível atualizar o status da encomenda.');
+        }
+        startStatusTransition(() => router.refresh());
+        const label = STATUS_CONFIG[status]?.label ?? status;
+        setStatusFeedback({ message: `${order.numero} atualizada para ${label}.${pendingOnly && isClosedOrder(status) ? ' Desmarque “Só pendentes” para vê-la.' : ''}`, error: false });
+      } catch (error) {
+        setStatusFeedback({ message: error instanceof Error ? error.message : 'Não foi possível atualizar o status.', error: true });
+      }
+    });
   };
 
   const getWhatsAppMessageUrl = (enc: AdminEncomenda) => {
@@ -347,6 +364,12 @@ export default function EncomendasView({ data, onConvertOrder }: Props) {
         <div className="p-3.5 rounded-2xl bg-brand-nude border border-brand-line text-brand-chocolate text-xs font-bold flex items-center justify-between">
           <span>{feedback}</span>
           <button onClick={() => setFeedback('')} className="cursor-pointer"><X size={15} /></button>
+        </div>
+      )}
+      {statusFeedback && (
+        <div className="admin-feedback flex items-center gap-3">
+          <span role={statusFeedback.error ? 'alert' : 'status'}>{statusFeedback.message}</span>
+          <button type="button" aria-label="Fechar mensagem de status" onClick={() => setStatusFeedback(undefined)}><X size={15} /></button>
         </div>
       )}
 
@@ -480,14 +503,17 @@ export default function EncomendasView({ data, onConvertOrder }: Props) {
                             {saleCancelled ? 'Venda cancelada' : cfg.label}
                           </span>
                         ) : <select
-                          value={enc.status}
-                          onChange={(e) => handleUpdateStatus(enc.id, e.target.value)}
+                          aria-label={`Status da encomenda ${enc.numero}`}
+                          value={updatingStatus && statusChange?.id === enc.id ? statusChange.status : enc.status}
+                          disabled={updatingStatus}
+                          onChange={(e) => handleUpdateStatus(enc, e.target.value)}
                           className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border outline-none cursor-pointer ${cfg.bg} ${cfg.color} ${cfg.border}`}
                         >
                           {Object.entries(STATUS_CONFIG).map(([st, c]) => (
                             <option key={st} value={st}>{c.label}</option>
                           ))}
                         </select>}
+                        {updatingStatus && statusChange?.id === enc.id && <p role="status" className="mt-1 text-xs text-brand-muted">Salvando status…</p>}
                       </td>
 
                       <td className="py-3 px-4 text-right">
