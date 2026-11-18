@@ -1,11 +1,19 @@
 import { getAdminSession } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { apiError, apiSuccess, optionalText, positiveId, readJsonObject, requiredText } from "@/lib/admin-api";
-import { dateField, erpError, idField, numberField } from "@/lib/admin-erp-api";
+import { dateField, enumField, erpError, idField, numberField, orderStatuses } from "@/lib/admin-erp-api";
 
 type Context = { params: Promise<{ id: string }> };
 
 export async function PUT(request: Request, context: Context) {
+  return saveOrder(request, context);
+}
+
+export async function PATCH(request: Request, context: Context) {
+  return saveOrder(request, context);
+}
+
+async function saveOrder(request: Request, context: Context) {
   // Same-origin protection for cookie-authenticated writes, as in the sales route.
   const origin = request.headers.get("origin");
   const host = request.headers.get("x-forwarded-host")?.split(",")[0].trim()
@@ -30,6 +38,12 @@ export async function PUT(request: Request, context: Context) {
 
   try {
     const updatedAt = dateField(body.updatedAt, "updatedAt");
+    if (request.method === 'PATCH') {
+      const status = enumField(body.status, "Status da encomenda", orderStatuses);
+      const updated = await prisma.encomenda.updateMany({ where: { id, updatedAt, vendaId: null }, data: { status } });
+      if (!updated.count) return apiError("A encomenda mudou ou já foi vinculada a uma venda. Confira a lista e tente novamente.", 409);
+      return apiSuccess({ status });
+    }
     const quantidade = numberField(body.quantidade, "Quantidade", 1);
     if (!Number.isInteger(quantidade) || quantidade > 2_147_483_647) {
       return apiError("Informe uma quantidade inteira válida.", 400);

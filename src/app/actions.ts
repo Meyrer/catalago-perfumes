@@ -636,18 +636,6 @@ export async function createEncomendaAction(data: Parameters<typeof createCustom
   return createCustomOrder(data);
 }
 
-export async function updateEncomendaStatusAction(encomendaId: number, status: string) {
-  await requireAdminAuth();
-  if (!['SOLICITACAO_RECEBIDA', 'AGUARDANDO_PAGAMENTO', 'PEDIDO_REALIZADO', 'EM_TRANSITO', 'RECEBIDO', 'PRONTO_ENTREGA', 'FINALIZADO', 'CANCELADO'].includes(status)) throw new Error('Status da encomenda inválido.');
-  const updated = await prisma.encomenda.updateMany({
-    where: { id: encomendaId, vendaId: null },
-    data: { status }
-  });
-  if (!updated.count) throw new Error('Encomenda indisponível ou já vinculada a uma venda.');
-  revalidatePath('/admin');
-  return { success: true };
-}
-
 export async function deleteEncomendaAction(encomendaId: number) {
   await requireAdminAuth();
   const deleted = await prisma.encomenda.deleteMany({ where: { id: encomendaId, vendaId: null } });
