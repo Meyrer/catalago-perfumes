@@ -848,18 +848,22 @@ export async function createDespesaAction(data: {
   pago?: boolean;
   formaPagamento?: string;
   observacoes?: string;
+  pagoPelosSocios?: boolean;
 }) {
   await requireAdminAuth();
   const tipo = data.tipo ?? 'DESPESA';
   if (tipo !== 'DESPESA' && tipo !== 'RECEITA_EXTRA') throw new Error('Tipo de lançamento inválido.');
+  if (data.pagoPelosSocios && (tipo !== 'DESPESA' || data.pago === false)) {
+    throw new Error('O aporte deve estar vinculado a uma despesa paga.');
+  }
   const cents = Number.isFinite(data.valor) ? toCents(data.valor) : 0;
   if (!data.descricao?.trim() || !Number.isSafeInteger(cents) || cents <= 0) throw new Error('Informe uma descrição e um valor positivo.');
   const date = data.data ? new Date(data.data) : new Date();
   if (!Number.isFinite(date.getTime()) || (tipo === 'RECEITA_EXTRA' && (!data.data || date.toISOString() !== data.data))) {
     throw new Error('Informe uma data válida para o lançamento.');
   }
-  const despesa = await prisma.despesaFinanceira.create({
-    data: {
+  const despesa = await prisma.$transaction(async tx => {
+    const entry = await tx.despesaFinanceira.create({ data: {
       descricao: data.descricao.trim(),
       categoria: data.categoria || "OUTROS",
       valor: fromCents(cents),
@@ -868,7 +872,14 @@ export async function createDespesaAction(data: {
       pago: data.pago !== undefined ? data.pago : true,
       formaPagamento: data.formaPagamento || null,
       observacoes: data.observacoes?.trim() || null
+    } });
+    if (data.pagoPelosSocios) {
+      await tx.despesaFinanceira.create({ data: {
+        tipo: 'APORTE', categoria: 'CAPITAL_SOCIOS', descricao: `Aporte dos sócios — ${entry.descricao}`,
+        valor: entry.valor, data: entry.data, pago: true, observacoes: `Despesa #${entry.id}`,
+      } });
     }
+    return entry;
   });
   revalidatePath('/admin');
   return despesa;
