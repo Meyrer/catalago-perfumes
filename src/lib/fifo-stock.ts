@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { Prisma, Produto } from '@prisma/client';
 import { fifoCost, getFifoLots, takeFifo, type FifoLot } from '@/lib/fifo';
 import { roundMoney } from '@/lib/money';
+import { stockLocations, stockWithdrawal, type CityQuantities } from '@/lib/stock-locations';
 
 export function initialFifoStock(quantity: number, unitCost: number): FifoLot[] {
   if (!Number.isSafeInteger(quantity) || quantity < 0 || !Number.isFinite(unitCost) || unitCost < 0) throw new Error('Quantidade ou custo inicial inválido.');
@@ -12,7 +13,7 @@ export function initialFifoStock(quantity: number, unitCost: number): FifoLot[] 
 
 // Must run in the same transaction as the physical balance and its movement.
 export async function changeFifoStock(tx: Prisma.TransactionClient, product: Produto, newQuantity: number,
-  origin: string, unitCost = Number(product.precoCusto ?? 0), returned?: FifoLot[]) {
+  origin: string, unitCost = Number(product.precoCusto ?? 0), returned?: FifoLot[], cityDelta?: CityQuantities) {
   if (!Number.isSafeInteger(newQuantity) || newQuantity < 0 || !Number.isFinite(unitCost) || unitCost < 0) throw new Error('Saldo ou custo FIFO inválido.');
   let lots = getFifoLots({ ...product, precoCusto: Number(product.precoCusto ?? 0) });
   const delta = newQuantity - product.quantidade;
@@ -34,7 +35,17 @@ export async function changeFifoStock(tx: Prisma.TransactionClient, product: Pro
         quantidade: delta, custoUnitario: roundMoney(unitCost), recebidoEm: new Date().toISOString(), origem: origin });
     }
   }
-  const changed = await tx.produto.updateMany({ where: { id: product.id, updatedAt: product.updatedAt, quantidade: product.quantidade }, data: { lotesEstoque: lots } });
+  const location = stockLocations(product);
+  const takenByCity = delta < 0 && !cityDelta ? stockWithdrawal(location, -delta) : undefined;
+  const estoqueSapiranga = location.sapiranga + (cityDelta?.sapiranga ?? -(takenByCity?.sapiranga ?? 0));
+  const estoqueIgrejinha = location.igrejinha + (cityDelta?.igrejinha ?? -(takenByCity?.igrejinha ?? 0));
+  if (![estoqueSapiranga, estoqueIgrejinha, newQuantity - estoqueSapiranga - estoqueIgrejinha].every(value => Number.isSafeInteger(value) && value >= 0)) {
+    throw new Error('Distribuição inválida. Confira o saldo de estoque em cada cidade.');
+  }
+  const changed = await tx.produto.updateMany({
+    where: { id: product.id, updatedAt: product.updatedAt, quantidade: product.quantidade, estoqueSapiranga: product.estoqueSapiranga, estoqueIgrejinha: product.estoqueIgrejinha },
+    data: { ...(delta === 0 && cityDelta ? {} : { lotesEstoque: lots }), estoqueSapiranga, estoqueIgrejinha },
+  });
   if (changed.count !== 1) throw new Error('Os lotes de estoque foram alterados por outra operação. Atualize a página.');
   return { taken, cost: fifoCost(taken) };
 }

@@ -8,6 +8,11 @@ import { revalidatePath } from "next/cache";
 import { plainPrismaData } from "@/lib/admin-api";
 import { fromCents, roundMoney, toCents } from "@/lib/money";
 import { getSaleDisplayStatus, getSaleReceivedAmount, recordSalePayment, validateSaleReceivedAmount, type SalePaymentEntry } from "@/lib/sale-payment";
+import { stockLocations, stockWithdrawal, type CityQuantities } from '@/lib/stock-locations';
+
+function saleCities(item?: { retiradoSapiranga: number; retiradoIgrejinha: number }): CityQuantities {
+  return { sapiranga: item?.retiradoSapiranga ?? 0, igrejinha: item?.retiradoIgrejinha ?? 0 };
+}
 
 function parsePaymentForecast(value: string | null | undefined) {
   if (value === undefined || value === null) return value;
@@ -24,7 +29,7 @@ export async function createSale(data: {
   nomeClienteAvulso?: string;
   contatoClienteAvulso?: string;
   cadastrarCliente?: boolean;
-  itens: Array<{ produtoId: number; quantidade: number; precoUnitario: number }>;
+  itens: Array<{ produtoId: number; quantidade: number; precoUnitario: number; cidadesRetirada?: CityQuantities }>;
   formaPagamento: string;
   desconto?: number;
   frete?: number;
@@ -127,12 +132,14 @@ export async function createSale(data: {
   const clienteDaVenda = novoCliente ? await tx.cliente.create({ data: {
     nome: nomeClienteAvulso!.trim(), whatsapp: contatoClienteAvulso?.trim() || null,
   } }) : null;
-  const custosFIFO = new Map<number, { unitCost: number; allocations: FifoLot[] }>();
+  const custosFIFO = new Map<number, { unitCost: number; allocations: FifoLot[]; cities: CityQuantities }>();
   for (const item of itens) {
     const product = produtosMap.get(item.produtoId)!;
+    const cities = status === 'CANCELADO' ? saleCities() : stockWithdrawal(stockLocations(product), item.quantidade, item.cidadesRetirada);
     const result = status === 'CANCELADO' ? { cost: Number(product.precoCusto ?? 0) * item.quantidade, taken: [] }
-      : await changeFifoStock(tx, product, product.quantidade - item.quantidade, `VENDA ${numeroVenda}`);
-    custosFIFO.set(item.produtoId, { unitCost: result.cost / item.quantidade, allocations: result.taken });
+      : await changeFifoStock(tx, product, product.quantidade - item.quantidade, `VENDA ${numeroVenda}`, undefined, undefined,
+        { sapiranga: -cities.sapiranga, igrejinha: -cities.igrejinha });
+    custosFIFO.set(item.produtoId, { unitCost: result.cost / item.quantidade, allocations: result.taken, cities });
   }
   const custoTotal = roundMoney(itens.reduce((sum, item) => sum + custosFIFO.get(item.produtoId)!.unitCost * item.quantidade, 0));
   const lucroTotal = roundMoney(subtotal - desconto - custoTotal);
@@ -167,6 +174,8 @@ export async function createSale(data: {
             precoUnitario: precoUnit,
             custoUnitario: custoUnit,
             lotesCusto: custosFIFO.get(item.produtoId)!.allocations,
+            retiradoSapiranga: custosFIFO.get(item.produtoId)!.cities.sapiranga,
+            retiradoIgrejinha: custosFIFO.get(item.produtoId)!.cities.igrejinha,
             lucroUnitario: precoUnit - custoUnit,
             subtotal: fromCents(toCents(precoUnit) * item.quantidade)
           };
@@ -280,32 +289,50 @@ export async function updateSale(vendaId: number, data: Parameters<typeof create
         custoUnitario,
         lucroUnitario: precoUnitario - custoUnitario,
         lotesCusto: anterior ? saleFifoAllocations(anterior, vendaId) : [] as FifoLot[],
+        retiradoSapiranga: anterior?.quantidade === item.quantidade ? anterior.retiradoSapiranga : 0,
+        retiradoIgrejinha: anterior?.quantidade === item.quantidade ? anterior.retiradoIgrejinha : 0,
         subtotal: fromCents(toCents(precoUnitario) * item.quantidade),
       };
     });
 
     for (const produto of produtos) {
-      const quantidadeDesejada = status === 'CANCELADO' ? 0 : (itens.find(it => it.produtoId === produto.id)?.quantidade || 0);
-      const diferenca = quantidadeDesejada - (deduzidos.get(produto.id) || 0);
-      if (diferenca === 0) continue;
+      const requested = data.itens.find(item => item.produtoId === produto.id);
+      const quantidadeDesejada = status === 'CANCELADO' ? 0 : (requested?.quantidade ?? 0);
+      const quantidadeAnterior = deduzidos.get(produto.id) ?? 0;
+      const diferenca = quantidadeDesejada - quantidadeAnterior;
+      if (diferenca === 0 && (!requested?.cidadesRetirada || status === 'CANCELADO')) continue;
       const quantidadeNova = produto.quantidade - diferenca;
       if (quantidadeNova < 0) throw new Error(`Estoque insuficiente para "${produto.nome}". Disponível para esta venda: ${produto.quantidade + (deduzidos.get(produto.id) || 0)} un.`);
       const previousItem = venda.itens.find(item => item.produtoId === produto.id);
       const targetItem = itens.find(item => item.produtoId === produto.id);
-      let allocations = previousItem && (deduzidos.get(produto.id) || 0) > 0 ? saleFifoAllocations(previousItem, vendaId) : [];
+      const previousCities = saleCities(quantidadeAnterior > 0 ? previousItem : undefined);
+      const available = stockLocations(produto);
+      const targetCities = quantidadeDesejada === 0 ? saleCities() : stockWithdrawal({
+        sapiranga: available.sapiranga + previousCities.sapiranga,
+        igrejinha: available.igrejinha + previousCities.igrejinha,
+        unassigned: available.unassigned + quantidadeAnterior - previousCities.sapiranga - previousCities.igrejinha,
+      }, quantidadeDesejada, requested?.cidadesRetirada);
+      const cityDelta = { sapiranga: previousCities.sapiranga - targetCities.sapiranga, igrejinha: previousCities.igrejinha - targetCities.igrejinha };
+      if (diferenca === 0 && cityDelta.sapiranga === 0 && cityDelta.igrejinha === 0) continue;
+      let allocations = previousItem && quantidadeAnterior > 0 ? saleFifoAllocations(previousItem, vendaId) : [];
       if (diferenca < 0) {
         const released = releaseFifo(allocations, -diferenca);
-        await changeFifoStock(tx, produto, quantidadeNova, `DEVOLUCAO ${venda.numero}`, undefined, released.returned);
+        await changeFifoStock(tx, produto, quantidadeNova, `DEVOLUCAO ${venda.numero}`, undefined, released.returned, cityDelta);
         allocations = released.kept;
       } else {
-        const consumed = await changeFifoStock(tx, produto, quantidadeNova, `VENDA ${venda.numero}`);
+        const consumed = await changeFifoStock(tx, produto, quantidadeNova, `VENDA ${venda.numero}`, undefined, undefined, cityDelta);
         allocations = [...allocations, ...consumed.taken];
       }
       if (targetItem) {
-        targetItem.lotesCusto = allocations;
-        targetItem.custoUnitario = fifoCost(allocations) / targetItem.quantidade;
-        targetItem.lucroUnitario = targetItem.precoUnitario - targetItem.custoUnitario;
+        targetItem.retiradoSapiranga = targetCities.sapiranga;
+        targetItem.retiradoIgrejinha = targetCities.igrejinha;
+        if (diferenca !== 0) {
+          targetItem.lotesCusto = allocations;
+          targetItem.custoUnitario = fifoCost(allocations) / targetItem.quantidade;
+          targetItem.lucroUnitario = targetItem.precoUnitario - targetItem.custoUnitario;
+        }
       }
+      if (diferenca === 0) continue;
 
       const changed = await tx.produto.updateMany({
         where: { id: produto.id, quantidade: produto.quantidade },
@@ -426,7 +453,7 @@ export async function updateSaleStatus(vendaId: number, novoStatus: string, acto
         if (p) {
           const qtdAnterior = p.quantidade;
           const qtdNova = qtdAnterior + item.quantidade;
-          await changeFifoStock(tx, p, qtdNova, `DEVOLUCAO ${venda.numero}`, undefined, saleFifoAllocations(item, venda.id));
+          await changeFifoStock(tx, p, qtdNova, `DEVOLUCAO ${venda.numero}`, undefined, saleFifoAllocations(item, venda.id), saleCities(item));
 
           const updateData: {
             quantidade: number;
@@ -473,10 +500,15 @@ export async function updateSaleStatus(vendaId: number, novoStatus: string, acto
             throw new Error(`Estoque insuficiente para "${p.nome}". Disponível: ${qtdAnterior} un, necessário: ${item.quantidade} un.`);
           }
           const qtdNova = qtdAnterior - item.quantidade;
-          const consumed = await changeFifoStock(tx, p, qtdNova, `REATIVACAO ${venda.numero}`);
+          const previousCities = saleCities(item);
+          const locations = stockLocations(p);
+          const cities = stockWithdrawal(locations, item.quantidade,
+            previousCities.sapiranga || previousCities.igrejinha || locations.unassigned >= item.quantidade ? previousCities : undefined);
+          const consumed = await changeFifoStock(tx, p, qtdNova, `REATIVACAO ${venda.numero}`, undefined, undefined,
+            { sapiranga: -cities.sapiranga, igrejinha: -cities.igrejinha });
           const custoUnitario = consumed.cost / item.quantidade;
           custoReativado = roundMoney((custoReativado ?? 0) + consumed.cost);
-          await tx.vendaItem.update({ where: { id: item.id }, data: { custoUnitario, lucroUnitario: item.precoUnitario - custoUnitario, lotesCusto: consumed.taken } });
+          await tx.vendaItem.update({ where: { id: item.id }, data: { custoUnitario, lucroUnitario: item.precoUnitario - custoUnitario, lotesCusto: consumed.taken, retiradoSapiranga: cities.sapiranga, retiradoIgrejinha: cities.igrejinha } });
 
           const updateData: {
             quantidade: number;
@@ -553,7 +585,7 @@ export async function deleteSale(vendaId: number, actor: string) {
         if (p) {
           const qtdAnterior = p.quantidade;
           const qtdNova = qtdAnterior + item.quantidade;
-          await changeFifoStock(tx, p, qtdNova, `DEVOLUCAO ${venda.numero}`, undefined, saleFifoAllocations(item, venda.id));
+          await changeFifoStock(tx, p, qtdNova, `DEVOLUCAO ${venda.numero}`, undefined, saleFifoAllocations(item, venda.id), saleCities(item));
 
           const updateData: {
             quantidade: number;

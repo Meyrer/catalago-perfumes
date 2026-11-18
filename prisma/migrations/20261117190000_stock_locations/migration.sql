@@ -1,0 +1,7 @@
+ALTER TABLE "Produto"
+    ADD COLUMN "estoqueSapiranga" INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN "estoqueIgrejinha" INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE "VendaItem"
+    ADD COLUMN "retiradoSapiranga" INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN "retiradoIgrejinha" INTEGER NOT NULL DEFAULT 0;

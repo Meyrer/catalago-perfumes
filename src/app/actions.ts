@@ -11,6 +11,7 @@ import { loginAdmin, logoutAdmin, requireAdminAuth, changeAdminPassword } from "
 import { plainPrismaData } from "@/lib/admin-api";
 import { changeFifoStock, initialFifoStock } from "@/lib/fifo-stock";
 import { fromCents, toCents } from "@/lib/money";
+import { stockLocations, stockLocationLabels, stockWithdrawal, type CityQuantities } from '@/lib/stock-locations';
 
 export async function loginAdminAction(formData: FormData) {
   const username = formData.get("username") as string;
@@ -512,11 +513,60 @@ export async function duplicarProdutoAction(produtoId: number) {
 // ERP: GESTÃO DE ESTOQUE E MOVIMENTAÇÕES
 // -------------------------------------------------------------
 
+export async function distribuirEstoqueAction(
+  produtoId: number,
+  updatedAt: string,
+  distribuicao: CityQuantities | { origem: keyof CityQuantities; quantidade: number },
+) {
+  const session = await requireAdminAuth();
+  try {
+    await prisma.$transaction(async tx => {
+      const produto = await tx.produto.findUnique({ where: { id: produtoId } });
+      if (!produto || produto.updatedAt.toISOString() !== updatedAt) throw new Error('O estoque mudou. Reabra a janela para conferir o saldo.');
+      let cidades: CityQuantities;
+      let motivoTransferencia: string | undefined;
+      if ('origem' in distribuicao) {
+        const { origem, quantidade } = distribuicao;
+        if (origem !== 'sapiranga' && origem !== 'igrejinha') throw new Error('Selecione a cidade de origem.');
+        const destino = origem === 'sapiranga' ? 'igrejinha' : 'sapiranga';
+        const saldo = stockLocations(produto);
+        if (saldo[origem] <= 0) throw new Error(`${stockLocationLabels[origem]} está sem unidades disponíveis para transferir.`);
+        if (!Number.isSafeInteger(quantidade) || quantidade < 1 || quantidade > saldo[origem]) {
+          throw new Error(`Informe uma quantidade de 1 a ${saldo[origem]} un. para ${stockLocationLabels[origem]}.`);
+        }
+        cidades = { ...saldo, [origem]: saldo[origem] - quantidade, [destino]: saldo[destino] + quantidade };
+        motivoTransferencia = `Transferência · ${quantidade} un. de ${stockLocationLabels[origem]} para ${stockLocationLabels[destino]}`;
+      } else {
+        cidades = distribuicao;
+      }
+      const { sapiranga, igrejinha } = cidades;
+      const semLocal = produto.quantidade - sapiranga - igrejinha;
+      if (![sapiranga, igrejinha, semLocal].every(qtd => Number.isSafeInteger(qtd) && qtd >= 0)) throw new Error('A soma das cidades deve caber no saldo físico.');
+      if (sapiranga === produto.estoqueSapiranga && igrejinha === produto.estoqueIgrejinha) return;
+      const changed = await tx.produto.updateMany({
+        where: { id: produtoId, updatedAt: produto.updatedAt, quantidade: produto.quantidade, estoqueSapiranga: produto.estoqueSapiranga, estoqueIgrejinha: produto.estoqueIgrejinha },
+        data: { estoqueSapiranga: sapiranga, estoqueIgrejinha: igrejinha },
+      });
+      if (changed.count !== 1) throw new Error('O estoque mudou. Reabra a janela para conferir o saldo.');
+      await tx.estoqueMovimentacao.create({ data: {
+        produtoId, tipo: 'AJUSTE', quantidade: 0, quantidadeAnterior: produto.quantidade, quantidadeNova: produto.quantidade,
+        motivo: motivoTransferencia ?? `Distribuição por cidade · Sapiranga ${sapiranga} · Igrejinha ${igrejinha} · Sem local definido ${semLocal}`,
+        usuarioResponsavel: session.name,
+      } });
+    });
+    revalidatePath('/admin');
+    return { success: true } as const;
+  } catch (error) {
+    return { success: false, error: error instanceof Error && error.constructor === Error ? error.message : 'Não foi possível atualizar o estoque por cidade.' } as const;
+  }
+}
+
 export async function movimentarEstoqueAction(
   produtoId: number,
   tipo: 'ENTRADA' | 'SAIDA' | 'AJUSTE' | 'VENDA' | 'DEVOLUCAO' | 'PERDA' | 'RESERVA',
   quantidade: number,
-  motivo: string
+  motivo: string,
+  cidades?: CityQuantities,
 ) {
   const session = await requireAdminAuth();
   const produto = await prisma.produto.findUnique({ where: { id: produtoId } });
@@ -540,6 +590,11 @@ export async function movimentarEstoqueAction(
   }
 
   const diferenca = qtdNova - qtdAnterior;
+  const retirada = diferenca < 0 && cidades ? stockWithdrawal(stockLocations(produto), -diferenca, cidades) : undefined;
+  if (diferenca > 0 && cidades && ![cidades.sapiranga, cidades.igrejinha, diferenca - cidades.sapiranga - cidades.igrejinha].every(qtd => Number.isSafeInteger(qtd) && qtd >= 0)) {
+    throw new Error('Confira a quantidade de entrada em cada cidade.');
+  }
+  const cityDelta = retirada ? { sapiranga: -retirada.sapiranga, igrejinha: -retirada.igrejinha } : diferenca > 0 ? cidades : undefined;
 
   const updateData: {
     quantidade: number;
@@ -562,7 +617,7 @@ export async function movimentarEstoqueAction(
   }
 
   await prisma.$transaction(async (tx) => {
-    await changeFifoStock(tx, produto, qtdNova, `MANUAL_${tipo}`);
+    await changeFifoStock(tx, produto, qtdNova, `MANUAL_${tipo}`, undefined, undefined, cityDelta);
     const changed = await tx.produto.updateMany({
       where: { id: produtoId, quantidade: qtdAnterior, quantidadeReservada: produto.quantidadeReservada },
       data: updateData
@@ -575,7 +630,7 @@ export async function movimentarEstoqueAction(
         quantidade: diferenca,
         quantidadeAnterior: qtdAnterior,
         quantidadeNova: qtdNova,
-        motivo: motivo.trim() || `Movimentação manual (${tipo})`,
+        motivo: [motivo.trim() || `Movimentação manual (${tipo})`, ...(cityDelta ? (['sapiranga', 'igrejinha'] as const).filter(city => cityDelta[city]).map(city => `${stockLocationLabels[city]} ${cityDelta[city] > 0 ? '+' : ''}${cityDelta[city]}`) : [])].join(' · '),
         usuarioResponsavel: session.name
       }
     });
@@ -592,7 +647,12 @@ export async function movimentarEstoqueAction(
 
 export async function createVendaAction(data: Parameters<typeof createSale>[0]) {
   const session = await requireAdminAuth();
-  return createSale(data, session.name);
+  try {
+    await createSale(data, session.name);
+    return { success: true } as const;
+  } catch (error) {
+    return { success: false, error: error instanceof Error && error.constructor === Error ? error.message : 'Não foi possível registrar a venda.' } as const;
+  }
 }
 
 export async function converterEncomendaAction(data: Parameters<typeof createSale>[0], conversion: NonNullable<Parameters<typeof createSale>[2]>) {
