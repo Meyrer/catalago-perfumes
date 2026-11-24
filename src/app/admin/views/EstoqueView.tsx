@@ -25,10 +25,11 @@ type Props = {
 const STOCK_PAGE_SIZE = 20;
 
 export default function EstoqueView({ data }: Props) {
-  const { produtos, movimentacoesTotal, user } = data;
+  const { produtos, categorias, movimentacoesTotal, user } = data;
   const router = useRouter();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'BAIXO' | 'ZERADO' | 'PRONTA_ENTREGA' | 'ENCOMENDA'>('ALL');
   const [locationFilter, setLocationFilter] = useState<StockLocation | ''>('');
   const [activeSubTab, setActiveSubTab] = useState<'saldo' | 'historico'>('saldo');
@@ -70,9 +71,10 @@ export default function EstoqueView({ data }: Props) {
         matchFilter = p.tipoDisponibilidade === 'ENCOMENDA';
       }
 
-      return matchSearch && matchFilter && (!locationFilter || stockLocations(p)[locationFilter] > 0);
+      return matchSearch && matchFilter && (!categoryFilter || String(p.categoriaId) === categoryFilter)
+        && (!locationFilter || stockLocations(p)[locationFilter] > 0);
     }).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })));
-  }, [produtos, searchTerm, filterType, locationFilter]);
+  }, [produtos, searchTerm, categoryFilter, filterType, locationFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProdutos.length / STOCK_PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -257,8 +259,8 @@ export default function EstoqueView({ data }: Props) {
       {activeSubTab === 'saldo' && (
         <div className="space-y-4">
           {/* BARRA DE FILTROS E BUSCA */}
-          <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex-1 relative">
+          <div className="bg-brand-card p-3.5 sm:p-4 rounded-2xl border border-brand-line shadow-xs flex flex-col lg:flex-row lg:flex-wrap lg:items-center justify-between gap-3">
+            <div className="flex-1 relative lg:min-w-64">
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-muted" />
               <input
                 type="text"
@@ -272,8 +274,23 @@ export default function EstoqueView({ data }: Props) {
               />
             </div>
 
+            <select
+              aria-label="Filtrar estoque por categoria"
+              value={categoryFilter}
+              onChange={event => {
+                setCategoryFilter(event.target.value);
+                setPage(1);
+              }}
+              className="w-full lg:w-auto lg:max-w-xs px-3 py-2.5 bg-brand-nude text-xs text-brand-chocolate rounded-xl border border-brand-line focus:border-brand-caramel outline-none font-medium"
+            >
+              <option value="">Todas as categorias</option>
+              {categorias.map(categoria => (
+                <option key={categoria.id} value={String(categoria.id)}>{categoria.nome}</option>
+              ))}
+            </select>
+
             {/* Pílulas de Filtro */}
-            <div className="flex items-center gap-1 bg-brand-nude p-1 rounded-xl border border-brand-line overflow-x-auto no-scrollbar">
+            <div className="flex min-w-0 max-w-full items-center gap-1 bg-brand-nude p-1 rounded-xl border border-brand-line overflow-x-auto no-scrollbar">
               <button
                 onClick={() => handleFilterChange('ALL')}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
