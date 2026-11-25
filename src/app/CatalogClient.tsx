@@ -2457,6 +2457,7 @@ function ProductCard({
   onBuyWhatsApp: (p: Produto, e?: React.MouseEvent) => void;
 }) {
   const isProntaEntrega = isProdutoProntaEntrega(produto);
+  const gender = normalizeProductGender(produto.genero);
   const hasDiscount = hasVisibleDiscount(produto);
   const discountPercent = hasDiscount
     ? Math.round(((produto.precoOriginal! - produto.precoVista) / produto.precoOriginal!) * 100)
@@ -2505,6 +2506,12 @@ function ProductCard({
             {produto.nome}
           </button>
         </h3>
+
+        {gender ? (
+          <span className="mt-2 self-start rounded-md border border-brand-line bg-brand-nude px-2 py-1 text-[11px] font-semibold text-brand-chocolate" aria-label={`Gênero: ${gender}`}>
+            {gender}
+          </span>
+        ) : null}
 
         <p className={'product-availability ' + (isProntaEntrega ? 'in-stock' : produto.emTransito ? 'coming-soon' : '')}>
           {isProntaEntrega ? <CheckCircle2 size={15} aria-hidden="true" /> : <Clock size={13} aria-hidden="true" />}
