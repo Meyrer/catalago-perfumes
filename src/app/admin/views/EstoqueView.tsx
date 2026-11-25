@@ -10,7 +10,7 @@ import StockMovementHistory from '../StockMovementHistory';
 import { 
   Boxes, AlertTriangle, ArrowDownRight, ArrowUpRight, 
   Search, History, RefreshCw, X, Loader2,
-  Package, Calendar, CheckCircle2, ShieldAlert, FileText
+  Package, Calendar, CheckCircle2, ShieldAlert, FileText, Eye
 } from 'lucide-react';
 import { distribuirEstoqueAction, movimentarEstoqueAction } from '../../actions';
 import { normalizeImageUrl } from '@/lib/image-url';
@@ -23,9 +23,15 @@ type Props = {
 };
 
 const STOCK_PAGE_SIZE = 20;
+const PRODUCT_HISTORY_LIMIT = 10;
+const HISTORY_STATUS_LABELS: Record<string, string> = {
+  PAGO: 'Pago', ENTREGUE: 'Entregue', AGUARDANDO_PAGAMENTO: 'Aguardando pagamento',
+  PREPARANDO: 'Preparando', ENVIADO: 'Enviado', CANCELADO: 'Cancelado',
+  RECEBIDO: 'Recebido', PENDENTE: 'Pendente', EM_TRANSITO: 'Em trânsito',
+};
 
 export default function EstoqueView({ data }: Props) {
-  const { produtos, categorias, movimentacoesTotal, user } = data;
+  const { produtos, categorias, movimentacoesTotal, user, vendas, compras } = data;
   const router = useRouter();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,6 +42,16 @@ export default function EstoqueView({ data }: Props) {
   const [page, setPage] = useState(1);
   const [previewProduct, setPreviewProduct] = useState<AdminProduto | null>(null);
   const photoDialogRef = useRef<HTMLDialogElement>(null);
+  const detailsDialogRef = useRef<HTMLDialogElement>(null);
+  const [detailsProduct, setDetailsProduct] = useState<AdminProduto | null>(null);
+  const recentSales = useMemo(() => detailsProduct ? vendas
+    .flatMap(sale => sale.itens.filter(item => item.produtoId === detailsProduct.id).map(item => ({ sale, item })))
+    .sort((a, b) => new Date(b.sale.data).getTime() - new Date(a.sale.data).getTime() || b.sale.id - a.sale.id)
+    .slice(0, PRODUCT_HISTORY_LIMIT) : [], [vendas, detailsProduct]);
+  const recentPurchases = useMemo(() => detailsProduct ? compras
+    .flatMap(purchase => purchase.itens.filter(item => item.produtoId === detailsProduct.id).map(item => ({ purchase, item })))
+    .sort((a, b) => new Date(b.purchase.data).getTime() - new Date(a.purchase.data).getTime() || b.purchase.id - a.purchase.id)
+    .slice(0, PRODUCT_HISTORY_LIMIT) : [], [compras, detailsProduct]);
   const locationDialogRef = useRef<HTMLDialogElement>(null);
   const [locationProduct, setLocationProduct] = useState<AdminProduto | null>(null);
   const [cities, setCities] = useState<CityQuantities>({ sapiranga: 0, igrejinha: 0 });
@@ -459,6 +475,17 @@ export default function EstoqueView({ data }: Props) {
                           <td className="py-3 px-4 text-right">
                             <div className="inline-flex items-center gap-1">
                               <button
+                                type="button"
+                                onClick={() => {
+                                  setDetailsProduct(p);
+                                  detailsDialogRef.current?.showModal();
+                                }}
+                                aria-label={`Ver detalhes de estoque de ${p.nome}`}
+                                className="inline-flex items-center gap-1 rounded-lg border border-brand-line bg-brand-card px-2.5 py-1 text-[11px] font-semibold text-brand-chocolate hover:bg-brand-nude cursor-pointer"
+                              >
+                                <Eye size={13} aria-hidden="true" /> Detalhes
+                              </button>
+                              <button
                                 onClick={() => handleOpenMoveModal(p, 'ENTRADA')}
                                 className="p-1.5 rounded-lg bg-brand-nude hover:bg-brand-nude text-brand-chocolate border border-brand-line transition-colors cursor-pointer"
                                 title="Entrada rápida de estoque"
@@ -515,6 +542,65 @@ export default function EstoqueView({ data }: Props) {
       {/* ABA: HISTÓRICO DE MOVIMENTAÇÕES (AUDITORIA) */}
       {/* ========================================================= */}
       {activeSubTab === 'historico' && <StockMovementHistory />}
+
+      <dialog
+        ref={detailsDialogRef}
+        aria-labelledby="stock-product-details-title"
+        className="m-auto w-[calc(100%-2rem)] max-w-4xl max-h-[90dvh] overflow-y-auto rounded-2xl border border-brand-line bg-brand-card p-4 sm:p-6 text-brand-chocolate shadow-xl backdrop:bg-black/40"
+        onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close(); }}
+      >
+        {detailsProduct && <div className="space-y-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 id="stock-product-details-title" className="text-lg font-bold">Detalhes do produto no estoque</h3>
+              <p className="mt-1 text-sm font-semibold">{detailsProduct.nome}</p>
+              <p className="mt-1 text-xs text-brand-muted">{detailsProduct.marca}{detailsProduct.sku ? ` · ${detailsProduct.sku}` : ''}</p>
+            </div>
+            <button type="button" autoFocus aria-label="Fechar detalhes do produto" onClick={() => detailsDialogRef.current?.close()}
+              className="shrink-0 rounded-full p-2 hover:bg-brand-nude cursor-pointer"><X size={20} /></button>
+          </div>
+
+          <section aria-labelledby="stock-product-sales-title">
+            <h4 id="stock-product-sales-title" className="mb-2 text-sm font-bold">Últimas vendas · até {PRODUCT_HISTORY_LIMIT} registros</h4>
+            <div className="overflow-x-auto rounded-xl border border-brand-line">
+              <table className="w-full min-w-[640px] text-left text-xs">
+                <thead className="bg-brand-cream text-brand-muted"><tr>
+                  {['Data / Venda', 'Cliente', 'Quantidade', 'Preço unitário', 'Status'].map(label => <th key={label} scope="col" className="p-3">{label}</th>)}
+                </tr></thead>
+                <tbody className="divide-y divide-brand-line">
+                  {recentSales.length === 0 ? <tr><td colSpan={5} className="p-5 text-center text-brand-muted">Nenhuma venda registrada para este produto.</td></tr> : recentSales.map(({ sale, item }) => <tr key={item.id}>
+                    <td className="p-3"><p>{new Date(sale.data).toLocaleDateString('pt-BR')}</p><p className="mt-1 text-[10px] text-brand-muted">{sale.numero}</p></td>
+                    <td className="p-3 font-semibold">{sale.cliente?.nome || sale.nomeClienteAvulso || 'Cliente avulso'}</td>
+                    <td className="p-3">{item.quantidade} un.</td>
+                    <td className="p-3 whitespace-nowrap">{item.precoUnitario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td className="p-3">{HISTORY_STATUS_LABELS[sale.status] || sale.status}</td>
+                  </tr>)}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section aria-labelledby="stock-product-purchases-title">
+            <h4 id="stock-product-purchases-title" className="mb-2 text-sm font-bold">Últimas compras de fornecedor · até {PRODUCT_HISTORY_LIMIT} registros</h4>
+            <div className="overflow-x-auto rounded-xl border border-brand-line">
+              <table className="w-full min-w-[640px] text-left text-xs">
+                <thead className="bg-brand-cream text-brand-muted"><tr>
+                  {['Data / Compra', 'Fornecedor', 'Quantidade', 'Custo unitário (R$)', 'Status'].map(label => <th key={label} scope="col" className="p-3">{label}</th>)}
+                </tr></thead>
+                <tbody className="divide-y divide-brand-line">
+                  {recentPurchases.length === 0 ? <tr><td colSpan={5} className="p-5 text-center text-brand-muted">Nenhuma compra registrada para este produto.</td></tr> : recentPurchases.map(({ purchase, item }) => <tr key={item.id}>
+                    <td className="p-3"><p>{new Date(purchase.data).toLocaleDateString('pt-BR')}</p><p className="mt-1 text-[10px] text-brand-muted">{purchase.numero}</p></td>
+                    <td className="p-3 font-semibold">{purchase.fornecedor?.nome || 'Fornecedor não informado'}</td>
+                    <td className="p-3">{item.quantidade} un.</td>
+                    <td className="p-3 whitespace-nowrap">{item.custoUnitarioBRL.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td className="p-3">{HISTORY_STATUS_LABELS[purchase.status] || purchase.status}</td>
+                  </tr>)}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>}
+      </dialog>
 
       <dialog
         ref={photoDialogRef}
